@@ -1,0 +1,18 @@
+[build]
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/auth/*"
+  to = "/.netlify/functions/auth/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[functions."alert-scheduler"]
+  schedule = "*/15 * * * *"
+
+[functions."lark-proxy"]
+  timeout = 26

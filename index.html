@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G6 Labs — Ads Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#181b23;--bg3:#1e2230;--bg4:#252a3a;--bg5:#2d3347;
+  --border:#2a2f42;--border2:#353b52;
+  --text:#e8ecf4;--text2:#8b92a8;--text3:#5a6080;
+  --blue:#4f9cf9;--blue2:#1a3a6e;--blue3:#0d1f40;
+  --green:#22c55e;--green2:#052e16;
+  --red:#ef4444;--red2:#2d0808;
+  --amber:#f59e0b;--amber2:#2d1a00;
+  --purple:#a78bfa;--purple2:#1e1040;
+  --teal:#14b8a6;--teal2:#042320;
+}
+html{font-size:14px}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:236px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative;z-index:10;transition:transform .25s}
+.sidebar-head{padding:18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.brand-logo{width:34px;height:34px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+.brand-name{font-size:14px;font-weight:600;color:var(--text)}
+.brand-sub{font-size:10px;color:var(--text3);letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);padding:14px 16px 6px}
+.account-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+.account-list::-webkit-scrollbar{width:3px}
+.account-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.acc-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:all .15s}
+.acc-item:hover{background:var(--bg3);border-color:var(--border)}
+.acc-item.active{background:#0d1f40;border-color:rgba(79,156,249,.3)}
+.acc-item.active .acc-name{color:var(--blue)}
+.acc-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:all .15s}
+.acc-item.active .acc-dot{background:var(--blue)}
+.acc-item.st-ok .acc-dot{background:var(--green)}
+.acc-item.st-err .acc-dot{background:var(--red)}
+.acc-item.st-loading .acc-dot{background:var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.acc-name{font-size:12px;font-weight:500;color:var(--text2);flex:1;line-height:1.3;transition:color .15s}
+.acc-tag{font-size:9px;font-weight:600;padding:2px 6px;border-radius:20px;flex-shrink:0}
+.acc-tag.ok{background:var(--green2);color:var(--green)}
+.acc-tag.err{background:var(--red2);color:var(--red)}
+.acc-tag.ld{background:var(--amber2);color:var(--amber)}
+.sidebar-foot{padding:12px;border-top:1px solid var(--border);flex-shrink:0}
+.sidebar-refresh{width:100%;padding:9px;border-radius:8px;background:var(--blue);color:#fff;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s}
+.sidebar-refresh:hover{opacity:.85}
+.sidebar-refresh:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── HEADER ── */
+.main-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;flex-wrap:wrap;gap:10px}
+.header-left{min-width:0}
+.header-account{font-family:'Playfair Display',serif;font-size:20px;color:var(--text)}
+.header-meta{font-size:11px;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:8px}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.live-pill{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--text2)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.live-dot.on{background:var(--green);animation:pulse 2.5s infinite}
+.menu-btn{display:none;background:none;border:none;cursor:pointer;color:var(--text2);padding:4px}
+.thresh-pill{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 10px;font-size:11px;color:var(--text3)}
+.thresh-pill input{width:30px;background:transparent;border:none;color:var(--blue);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;text-align:center;outline:none}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 28px;overflow-x:auto;flex-shrink:0}
+.nav-tabs::-webkit-scrollbar{display:none}
+.tab-btn{padding:13px 18px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;white-space:nowrap;font-family:'DM Sans',sans-serif;transition:color .15s}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-btn:hover:not(.active){color:var(--text)}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;background:var(--bg)}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.tab-section{display:none;padding:24px 28px 48px}
+.tab-section.active{display:block}
+.section-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);margin-bottom:6px}
+.section-sub{font-size:12px;color:var(--text2);margin-bottom:20px}
+
+/* ── STATE ── */
+.state-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:400px;gap:10px;text-align:center;padding:40px}
+.state-icon{font-size:40px;margin-bottom:4px}
+.state-title{font-size:15px;font-weight:500;color:var(--text2)}
+.state-sub{font-size:12px;color:var(--text3);max-width:260px;line-height:1.7}
+.spinner{width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── GAUGE ROW ── */
+.gauge-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px}
+.gauge-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px 20px;text-align:center}
+.gauge-num{font-size:34px;font-weight:700;line-height:1;margin:6px 0 4px}
+.gauge-label{font-size:11px;color:var(--text2)}
+.gauge-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.gauge-bar{height:4px;background:var(--bg4);border-radius:2px;margin:12px 0 0;overflow:hidden}
+.gauge-fill{height:4px;border-radius:2px;transition:width .6s ease}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.kpi-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.kpi-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:600;color:var(--text);line-height:1;font-family:'DM Sans',sans-serif}
+.kpi-hint{font-size:11px;color:var(--text3);margin-top:5px}
+.kpi-alert{font-size:11px;color:var(--red);margin-top:5px;display:flex;align-items:center;gap:3px}
+.kpi-warn{font-size:11px;color:var(--amber);margin-top:5px;display:flex;align-items:center;gap:3px}
+.kpi-good{font-size:11px;color:var(--green);margin-top:5px;display:flex;align-items:center;gap:3px}
+
+/* ── SECTION CARD ── */
+.s-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.s-card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.s-card-title i{color:var(--blue);font-size:16px}
+
+/* ── AD TABLE ── */
+.ad-table{width:100%;border-collapse:collapse}
+.ad-table th{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.ad-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+.ad-table tr:last-child td{border-bottom:none}
+.ad-table tr:hover td{background:var(--bg4)}
+
+/* ── SCORE BADGE ── */
+.score-badge{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;font-size:12px;font-weight:700;flex-shrink:0}
+.score-a{background:var(--green2);color:var(--green);border:1px solid #166534}
+.score-b{background:var(--amber2);color:var(--amber);border:1px solid #854d0e}
+.score-c{background:var(--red2);color:var(--red);border:1px solid #7f1d1d}
+
+/* ── WHY CHIPS ── */
+.why-chip{display:inline-block;background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text2);margin:2px 2px 0 0}
+.why-good{background:var(--green2);border-color:#166534;color:#4ade80}
+.why-bad{background:var(--red2);border-color:#7f1d1d;color:#f87171}
+.why-warn{background:var(--amber2);border-color:#854d0e;color:#fbbf24}
+
+/* ── INSIGHT ALERTS ── */
+.insight-alert{background:var(--bg3);border-left:3px solid;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:12px}
+.insight-alert.good{border-color:var(--green)}
+.insight-alert.warn{border-color:var(--amber)}
+.insight-alert.bad{border-color:var(--red)}
+.insight-alert.info{border-color:var(--blue)}
+.insight-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+.insight-body{font-size:12px;color:var(--text2);line-height:1.6}
+
+/* ── CHART ── */
+.chart-wrap{position:relative;height:220px;margin-top:8px}
+
+/* ── PLATFORM BADGE ── */
+.plat-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
+.plat-fb{background:#1a2a4a;color:#4f9cf9}
+.plat-ig{background:#2d1040;color:#c084fc}
+
+/* ── FILTER ROW ── */
+.filter-row{display:flex;align-items:center;gap:5px;margin-bottom:16px;flex-wrap:wrap}
+.f-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-right:4px}
+.ftab{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.ftab:hover{border-color:var(--border2);color:var(--text2)}
+.ftab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:100;box-shadow:4px 0 32px rgba(0,0,0,.6)}
+  .sidebar.open{transform:translateX(0)}
+  .menu-btn{display:flex}
+  .thresh-pill{display:none}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50}
+  .overlay.show{display:block}
+  .tab-section{padding:16px 14px 40px}
+  .main-header{padding:12px 16px}
+}
+@media(max-width:480px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .gauge-row{grid-template-columns:repeat(2,1fr)}
+  .kpi-value{font-size:20px}
+/* ── LOGIN — full page ── */
+.login-page{
+  position:fixed;inset:0;z-index:2000;
+  background:var(--bg);
+  display:flex;align-items:stretch;
+  min-height:100vh;
+}
+/* Left decorative panel */
+.login-left{
+  flex:1;display:none;
+  background:linear-gradient(145deg,#0d1f40 0%,#111827 60%,#0f1117 100%);
+  position:relative;overflow:hidden;
+  padding:48px;flex-direction:column;justify-content:space-between;
+}
+@media(min-width:900px){.login-left{display:flex}}
+.login-left::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 30% 50%,rgba(79,156,249,.08) 0%,transparent 70%);
+}
+.login-left-logo{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
+.login-left-mark{
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,#2563eb,#4f9cf9);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff;
+}
+.login-left-brand{font-family:'Playfair Display',serif;font-size:17px;color:var(--text);font-weight:600}
+.login-left-sub{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.login-left-body{position:relative;z-index:1}
+.login-left-title{font-family:'Playfair Display',serif;font-size:32px;color:var(--text);line-height:1.3;margin-bottom:14px}
+.login-left-desc{font-size:13px;color:var(--text2);line-height:1.8;max-width:320px}
+.login-left-features{margin-top:32px;display:flex;flex-direction:column;gap:10px}
+.login-feat{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text2)}
+.login-feat-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.login-left-footer{font-size:11px;color:var(--text3);position:relative;z-index:1}
+
+/* Right login panel */
+.login-right{
+  width:100%;max-width:480px;flex-shrink:0;
+  background:var(--bg2);
+  display:flex;align-items:center;justify-content:center;
+  padding:32px 24px;
+  border-left:1px solid var(--border);
+}
+@media(min-width:900px){.login-right{width:420px}}
+.login-card{width:100%;max-width:360px}
+.login-card-logo{display:flex;align-items:center;gap:10px;margin-bottom:36px}
+.login-card-mark{
+  width:38px;height:38px;border-radius:10px;
+  background:linear-gradient(135deg,#2563eb,#4f9cf9);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;
+}
+.login-card-brand{font-family:'Playfair Display',serif;font-size:15px;color:var(--text);font-weight:600}
+.login-card-sub{font-size:10px;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.login-card-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--text);margin-bottom:5px}
+.login-card-desc{font-size:12px;color:var(--text2);margin-bottom:28px;line-height:1.6}
+.lf{margin-bottom:18px}
+.lf label{display:block;font-size:11px;font-weight:500;color:var(--text2);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase}
+.lf input{
+  width:100%;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:8px;padding:12px 14px;
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;
+  outline:none;transition:border-color .15s;
+}
+.lf input:focus{border-color:var(--blue)}
+.lf input.lerr{border-color:var(--red)}
+.lf input::placeholder{color:var(--text3)}
+.lf-pw{position:relative}
+.lf-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0;line-height:1;transition:color .15s}
+.lf-eye:hover{color:var(--text2)}
+.login-alert{background:rgba(240,82,82,.08);border:1px solid rgba(240,82,82,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;margin-bottom:16px;display:none;line-height:1.5}
+.login-alert.show{display:block}
+.login-attempts{font-size:11px;color:var(--amber);min-height:16px;margin-bottom:12px;text-align:center}
+.login-submit{
+  width:100%;padding:13px;border-radius:8px;
+  background:linear-gradient(135deg,#2563eb,#4f9cf9);
+  color:#fff;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  transition:opacity .15s;letter-spacing:.02em;
+  box-shadow:0 4px 16px rgba(79,156,249,.25);
+}
+.login-submit:hover{opacity:.88}
+.login-submit:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.quick-select{margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
+.qs-label{font-size:10px;font-weight:500;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+.qs-row{display:flex;gap:8px;flex-wrap:wrap}
+.qs-btn{
+  padding:6px 14px;border-radius:6px;
+  background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text2);cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  transition:all .15s;text-align:center;
+}
+.qs-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue3)}
+.qs-btn span{display:block;font-size:9px;color:var(--text3);margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
+.login-footer-note{margin-top:20px;font-size:11px;color:var(--text3);text-align:center;line-height:1.6}
+.app-wrap{display:none}
+/* user chip in topbar */
+.user-chip{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2)}
+.role-pip{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.04em}
+.rp-admin{background:#1a3a6e;color:var(--blue)}
+.rp-client{background:#042320;color:var(--teal)}
+.logout-ico{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;transition:color .15s;font-size:15px;line-height:1}
+.logout-ico:hover{color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN PAGE — full screen, two panel -->
+<div class="login-page" id="loginPage">
+
+  <!-- LEFT PANEL — decorative -->
+  <div class="login-left">
+    <div class="login-left-logo">
+      <div class="login-left-mark">G6</div>
+      <div>
+        <div class="login-left-brand">G6 Labs Asia</div>
+        <div class="login-left-sub">Ads Intelligence</div>
+      </div>
+    </div>
+    <div class="login-left-body">
+      <div class="login-left-title">Your ads,<br>under control.</div>
+      <div class="login-left-desc">Live Meta Ads performance dashboard — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
+      <div class="login-left-features">
+        <div class="login-feat"><div class="login-feat-dot"></div>Live Meta Ads data across all accounts</div>
+        <div class="login-feat"><div class="login-feat-dot"></div>Lead intelligence from Lark Bitable</div>
+        <div class="login-feat"><div class="login-feat-dot"></div>Automated email alerts when issues are detected</div>
+        <div class="login-feat"><div class="login-feat-dot"></div>Health scoring, CPL tracking, handler leaderboard</div>
+      </div>
+    </div>
+    <div class="login-left-footer">© 2026 G6 Labs Asia Sdn Bhd · Trisquare</div>
+  </div>
+
+  <!-- RIGHT PANEL — login form -->
+  <div class="login-right">
+    <div class="login-card">
+
+      <div class="login-card-logo">
+        <div class="login-card-mark">G6</div>
+        <div>
+          <div class="login-card-brand">G6 Labs Asia</div>
+          <div class="login-card-sub">Ads Intelligence</div>
+        </div>
+      </div>
+
+      <div class="login-card-title">Welcome back</div>
+      <div class="login-card-desc">Sign in to access the team dashboard, task generator, and live ads data.</div>
+
+      <div class="login-alert" id="loginErr"></div>
+
+      <div class="lf">
+        <label for="loginUser">Username</label>
+        <input type="text" id="loginUser" placeholder="e.g. ashokh" autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      </div>
+
+      <div class="lf">
+        <label for="loginPass">Password</label>
+        <div class="lf-pw">
+          <input type="password" id="loginPass" placeholder="••••••••••" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')doLogin()">
+          <button class="lf-eye" type="button" onclick="togglePw()" aria-label="Show/hide password">
+            <i class="ti ti-eye" id="pwEyeIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="login-attempts" id="loginWarn"></div>
+
+      <button class="login-submit" id="loginBtn" onclick="doLogin()">Sign in →</button>
+
+      <!-- Quick select -->
+      <div class="quick-select">
+        <div class="qs-label">Quick select</div>
+        <div class="qs-row">
+          <button class="qs-btn" onclick="quickSelect('ashokh','admin')">
+            ashokh<span>Admin</span>
+          </button>
+          <button class="qs-btn" onclick="quickSelect('nanda','marketer')">
+            nanda<span>Client</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="login-footer-note">🔒 Secured · Sessions expire after 4 hours</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="app-wrap" id="appWrap">
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <div class="brand-logo">G6</div>
+      <div>
+        <div class="brand-name">G6 Labs Asia</div>
+        <div class="brand-sub">Ads Intelligence</div>
+      </div>
+    </div>
+    <div class="sidebar-section">Ad Accounts</div>
+    <div class="account-list" id="accountList"></div>
+    <div class="sidebar-foot">
+      <button class="sidebar-refresh" id="refreshBtn" onclick="refreshCurrent()">
+        <i class="ti ti-refresh" aria-hidden="true"></i> Refresh Data
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- HEADER -->
+    <div class="main-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+          <i class="ti ti-menu-2" style="font-size:20px" aria-hidden="true"></i>
+        </button>
+        <div class="header-left">
+          <div class="header-account" id="headerAccount">Select an account</div>
+          <div class="header-meta" id="headerMeta">
+            <span id="datePill">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="thresh-pill">
+          CPL&gt;RM<input type="number" id="cplT" value="15" min="1">
+          · CTR&lt;<input type="number" id="ctrT" value="0.5" min="0.01" step="0.1">%
+          · Freq&gt;<input type="number" id="freqT" value="3" min="1" step="0.5">×
+        </div>
+        <div class="live-pill">
+          <div class="live-dot" id="liveDot"></div>
+          <span id="liveLabel">Idle</span>
+          <span id="countdownPill" style="display:none;margin-left:4px;color:var(--text3)">· <span id="countdown"></span></span>
+        </div>
+        <div class="user-chip">
+          <i class="ti ti-user" style="font-size:12px" aria-hidden="true"></i>
+          <span id="chipUser">—</span>
+          <span class="role-pip rp-admin" id="chipRole">admin</span>
+        </div>
+        <button class="logout-ico" onclick="doLogout()" title="Sign out" aria-label="Sign out">
+          <i class="ti ti-logout" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- NAV TABS -->
+    <div class="nav-tabs" id="navTabs" style="display:none">
+      <button class="tab-btn active" onclick="switchTab('overview',this)">Overview</button>
+      <button class="tab-btn" onclick="switchTab('ads',this)">Ad Intelligence</button>
+      <button class="tab-btn" onclick="switchTab('health',this)">Health Check</button>
+      <button class="tab-btn" onclick="switchTab('leads',this)">
+        <i class="ti ti-users" aria-hidden="true" style="margin-right:4px"></i>Leads
+        <span id="leadsCountBadge" style="display:none;background:var(--blue);color:#fff;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:600"></span>
+      </button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content" id="content">
+      <div class="state-wrap">
+        <div class="state-icon">📊</div>
+        <div class="state-title">No account selected</div>
+        <div class="state-sub">Pick an ad account from the sidebar to load this month's live data</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── ACCOUNTS ──────────────────────────────────────────────────────────────
+const ACCOUNTS=[
+  {id:'854069203683598', name:'I-Sihat Dental Care 2'},
+  {id:'185825224320502', name:'I-Sihat Dental Care'},
+  {id:'523654495274543', name:'Ang Dental'},
+  {id:'429121129294808', name:'Toothland Dental'},
+  {id:'548718067784065', name:'Putih Dental'},
+  {id:'5841452755981834',name:'Smile Borneo'},
+  {id:'1027194858744741',name:'Purple Antz'},
+  {id:'509470387773096', name:'SVASIKA'},
+];
+
+let activeId=null, cache={}, curFilter='all', curTab='overview';
+let spendChart=null;
+
+// ── DATES ─────────────────────────────────────────────────────────────────
+const fmtD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const mStart=()=>{const d=new Date();return fmtD(new Date(d.getFullYear(),d.getMonth(),1))};
+const yDay=()=>{const d=new Date();d.setDate(d.getDate()-1);return fmtD(d)};
+const mLabel=()=>new Date().toLocaleString('en-MY',{month:'long',year:'numeric'});
+
+// ── FORMAT ────────────────────────────────────────────────────────────────
+const rm=v=>{const n=parseFloat(v)||0;return n>0?'RM '+n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'};
+const num=v=>{const n=parseInt(v)||0;return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(0)+'K':String(n||'—')};
+const pct=v=>{const n=parseFloat(v)||0;return n>0?n.toFixed(2)+'%':'—'};
+const rmN=v=>parseFloat(v)||0;
+const intN=v=>parseInt(v)||0;
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────
+function buildSidebar(){
+  const allowed = currentUser?.accounts || ['*'];
+  const visible = allowed.includes('*') ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id));
+  document.getElementById('accountList').innerHTML = visible.map(a =>
+    `<div class="acc-item" id="ai-${a.id}" onclick="selectAccount('${a.id}')">
+       <div class="acc-dot"></div>
+       <div class="acc-name">${a.name}</div>
+     </div>`
+  ).join('');
+}
+function setAccState(id,cls,tag){
+  const el=document.getElementById('ai-'+id);if(!el)return;
+  const isActive=id===activeId;
+  el.className='acc-item'+(isActive?' active':'')+' st-'+cls;
+  const old=el.querySelector('.acc-tag');if(old)old.remove();
+  if(tag){const t=document.createElement('span');t.className='acc-tag '+tag.c;t.textContent=tag.t;el.appendChild(t);}
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show')}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show')}
+
+// ── SELECT ────────────────────────────────────────────────────────────────
+function selectAccount(id){
+  activeId=id;curFilter='all';curTab='overview';closeSidebar();
+  document.querySelectorAll('.acc-item').forEach(e=>e.classList.remove('active'));
+  const el=document.getElementById('ai-'+id);if(el)el.classList.add('active');
+  const acc=ACCOUNTS.find(a=>a.id===id);
+  document.getElementById('headerAccount').textContent=acc.name;
+  document.getElementById('datePill').textContent=mLabel()+' · '+mStart()+' → '+yDay();
+  if(cache[id]){renderAll(cache[id]);}else{loadAccount(id);}
+}
+function refreshCurrent(){if(activeId){delete cache[activeId];loadAccount(activeId);}}
+
+// ── FETCH ─────────────────────────────────────────────────────────────────
+async function loadAccount(id){
+  if(!id)return;
+  const since=mStart(),until=yDay();
+  document.getElementById('liveDot').className='live-dot';
+  document.getElementById('liveLabel').textContent='Loading';
+  document.getElementById('refreshBtn').disabled=true;
+  setAccState(id,'loading',{c:'ld',t:'...'});
+  document.getElementById('navTabs').style.display='none';
+  showLoading();
+  try{
+    const res=await authedFetch('/api/meta-proxy',{method:'POST',body:JSON.stringify({accountId:id,since,until})});
+    const json=await res.json();
+    if(json.error)throw new Error(json.error.message||json.error);
+    const ads=(json.data||[]).map(ad=>({
+      id:ad.id,name:ad.name,status:ad.status,es:ad.effective_status,camp:ad.campaign?.name||'',
+      spend:ad.insights?.data?.[0]?.spend||'0',
+      impr:ad.insights?.data?.[0]?.impressions||'0',
+      reach:ad.insights?.data?.[0]?.reach||'0',
+      cpm:ad.insights?.data?.[0]?.cpm||'0',
+      cpc:ad.insights?.data?.[0]?.cpc||'0',
+      ctr:ad.insights?.data?.[0]?.ctr||'0',
+      freq:ad.insights?.data?.[0]?.frequency||'0',
+      cpr:ad.insights?.data?.[0]?.cost_per_result||'0',
+      convs:ad.insights?.data?.[0]?.conversations||'0',
+      clicks:ad.insights?.data?.[0]?.link_clicks||'0',
+      results:ad.insights?.data?.[0]?.results||'0',
+    })).map(ad=>{
+      // If cost_per_result is missing, calculate from spend ÷ conversations or spend ÷ link_clicks
+      if(rmN(ad.cpr)===0){
+        const spend=rmN(ad.spend);
+        const convs=intN(ad.convs);
+        const clicks=intN(ad.clicks);
+        const res=intN(ad.results);
+        if(convs>0) ad.cpr=String((spend/convs).toFixed(2));
+        else if(res>0) ad.cpr=String((spend/res).toFixed(2));
+        else if(clicks>0) ad.cpr=String((spend/clicks).toFixed(2));
+      }
+      // Results: use whichever has a value — results, convs, or clicks
+      if(intN(ad.results)===0){
+        if(intN(ad.convs)>0) ad.results=ad.convs;
+        else if(intN(ad.clicks)>0) ad.results=ad.clicks;
+      }
+      return ad;
+    }).filter(ad=>rmN(ad.spend)>0||intN(ad.impr)>0);
+    cache[id]=ads;
+    setAccState(id,'ok',{c:'ok',t:ads.length+' ads'});
+    document.getElementById('liveDot').className='live-dot on';
+    document.getElementById('liveLabel').textContent='Live · '+new Date().toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('navTabs').style.display='flex';
+    renderAll(ads);
+  }catch(e){
+    setAccState(id,'err',{c:'err',t:'Error'});
+    document.getElementById('liveLabel').textContent='Error';
+    document.getElementById('content').innerHTML=`<div class="state-wrap"><div class="state-icon">⚠️</div><div class="state-title">Failed to load</div><div class="state-sub">${e.message||'Check your token and account permissions.'}</div></div>`;
+  }
+  document.getElementById('refreshBtn').disabled=false;
+}
+function showLoading(){
+  document.getElementById('content').innerHTML=`<div class="state-wrap"><div class="spinner"></div><div class="state-title">Loading ${mLabel()}</div><div class="state-sub">Fetching current month campaigns — previous months excluded</div></div>`;
+}
+
+// ── ALERTS ────────────────────────────────────────────────────────────────
+function chk(ad){
+  const cplT=parseFloat(document.getElementById('cplT').value)||15;
+  const ctrT=parseFloat(document.getElementById('ctrT').value)||0.5;
+  const freqT=parseFloat(document.getElementById('freqT').value)||3;
+  const al=[],wa=[];
+  const st=(ad.es||ad.status||'').toLowerCase();
+  const spend=rmN(ad.spend),cpr=rmN(ad.cpr),ctr=rmN(ad.ctr),freq=rmN(ad.freq),impr=intN(ad.impr);
+  if(st!=='active'&&st!=='paused'&&st)al.push(`Delivery issue: ${ad.es}`);
+  if(st==='active'&&spend===0&&impr===0)al.push('Active but zero impressions — not delivering');
+  if(cpr>0&&cpr>cplT)al.push(`CPL ${rm(cpr)} exceeds RM ${cplT} threshold`);
+  if(impr>500&&ctr>0&&ctr<ctrT)wa.push(`CTR ${pct(ctr)} below ${ctrT}% threshold`);
+  if(freq>freqT)wa.push(`Frequency ${parseFloat(freq).toFixed(2)}× — fatigue risk`);
+  return{al,wa};
+}
+
+// ── SCORE ─────────────────────────────────────────────────────────────────
+function scoreAd(ad){
+  let s=50;
+  const st=(ad.es||'').toLowerCase();
+  const cpr=rmN(ad.cpr),ctr=rmN(ad.ctr),freq=rmN(ad.freq),impr=intN(ad.impr),spend=rmN(ad.spend);
+  const cplT=parseFloat(document.getElementById('cplT').value)||15;
+  const ctrT=parseFloat(document.getElementById('ctrT').value)||0.5;
+  const freqT=parseFloat(document.getElementById('freqT').value)||3;
+  if(st==='active')s+=10; else s-=10;
+  if(ctr>=1)s+=20; else if(ctr>=ctrT)s+=10; else if(ctr>0)s-=10;
+  if(cpr>0&&cpr<=cplT)s+=15; else if(cpr>cplT)s-=20;
+  if(freq>0&&freq<=freqT)s+=5; else if(freq>freqT)s-=10;
+  if(impr>10000)s+=10; else if(impr>1000)s+=5;
+  s=Math.max(0,Math.min(100,s));
+  const grade=s>=70?'A':s>=45?'B':'C';
+  return{score:s,grade};
+}
+
+// ── TAB SWITCH ────────────────────────────────────────────────────────────
+function switchTab(tab,btn){
+  curTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(tab==='leads'){ loadLeads(); return; }
+  const ads=cache[activeId];
+  if(ads)renderAll(ads);
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────
+function renderAll(ads){
+  if(curTab==='overview')renderOverview(ads);
+  else if(curTab==='ads')renderAdIntel(ads);
+  else if(curTab==='health')renderHealth(ads);
+}
+
+// ── OVERVIEW TAB ──────────────────────────────────────────────────────────
+function renderOverview(ads){
+  const totalSpend=ads.reduce((s,a)=>s+rmN(a.spend),0);
+  const totalImpr=ads.reduce((s,a)=>s+intN(a.impr),0);
+  const totalReach=ads.reduce((s,a)=>s+intN(a.reach),0);
+  const totalResults=ads.reduce((s,a)=>s+intN(a.results),0);
+  const active=ads.filter(a=>(a.es||'').toLowerCase()==='active').length;
+  const alerts=ads.filter(a=>chk(a).al.length>0).length;
+  const warns=ads.filter(a=>chk(a).wa.length>0).length;
+  const ctrAds=ads.filter(a=>rmN(a.ctr)>0);
+  const avgCtr=ctrAds.length?ctrAds.reduce((s,a)=>s+rmN(a.ctr),0)/ctrAds.length:0;
+  const cprAds=ads.filter(a=>rmN(a.cpr)>0);
+  const avgCpr=cprAds.length?cprAds.reduce((s,a)=>s+rmN(a.cpr),0)/cprAds.length:0;
+
+  // Health score
+  const avgScore=ads.length?ads.reduce((s,a)=>s+scoreAd(a).score,0)/ads.length:0;
+  const healthColor=avgScore>=70?'#22c55e':avgScore>=45?'#f59e0b':'#ef4444';
+  const ctrScore=Math.min(100,avgCtr*50);
+  const ctrColor=avgCtr>=1?'#22c55e':avgCtr>=0.5?'#f59e0b':'#ef4444';
+  const alertScore=Math.max(0,100-alerts*20-warns*10);
+  const alertColor=alertScore>=80?'#22c55e':alertScore>=50?'#f59e0b':'#ef4444';
+
+  // Insights
+  const insights=[];
+  if(active===0)insights.push({type:'bad',title:'No active ads running',body:'All ads are paused or inactive this month. No spend, no reach.',tab:'health'});
+  else if(alerts>0)insights.push({type:'bad',title:`${alerts} ad${alerts>1?'s':''} have critical issues — click to view`,body:'CPL over threshold, delivery issues, or zero-impression active ads detected. Tap to see full breakdown.',tab:'health'});
+  if(avgCtr>=1)insights.push({type:'good',title:'Strong CTR performance',body:`Average CTR of ${avgCtr.toFixed(2)}% is above 1% benchmark — creative is resonating with the audience.`,tab:'ads'});
+  else if(avgCtr>0&&avgCtr<0.5)insights.push({type:'warn',title:'CTR below benchmark — click to review ads',body:`Average CTR of ${avgCtr.toFixed(2)}% is below the 0.5% threshold. Creative refresh or audience refinement recommended.`,tab:'ads'});
+  if(warns>0)insights.push({type:'warn',title:`${warns} ad${warns>1?'s':''} showing warning signs — click to review`,body:'Frequency or CTR issues detected — review before they escalate to delivery problems.',tab:'health'});
+  if(avgCpr>0&&avgCpr<=15)insights.push({type:'good',title:'CPL within target range',body:`Average CPL of ${rm(avgCpr)} is within the RM 15 threshold. Campaigns are cost-efficient.`,tab:'ads'});
+  else if(avgCpr>15)insights.push({type:'bad',title:'CPL above target — click to identify offending ads',body:`Average CPL of ${rm(avgCpr)} exceeds RM 15 threshold. Review targeting and ad relevance.`,tab:'ads'});
+  if(!insights.length)insights.push({type:'info',title:'Data loaded successfully',body:`${ads.length} ads with activity found for ${mLabel()}. Use the tabs above to explore details.`,tab:null});
+
+  // By campaign
+  const byCamp={};
+  ads.forEach(ad=>{const k=ad.camp||'Uncategorized';if(!byCamp[k])byCamp[k]={spend:0,impr:0,reach:0,count:0};byCamp[k].spend+=rmN(ad.spend);byCamp[k].impr+=intN(ad.impr);byCamp[k].reach+=intN(ad.reach);byCamp[k].count++;});
+  const camps=Object.entries(byCamp).sort((a,b)=>b[1].spend-a[1].spend);
+
+  document.getElementById('content').innerHTML=`
+    <div class="tab-section active" id="tab-overview">
+      <div class="section-title">Performance Overview</div>
+      <div class="section-sub">${mLabel()} · ${ads.length} ads with activity · Current month only</div>
+
+      <div class="gauge-row">
+        <div class="gauge-card">
+          <div class="gauge-label">Account Health Score</div>
+          <div class="gauge-num" style="color:${healthColor}">${Math.round(avgScore)}<span style="font-size:16px;color:var(--text3)">/100</span></div>
+          <div class="gauge-sub">${avgScore>=70?'Performing well':avgScore>=45?'Needs improvement':'Critical attention needed'}</div>
+          <div class="gauge-bar"><div class="gauge-fill" style="width:${avgScore}%;background:${healthColor}"></div></div>
+        </div>
+        <div class="gauge-card">
+          <div class="gauge-label">CTR Performance</div>
+          <div class="gauge-num" style="color:${ctrColor}">${Math.round(ctrScore)}<span style="font-size:16px;color:var(--text3)">/100</span></div>
+          <div class="gauge-sub">Avg CTR ${avgCtr>0?avgCtr.toFixed(2)+'%':'—'} across active ads</div>
+          <div class="gauge-bar"><div class="gauge-fill" style="width:${ctrScore}%;background:${ctrColor}"></div></div>
+        </div>
+        <div class="gauge-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(79,156,249,.3)'" onmouseleave="this.style.borderColor='var(--border)'">
+          <div class="gauge-label">Alert Status <span style="font-size:9px;color:var(--text3)">↗</span></div>
+          <div class="gauge-num" style="color:${alertColor}">${alertScore}<span style="font-size:16px;color:var(--text3)">/100</span></div>
+          <div class="gauge-sub">${alerts} alert${alerts!==1?'s':''} · ${warns} warning${warns!==1?'s':''} detected</div>
+          <div class="gauge-bar"><div class="gauge-fill" style="width:${alertScore}%;background:${alertColor}"></div></div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total spend</div>
+          <div class="kpi-value">${rm(totalSpend)}</div>
+          <div class="kpi-hint">${mLabel()}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Active ads</div>
+          <div class="kpi-value">${active}</div>
+          <div class="kpi-hint">of ${ads.length} this month</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Impressions</div>
+          <div class="kpi-value">${num(totalImpr)}</div>
+          <div class="kpi-hint">Reach: ${num(totalReach)}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total results</div>
+          <div class="kpi-value" style="color:var(--green)">${totalResults||'—'}</div>
+          <div class="kpi-hint">Convs · clicks · leads</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg CTR</div>
+          <div class="kpi-value">${avgCtr>0?avgCtr.toFixed(2)+'%':'—'}</div>
+          ${avgCtr>=1?'<div class="kpi-good"><i class="ti ti-arrow-up"></i> Above benchmark</div>':avgCtr>0&&avgCtr<0.5?'<div class="kpi-warn"><i class="ti ti-alert-triangle"></i> Below 0.5%</div>':'<div class="kpi-hint">—</div>'}
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg CPL / CPR</div>
+          <div class="kpi-value">${avgCpr>0?rm(avgCpr):'—'}</div>
+          ${avgCpr>0&&avgCpr<=15?'<div class="kpi-good"><i class="ti ti-check"></i> Within target</div>':avgCpr>15?'<div class="kpi-alert"><i class="ti ti-alert-circle"></i> Above RM 15</div>':'<div class="kpi-hint">—</div>'}
+        </div>
+        <div class="kpi-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(79,156,249,.4)'" onmouseleave="this.style.borderColor=''">
+          <div class="kpi-label">Issues <span style="font-size:9px;color:var(--text3)">↗ click to view</span></div>
+          <div class="kpi-value">${alerts+warns}</div>
+          ${alerts>0?`<div class="kpi-alert"><i class="ti ti-alert-circle"></i> ${alerts} alert${alerts>1?'s':''}</div>`:warns>0?`<div class="kpi-warn"><i class="ti ti-alert-triangle"></i> ${warns} warning${warns>1?'s':''}</div>`:'<div class="kpi-good"><i class="ti ti-check"></i> All clear</div>'}
+        </div>
+      </div>
+
+      ${camps.length?`<div class="s-card">
+        <div class="s-card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Spend by campaign</div>
+        <div class="chart-wrap"><canvas id="spendChart" role="img" aria-label="Bar chart of spend by campaign">${camps.map(([k,v])=>k+': '+rm(v.spend)).join(', ')}</canvas></div>
+      </div>`:''}
+
+      ${insights.map(i=>`<div class="insight-alert ${i.type}" style="${i.tab?'cursor:pointer;':''}${i.tab?'transition:opacity .15s;':''}" onclick="${i.tab?`jumpToTab('${i.tab}')`:''}" onmouseenter="${i.tab?`this.style.opacity='.8'`:''}" onmouseleave="${i.tab?`this.style.opacity='1'`:''}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div>
+            <div class="insight-title">${i.title}</div>
+            <div class="insight-body">${i.body}</div>
+          </div>
+          ${i.tab?`<div style="flex-shrink:0;display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:${i.type==='bad'?'var(--red)':i.type==='warn'?'var(--amber)':'var(--blue)'};white-space:nowrap;margin-top:2px">View <i class="ti ti-arrow-right" style="font-size:12px"></i></div>`:''}
+        </div>
+      </div>`).join('')}
+    </div>`;
+
+  // Draw chart
+  if(camps.length){
+    const ctx=document.getElementById('spendChart');
+    if(ctx){
+      if(spendChart)spendChart.destroy();
+      spendChart=new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels:camps.map(([k])=>k.length>28?k.slice(0,28)+'…':k),
+          datasets:[{
+            label:'Spend (RM)',
+            data:camps.map(([,v])=>parseFloat(v.spend.toFixed(2))),
+            backgroundColor:'rgba(79,156,249,.7)',
+            borderColor:'#4f9cf9',
+            borderWidth:1,
+            borderRadius:4,
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'RM '+c.raw.toLocaleString('en-MY',{minimumFractionDigits:2})}}},
+          scales:{
+            x:{ticks:{color:'#5a6080',font:{size:10}},grid:{display:false}},
+            y:{ticks:{color:'#5a6080',font:{size:10},callback:v=>'RM '+v},grid:{color:'rgba(42,47,66,.6)'}}
+          }
+        }
+      });
+    }
+  }
+}
+
+// ── AD INTELLIGENCE TAB ───────────────────────────────────────────────────
+function renderAdIntel(ads){
+  const cplT=parseFloat(document.getElementById('cplT').value)||15;
+  const ctrT=parseFloat(document.getElementById('ctrT').value)||0.5;
+  const freqT=parseFloat(document.getElementById('freqT').value)||3;
+
+  let filtered=[...ads];
+  if(curFilter==='alerts')filtered=ads.filter(a=>chk(a).al.length>0);
+  else if(curFilter==='warnings')filtered=ads.filter(a=>chk(a).wa.length>0);
+  else if(curFilter==='active')filtered=ads.filter(a=>(a.es||'').toLowerCase()==='active');
+  else if(curFilter==='paused')filtered=ads.filter(a=>(a.es||'').toLowerCase()==='paused');
+
+  // Sort by score desc
+  filtered.sort((a,b)=>scoreAd(b).score-scoreAd(a).score);
+
+  const alertCount=ads.filter(a=>chk(a).al.length>0).length;
+  const warnCount=ads.filter(a=>chk(a).wa.length>0).length;
+  const activeCount=ads.filter(a=>(a.es||'').toLowerCase()==='active').length;
+
+  document.getElementById('content').innerHTML=`
+    <div class="tab-section active" id="tab-ads">
+      <div class="section-title">Ad Intelligence</div>
+      <div class="section-sub">Every ad scored, ranked, and diagnosed — ${ads.length} ads active this month</div>
+
+      <div class="filter-row">
+        <span class="f-label">Show</span>
+        <button class="ftab ${curFilter==='all'?'active':''}" onclick="curFilter='all';document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAdIntel(cache[activeId])">All (${ads.length})</button>
+        <button class="ftab ${curFilter==='alerts'?'active':''}" onclick="curFilter='alerts';document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAdIntel(cache[activeId])">🔴 Alerts (${alertCount})</button>
+        <button class="ftab ${curFilter==='warnings'?'active':''}" onclick="curFilter='warnings';document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAdIntel(cache[activeId])">🟡 Warnings (${warnCount})</button>
+        <button class="ftab ${curFilter==='active'?'active':''}" onclick="curFilter='active';document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAdIntel(cache[activeId])">Active (${activeCount})</button>
+        <button class="ftab ${curFilter==='paused'?'active':''}" onclick="curFilter='paused';document.querySelectorAll('.ftab').forEach(b=>b.classList.remove('active'));this.classList.add('active');renderAdIntel(cache[activeId])">Paused (${ads.length-activeCount})</button>
+      </div>
+
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-podium" aria-hidden="true"></i> Ad performance ranking</div>
+        ${filtered.length?`
+        <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead><tr>
+            <th>Score</th><th>Ad name</th><th>Campaign</th><th>Status</th>
+            <th>Spend</th><th>Results</th><th>CPL</th><th>CTR</th><th>CPM</th><th>Freq</th><th>Impressions</th><th>Diagnosis</th>
+          </tr></thead>
+          <tbody>
+            ${filtered.map(ad=>{
+              const {al,wa}=chk(ad);
+              const {score,grade}=scoreAd(ad);
+              const st=(ad.es||ad.status||'').toLowerCase();
+              const cpr=rmN(ad.cpr),ctr=rmN(ad.ctr),freq=rmN(ad.freq);
+              const badgeCls=grade==='A'?'score-a':grade==='B'?'score-b':'score-c';
+              const stBadge=st==='active'?`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:#052e16;color:#22c55e;font-weight:600">Active</span>`:`<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--bg4);color:var(--text3);font-weight:600">Paused</span>`;
+              const chips=[
+                ...al.map(a=>`<span class="why-chip why-bad">${a.slice(0,30)}</span>`),
+                ...wa.map(w=>`<span class="why-chip why-warn">${w.slice(0,30)}</span>`),
+                ...(al.length===0&&wa.length===0?[`<span class="why-chip why-good">healthy</span>`]:[])
+              ].join('');
+              return `<tr>
+                <td><div class="score-badge ${badgeCls}">${grade}</div></td>
+                <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${ad.name||''}">${ad.name||'Unnamed'}</td>
+                <td style="color:var(--text2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${ad.camp||'—'}</td>
+                <td>${stBadge}</td>
+                <td style="font-weight:600;color:var(--blue)">${rm(ad.spend)}</td>
+                <td style="font-weight:600;color:var(--green)">${intN(ad.results)>0?intN(ad.results):'—'}</td>
+                <td style="${cpr>rmN(document.getElementById('cplT').value)?'color:var(--red);font-weight:600':'color:var(--text)'}">${cpr>0?rm(cpr):'—'}</td>
+                <td style="${ctr>=1?'color:var(--green);font-weight:600':ctr>0&&ctr<rmN(document.getElementById('ctrT').value)?'color:var(--amber)':'color:var(--text)'}">${pct(ctr)}</td>
+                <td>${rm(ad.cpm)}</td>
+                <td style="${freq>rmN(document.getElementById('freqT').value)?'color:var(--amber)':'color:var(--text)'}">${freq>0?freq.toFixed(2)+'×':'—'}</td>
+                <td>${num(ad.impr)}</td>
+                <td>${chips}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        </div>`:'<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No ads match this filter.</div>'}
+      </div>
+    </div>`;
+}
+
+// ── HEALTH CHECK TAB ──────────────────────────────────────────────────────
+function renderHealth(ads){
+  const cplT=parseFloat(document.getElementById('cplT').value)||15;
+  const ctrT=parseFloat(document.getElementById('ctrT').value)||0.5;
+  const freqT=parseFloat(document.getElementById('freqT').value)||3;
+
+  const alertAds=ads.filter(a=>chk(a).al.length>0);
+  const warnAds=ads.filter(a=>chk(a).wa.length>0&&chk(a).al.length===0);
+  const okAds=ads.filter(a=>chk(a).al.length===0&&chk(a).wa.length===0);
+  const activeAds=ads.filter(a=>(a.es||'').toLowerCase()==='active');
+  const pausedAds=ads.filter(a=>(a.es||'').toLowerCase()==='paused');
+
+  const mkCard=(ad,type)=>{
+    const {al,wa}=chk(ad);
+    const {grade}=scoreAd(ad);
+    const badgeCls=grade==='A'?'score-a':grade==='B'?'score-b':'score-c';
+    const st=(ad.es||'').toLowerCase();
+    return `<div style="background:var(--bg3);border:1px solid ${type==='alert'?'rgba(239,68,68,.25)':type==='warn'?'rgba(245,158,11,.2)':'var(--border)'};border-radius:10px;padding:14px 16px;margin-bottom:8px;border-left:3px solid ${type==='alert'?'var(--red)':type==='warn'?'var(--amber)':'var(--green)'}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ad.name||'Unnamed'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${ad.camp||'—'}</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-shrink:0;align-items:center">
+          <div class="score-badge ${badgeCls}">${grade}</div>
+          <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${st==='active'?'var(--green2)':'var(--bg4)'};color:${st==='active'?'var(--green)':'var(--text3)'};font-weight:600;border:1px solid ${st==='active'?'#166534':'var(--border2)'}">${st==='active'?'Active':'Paused'}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:11px;color:var(--text2)">Spend: <strong style="color:var(--text)">${rm(ad.spend)}</strong></span>
+        <span style="font-size:11px;color:var(--text2)">Results: <strong style="color:var(--green)">${intN(ad.results)>0?intN(ad.results):'—'}</strong></span>
+        <span style="font-size:11px;color:var(--text2)">CPL: <strong style="color:${rmN(ad.cpr)>cplT?'var(--red)':'var(--text)'}">${rmN(ad.cpr)>0?rm(ad.cpr):'—'}</strong></span>
+        <span style="font-size:11px;color:var(--text2)">CTR: <strong style="color:${rmN(ad.ctr)>=1?'var(--green)':rmN(ad.ctr)>0&&rmN(ad.ctr)<ctrT?'var(--amber)':'var(--text)'}">${pct(ad.ctr)}</strong></span>
+        <span style="font-size:11px;color:var(--text2)">Freq: <strong style="color:${rmN(ad.freq)>freqT?'var(--amber)':'var(--text)'}">${rmN(ad.freq)>0?parseFloat(ad.freq).toFixed(2)+'×':'—'}</strong></span>
+        <span style="font-size:11px;color:var(--text2)">Impr: <strong style="color:var(--text)">${num(ad.impr)}</strong></span>
+      </div>
+      ${al.length?`<div style="margin-top:6px">${al.map(a=>`<div style="font-size:11px;color:var(--red);display:flex;align-items:center;gap:4px;margin-bottom:3px"><i class="ti ti-alert-circle" style="font-size:12px"></i> ${a}</div>`).join('')}</div>`:''}
+      ${wa.length?`<div style="margin-top:6px">${wa.map(w=>`<div style="font-size:11px;color:var(--amber);display:flex;align-items:center;gap:4px;margin-bottom:3px"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ${w}</div>`).join('')}</div>`:''}
+      ${type==='ok'?`<div style="font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px"><i class="ti ti-check" style="font-size:12px"></i> No issues detected</div>`:''}
+    </div>`;
+  };
+
+  document.getElementById('content').innerHTML=`
+    <div class="tab-section active" id="tab-health">
+      <div class="section-title">Health Check</div>
+      <div class="section-sub">Full diagnostic across ${ads.length} ads — thresholds: CPL &gt; RM ${cplT} · CTR &lt; ${ctrT}% · Freq &gt; ${freqT}×</div>
+
+      <div class="kpi-grid" style="margin-bottom:22px">
+        <div class="kpi-card" style="border-color:${alertAds.length?'rgba(239,68,68,.3)':'var(--border)'}">
+          <div class="kpi-label">Critical alerts</div>
+          <div class="kpi-value" style="color:${alertAds.length?'var(--red)':'var(--green)'}">${alertAds.length}</div>
+          <div class="${alertAds.length?'kpi-alert':'kpi-good'}"><i class="ti ti-${alertAds.length?'alert-circle':'check'}"></i> ${alertAds.length?'Immediate action needed':'All clear'}</div>
+        </div>
+        <div class="kpi-card" style="border-color:${warnAds.length?'rgba(245,158,11,.3)':'var(--border)'}">
+          <div class="kpi-label">Warnings</div>
+          <div class="kpi-value" style="color:${warnAds.length?'var(--amber)':'var(--green)'}">${warnAds.length}</div>
+          <div class="${warnAds.length?'kpi-warn':'kpi-good'}"><i class="ti ti-${warnAds.length?'alert-triangle':'check'}"></i> ${warnAds.length?'Review recommended':'No warnings'}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Healthy ads</div>
+          <div class="kpi-value" style="color:var(--green)">${okAds.length}</div>
+          <div class="kpi-good"><i class="ti ti-check"></i> No issues</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Active / Paused</div>
+          <div class="kpi-value">${activeAds.length}<span style="font-size:16px;color:var(--text3)"> / ${pausedAds.length}</span></div>
+          <div class="kpi-hint">${ads.length} total this month</div>
+        </div>
+      </div>
+
+      ${alertAds.length?`
+      <div class="s-card" style="border-color:rgba(239,68,68,.2)">
+        <div class="s-card-title" style="color:var(--red)"><i class="ti ti-alert-circle" aria-hidden="true" style="color:var(--red)"></i> Critical alerts — immediate action needed</div>
+        ${alertAds.map(a=>mkCard(a,'alert')).join('')}
+      </div>`:''}
+
+      ${warnAds.length?`
+      <div class="s-card" style="border-color:rgba(245,158,11,.2)">
+        <div class="s-card-title" style="color:var(--amber)"><i class="ti ti-alert-triangle" aria-hidden="true" style="color:var(--amber)"></i> Warnings — review recommended</div>
+        ${warnAds.map(a=>mkCard(a,'warn')).join('')}
+      </div>`:''}
+
+      ${okAds.length?`
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-circle-check" aria-hidden="true"></i> Healthy ads — no issues detected</div>
+        ${okAds.map(a=>mkCard(a,'ok')).join('')}
+      </div>`:''}
+    </div>`;
+}
+
+// ── JUMP TO TAB ───────────────────────────────────────────────────────────
+function jumpToTab(tab){
+  curTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    const isTarget=btn.getAttribute('onclick')?.includes(`'${tab}'`);
+    btn.classList.toggle('active',isTarget);
+  });
+  const ads=cache[activeId];
+  if(ads)renderAll(ads);
+  document.getElementById('content').scrollTop=0;
+}
+
+// ── LEADS TAB ─────────────────────────────────────────────────────────────
+let leadsData       = null;
+let leadsFilter     = { zone: 'all', group: 'all', search: '', period: 'all' };
+let leadsChart      = null;
+let leadsLoading    = false;
+
+const GROUP_META = {
+  converted:    { label: 'Converted',    color: '#22c55e', bg: '#052e16' },
+  good_quality: { label: 'Good quality', color: '#4f9cf9', bg: '#0d1f40' },
+  bad_quality:  { label: 'Bad quality',  color: '#ef4444', bg: '#2d0808' },
+  disqualified: { label: 'Disqualified', color: '#8b92a8', bg: '#1e2230' },
+};
+
+const PROGRESS_COLORS = {
+  'Completed':                          '#22c55e',
+  'Set Appointment':                    '#4f9cf9',
+  'Responsive':                         '#14b8a6',
+  'Waiting Reply':                      '#a78bfa',
+  'Yet to set appt':                    '#f59e0b',
+  'Surveying':                          '#f59e0b',
+  'No Respond at all':                  '#ef4444',
+  'No resp after price':                '#ef4444',
+  'No resp before price':               '#ef4444',
+  'No Respond after 1st message/price': '#ef4444',
+  'Delete Message':                     '#ef4444',
+  'SPAM/Job vacancy':                   '#8b92a8',
+  'Out of location':                    '#8b92a8',
+  'Language Problem':                   '#8b92a8',
+  'Another clinic':                     '#8b92a8',
+  'Pass to Other Branch':               '#8b92a8',
+};
+
+async function loadLeads(force=false) {
+  if (leadsLoading) return;
+  if (leadsData && !force) { renderLeads(); return; }
+  leadsLoading = true;
+
+  document.getElementById('content').innerHTML = `
+    <div class="tab-section active" style="padding:24px 28px">
+      <div class="state-wrap"><div class="spinner"></div>
+      <div class="state-title">Loading leads from Lark</div>
+      <div class="state-sub">Fetching PG · KL · T-Low zones</div></div>
+    </div>`;
+
+  try {
+    const res  = await authedFetch('/api/lark-proxy');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    console.log('[Leads] Data received:', JSON.stringify({total: data.total, zoneKeys: Object.keys(data.zones||{}), statsKeys: Object.keys(data.stats||{})}));
+    leadsData = data;
+
+    // Show count badge on tab
+    const badge = document.getElementById('leadsCountBadge');
+    if (badge) { badge.textContent = data.total; badge.style.display = 'inline'; }
+
+    renderLeads();
+  } catch(e) {
+    console.error('[Leads] Render error:', e);
+    document.getElementById('content').innerHTML = `
+      <div class="tab-section active" style="padding:24px 28px">
+        <div class="state-wrap"><div class="state-icon">⚠️</div>
+        <div class="state-title">Failed to load Lark data</div>
+        <div class="state-sub">${e.message}<br><br>
+          Check that LARK_APP_ID, LARK_APP_SECRET, LARK_APP_TOKEN,<br>LARK_TABLE_PG, LARK_TABLE_KL, LARK_TABLE_TLOW are set in Netlify.
+        </div>
+        <button onclick="loadLeads(true)" style="margin-top:16px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Retry</button>
+        </div>
+      </div>`;
+  }
+  leadsLoading = false;
+}
+
+function renderLeads() {
+  if (!leadsData) return;
+  const stats = leadsData.stats || {};
+  const zones = leadsData.zones || {};
+
+  // Filter records
+  let allRecords = Object.entries(zones).flatMap(([zoneId, z]) =>
+    ((z && z.records) ? z.records : []).map(r => ({ ...r, zoneId, zoneName: z.name || zoneId }))
+  );
+  if (leadsFilter.zone !== 'all') allRecords = allRecords.filter(r => r.zoneId === leadsFilter.zone);
+  if (leadsFilter.group !== 'all') allRecords = allRecords.filter(r => r.group === leadsFilter.group);
+
+  // Period filter based on createdAt timestamp
+  if (leadsFilter.period !== 'all') {
+    const now   = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let cutoff;
+    if (leadsFilter.period === 'today') {
+      cutoff = today;
+    } else if (leadsFilter.period === 'week') {
+      cutoff = new Date(today); cutoff.setDate(today.getDate() - 7);
+    } else if (leadsFilter.period === 'month') {
+      cutoff = new Date(today.getFullYear(), today.getMonth(), 1);
+    }
+    allRecords = allRecords.filter(r => {
+      if (!r.createdAt) return true; // include if no date
+      const d = new Date(typeof r.createdAt === 'number' ? r.createdAt : r.createdAt);
+      return d >= cutoff;
+    });
+  }
+
+  if (leadsFilter.search) {
+    const q = leadsFilter.search.toLowerCase();
+    allRecords = allRecords.filter(r =>
+      (r.name||'').toLowerCase().includes(q) ||
+      (r.treatment||'').toLowerCase().includes(q) ||
+      (r.handler||'').toLowerCase().includes(q) ||
+      (r.platform||'').toLowerCase().includes(q)
+    );
+  }
+
+  const convRate = stats?.convRate || '0.0';
+  const total    = leadsData.total || 0;
+
+  // Handler leaderboard
+  const handlers = Object.entries(stats?.byHandler || {})
+    .map(([name, d]) => ({ name, ...d, rate: d.total > 0 ? ((d.converted/d.total)*100).toFixed(0) : 0 }))
+    .sort((a,b) => b.converted - a.converted).slice(0, 8);
+
+  // Top treatments
+  const treatments = Object.entries(stats?.byTreatment || {})
+    .sort((a,b) => b[1]-a[1]).slice(0, 6);
+
+  // Top platforms
+  const platforms = Object.entries(stats?.byPlatform || {})
+    .sort((a,b) => b[1]-a[1]).slice(0, 6);
+
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="tab-section active" id="tab-leads" style="padding:20px 24px 48px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+      <div>
+        <div class="section-title">Leads Intelligence</div>
+        <div class="section-sub">I-Sihat Dental Care · PG · KL · T-Low · ${total} total leads</div>
+      </div>
+      <button onclick="loadLeads(true)" style="padding:7px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
+        <i class="ti ti-refresh" aria-hidden="true"></i> Refresh
+      </button>
+    </div>
+
+    <!-- KPI STRIP -->
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi-card">
+        <div class="kpi-label">Total leads</div>
+        <div class="kpi-value" style="color:var(--blue)">${total}</div>
+        <div class="kpi-hint">All zones combined</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Converted</div>
+        <div class="kpi-value" style="color:var(--green)">${stats?.byGroup?.converted||0}</div>
+        <div class="kpi-good"><i class="ti ti-check"></i> ${convRate}% conversion rate</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Good quality</div>
+        <div class="kpi-value" style="color:var(--blue)">${stats?.byGroup?.good_quality||0}</div>
+        <div class="kpi-hint">Responsive · Engaged leads</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Bad quality</div>
+        <div class="kpi-value" style="color:var(--red)">${stats?.byGroup?.bad_quality||0}</div>
+        <div class="kpi-alert"><i class="ti ti-alert-circle"></i> ${total>0?(((stats?.byGroup?.bad_quality||0)/total)*100).toFixed(1):0}% of total</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Disqualified</div>
+        <div class="kpi-value" style="color:var(--text2)">${stats?.byGroup?.disqualified||0}</div>
+        <div class="kpi-hint">Spam · Wrong location</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Upcoming appts</div>
+        <div class="kpi-value" style="color:var(--amber)">${(stats?.upcoming||[]).length}</div>
+        <div class="kpi-hint">Next 7 days</div>
+      </div>
+    </div>
+
+    <!-- ZONE BREAKDOWN -->
+    <div class="s-card" style="margin-bottom:16px">
+      <div class="s-card-title"><i class="ti ti-map-pin" aria-hidden="true"></i> Performance by zone</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+        ${Object.entries(stats?.byZone || {}).map(([zid, z]) => {
+          const rate = z.total > 0 ? ((z.converted/(z.total-z.disqualified||1))*100).toFixed(1) : '0.0';
+          const pct  = z.total > 0 ? (z.converted/z.total*100) : 0;
+          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px">${z.name}</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--text3)">Total</span><span style="font-size:12px;font-weight:500;color:var(--text)">${z.total}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--green)">Converted</span><span style="font-size:12px;font-weight:600;color:var(--green)">${z.converted}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--blue)">Good quality</span><span style="font-size:12px;color:var(--blue)">${z.good_quality||0}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+              <span style="font-size:11px;color:var(--red)">Bad quality</span><span style="font-size:12px;color:var(--red)">${z.bad_quality||0}</span>
+            </div>
+            <div style="height:4px;background:var(--bg5);border-radius:2px;overflow:hidden">
+              <div style="height:4px;width:${pct}%;background:var(--green);border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">${rate}% conversion rate</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <!-- Platform breakdown -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-brand-facebook" aria-hidden="true"></i> By platform</div>
+        ${platforms.map(([p,n]) => {
+          const pct = total > 0 ? (n/total*100) : 0;
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:12px;color:var(--text2)">${p||'Unknown'}</span>
+              <span style="font-size:12px;font-weight:500;color:var(--text)">${n} <span style="color:var(--text3);font-size:10px">(${pct.toFixed(0)}%)</span></span>
+            </div>
+            <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
+              <div style="height:4px;width:${pct}%;background:var(--blue);border-radius:2px"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <!-- Treatment breakdown -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-stethoscope" aria-hidden="true"></i> By treatment</div>
+        ${treatments.map(([t,n]) => {
+          const pct = total > 0 ? (n/total*100) : 0;
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:12px;color:var(--text2)">${t||'Unknown'}</span>
+              <span style="font-size:12px;font-weight:500;color:var(--text)">${n} <span style="color:var(--text3);font-size:10px">(${pct.toFixed(0)}%)</span></span>
+            </div>
+            <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
+              <div style="height:4px;width:${pct}%;background:var(--purple);border-radius:2px"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- PROGRESS BREAKDOWN -->
+    <div class="s-card" style="margin-bottom:16px">
+      <div class="s-card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Lead progress breakdown</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
+        ${Object.entries(stats?.byProgress || {}).sort((a,b)=>b[1]-a[1]).map(([p,n]) => {
+          const color = PROGRESS_COLORS[p] || '#8b92a8';
+          const pct   = total > 0 ? (n/total*100).toFixed(0) : 0;
+          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid ${color}">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;line-height:1.3">${p}</div>
+            <div style="font-size:18px;font-weight:600;color:${color}">${n}</div>
+            <div style="font-size:10px;color:var(--text3)">${pct}% of total</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- HANDLER LEADERBOARD -->
+    <div class="s-card" style="margin-bottom:16px">
+      <div class="s-card-title"><i class="ti ti-trophy" aria-hidden="true"></i> Handler leaderboard</div>
+      <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead><tr>
+            <th>#</th><th>Handler</th><th>Total leads</th><th>Converted</th><th>Lost</th><th>Conversion rate</th><th>Performance</th>
+          </tr></thead>
+          <tbody>
+            ${handlers.map((h,i) => {
+              const rate = parseFloat(h.rate);
+              const bar  = Math.min(100, rate);
+              const col  = rate >= 50 ? 'var(--green)' : rate >= 25 ? 'var(--amber)' : 'var(--red)';
+              return `<tr>
+                <td style="color:var(--text3);font-weight:600">${i+1}</td>
+                <td style="font-weight:600;color:var(--text)">${h.name}</td>
+                <td>${h.total}</td>
+                <td style="color:var(--green);font-weight:600">${h.converted}</td>
+                <td style="color:var(--red)">${h.total - h.converted}</td>
+                <td style="font-weight:600;color:${col}">${h.rate}%</td>
+                <td style="min-width:100px">
+                  <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+                    <div style="height:6px;width:${bar}%;background:${col};border-radius:3px"></div>
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- UPCOMING APPOINTMENTS -->
+    ${(stats?.upcoming||[]).length > 0 ? `
+    <div class="s-card" style="margin-bottom:16px;border-color:rgba(245,158,11,.2)">
+      <div class="s-card-title" style="color:var(--amber)"><i class="ti ti-calendar" aria-hidden="true" style="color:var(--amber)"></i> Upcoming appointments (next 7 days)</div>
+      <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead><tr><th>Date</th><th>Patient</th><th>Treatment</th><th>Zone</th><th>Handler</th></tr></thead>
+          <tbody>
+            ${(stats?.upcoming||[]).map(r => `<tr>
+              <td style="color:var(--amber);font-weight:600">${r.appointment}</td>
+              <td style="font-weight:500;color:var(--text)">${r.name||'—'}</td>
+              <td style="color:var(--text2)">${r.treatment||'—'}</td>
+              <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg4);color:var(--text2)">${r.zoneName||'—'}</span></td>
+              <td style="color:var(--text2)">${r.handler||'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>` : ''}
+
+    <!-- FILTER + LEAD TABLE -->
+    <div class="s-card">
+      <div class="s-card-title"><i class="ti ti-list" aria-hidden="true"></i> All leads
+        <span style="font-size:11px;color:var(--text3);font-weight:400;margin-left:6px">${allRecords.length} records</span>
+      </div>
+
+      <!-- Filters -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <input type="text" placeholder="Search name, treatment, handler..."
+          style="flex:1;min-width:180px;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:12px;outline:none"
+          oninput="leadsFilter.search=this.value;renderLeads()" value="${leadsFilter.search}">
+        <select style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none" onchange="leadsFilter.period=this.value;renderLeads()">
+          <option value="all"   ${leadsFilter.period==='all'?'selected':''}>All time</option>
+          <option value="today" ${leadsFilter.period==='today'?'selected':''}>Today</option>
+          <option value="week"  ${leadsFilter.period==='week'?'selected':''}>Last 7 days</option>
+          <option value="month" ${leadsFilter.period==='month'?'selected':''}>This month</option>
+        </select>
+        <select style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none" onchange="leadsFilter.zone=this.value;renderLeads()">
+          <option value="all"  ${leadsFilter.zone==='all'?'selected':''}>All zones</option>
+          <option value="pg"   ${leadsFilter.zone==='pg'?'selected':''}>Pasir Gudang</option>
+          <option value="kl"   ${leadsFilter.zone==='kl'?'selected':''}>KL</option>
+          <option value="tlow" ${leadsFilter.zone==='tlow'?'selected':''}>T-Low</option>
+        </select>
+        <select style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:7px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none" onchange="leadsFilter.group=this.value;renderLeads()">
+          <option value="all"         ${leadsFilter.group==='all'?'selected':''}>All quality</option>
+          <option value="converted"   ${leadsFilter.group==='converted'?'selected':''}>✅ Converted</option>
+          <option value="good_quality"${leadsFilter.group==='good_quality'?'selected':''}>🟢 Good quality</option>
+          <option value="bad_quality" ${leadsFilter.group==='bad_quality'?'selected':''}>🔴 Bad quality</option>
+          <option value="disqualified"${leadsFilter.group==='disqualified'?'selected':''}>⚫ Disqualified</option>
+        </select>
+      </div>
+
+      <!-- Table -->
+      ${allRecords.length ? `
+      <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead><tr>
+            <th>Name</th><th>Zone</th><th>Platform</th><th>Treatment</th><th>Progress</th><th>Appointment</th><th>Handler</th>
+          </tr></thead>
+          <tbody>
+            ${allRecords.slice(0,100).map(r => {
+              const gm  = GROUP_META[r.group] || { label: 'Unknown', color: '#8b92a8', bg: '#1e2230' };
+              const pc  = PROGRESS_COLORS[r.progress] || '#8b92a8';
+              return `<tr>
+                <td style="font-weight:500;color:var(--text)">${r.name||'—'}</td>
+                <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg4);color:var(--text2)">${r.zoneName}</span></td>
+                <td style="color:var(--text2);font-size:11px">${r.platform||'—'}</td>
+                <td style="color:var(--text2);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.treatment||'—'}</td>
+                <td><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:${gm.bg};color:${pc};font-weight:500">${r.progress||'—'}</span></td>
+                <td style="color:${r.appointment?'var(--amber)':'var(--text3)'};font-size:11px">${r.appointment||'—'}</td>
+                <td style="color:var(--text2);font-size:11px">${r.handler||'—'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        ${allRecords.length > 100 ? `<div style="text-align:center;padding:12px;font-size:11px;color:var(--text3)">Showing 100 of ${allRecords.length} records</div>` : ''}
+      </div>` : '<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No leads match this filter.</div>'}
+    </div>
+  </div>`;
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
+let authToken   = null;
+let currentUser = null;
+let sessionTimeout = null;
+const SESSION_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+function togglePw() {
+  const inp  = document.getElementById('loginPass');
+  const icon = document.getElementById('pwEyeIcon');
+  const show = inp.type === 'password';
+  inp.type   = show ? 'text' : 'password';
+  icon.className = show ? 'ti ti-eye-off' : 'ti ti-eye';
+}
+
+function quickSelect(userId) {
+  document.getElementById('loginUser').value = userId;
+  document.getElementById('loginPass').focus();
+}
+
+async function doLogin() {
+  const userId   = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  const errEl    = document.getElementById('loginErr');
+  const warnEl   = document.getElementById('loginWarn');
+  const btn      = document.getElementById('loginBtn');
+
+  errEl.classList.remove('show');
+  warnEl.textContent = '';
+  document.getElementById('loginUser').classList.remove('lerr');
+  document.getElementById('loginPass').classList.remove('lerr');
+
+  if (!userId || !password) {
+    errEl.textContent = 'Please enter your username and password.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Signing in…';
+
+  try {
+    const res  = await fetch('/api/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ userId, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Invalid credentials.';
+      errEl.classList.add('show');
+      document.getElementById('loginUser').classList.add('lerr');
+      document.getElementById('loginPass').classList.add('lerr');
+      if (data.attemptsLeft > 0) warnEl.textContent = `${data.attemptsLeft} attempt${data.attemptsLeft > 1 ? 's' : ''} remaining before lockout`;
+      btn.disabled    = false;
+      btn.textContent = 'Sign in →';
+      return;
+    }
+
+    authToken   = data.token;
+    currentUser = data.user;
+
+    // Update user chip
+    document.getElementById('chipUser').textContent = currentUser.userId;
+    const rolePip = document.getElementById('chipRole');
+    rolePip.textContent = currentUser.role;
+    rolePip.className   = `role-pip ${currentUser.role === 'admin' ? 'rp-admin' : 'rp-client'}`;
+
+    // Show app, hide login
+    document.getElementById('loginPage').style.display  = 'none';
+    document.getElementById('appWrap').style.display    = 'block';
+
+    // Build sidebar filtered by role
+    buildSidebar();
+
+    // Auto-select for clients with single account
+    if (currentUser.role === 'client' && currentUser.accounts?.length === 1) {
+      selectAccount(currentUser.accounts[0]);
+    }
+
+    // Session timeout
+    if (sessionTimeout) clearTimeout(sessionTimeout);
+    sessionTimeout = setTimeout(doLogout, SESSION_MS);
+
+  } catch(e) {
+    errEl.textContent = 'Connection error. Please try again.';
+    errEl.classList.add('show');
+    btn.disabled    = false;
+    btn.textContent = 'Sign in →';
+  }
+}
+
+function doLogout() {
+  authToken   = null;
+  currentUser = null;
+  cache       = {};
+  activeId    = null;
+  if (sessionTimeout) clearTimeout(sessionTimeout);
+  document.getElementById('loginPage').style.display  = 'flex';
+  document.getElementById('appWrap').style.display    = 'none';
+  document.getElementById('loginUser').value          = '';
+  document.getElementById('loginPass').value          = '';
+  document.getElementById('loginErr').classList.remove('show');
+  document.getElementById('loginWarn').textContent    = '';
+  document.getElementById('loginBtn').disabled        = false;
+  document.getElementById('loginBtn').textContent     = 'Sign in →';
+  document.getElementById('navTabs').style.display    = 'none';
+  document.getElementById('liveDot').className        = 'live-dot';
+  document.getElementById('liveLabel').textContent    = 'Idle';
+}
+
+// Authenticated fetch — attaches token to every API call
+async function authedFetch(url, options = {}) {
+  if (!authToken) { doLogout(); throw new Error('Not authenticated'); }
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      'Authorization': `Bearer ${authToken}`,
+      'Content-Type':  'application/json',
+    },
+  });
+  if (res.status === 401) { doLogout(); throw new Error('Session expired — please sign in again'); }
+  return res;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+// App hidden until login — buildSidebar called after successful auth
+document.getElementById('datePill').textContent = mStart() + ' → ' + yDay();
+
+// ── AUTO-REFRESH every 15 minutes ─────────────────────────────────────────
+const REFRESH_INTERVAL = 15 * 60;
+let secondsLeft = REFRESH_INTERVAL;
+let countdownTimer = null;
+
+function startAutoRefresh() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  secondsLeft = REFRESH_INTERVAL;
+  const pill = document.getElementById('countdownPill');
+  const cd   = document.getElementById('countdown');
+  if (pill) pill.style.display = 'inline';
+  countdownTimer = setInterval(() => {
+    secondsLeft--;
+    if (cd) {
+      const m = Math.floor(secondsLeft / 60);
+      const s = secondsLeft % 60;
+      cd.textContent = `refresh in ${m}:${String(s).padStart(2,'0')}`;
+    }
+    if (secondsLeft <= 0) {
+      clearInterval(countdownTimer);
+      if (activeId) { delete cache[activeId]; loadAccount(activeId).then(() => startAutoRefresh()); }
+    }
+  }, 1000);
+}
+
+const _origSelect = selectAccount;
+selectAccount = function(id) {
+  _origSelect(id);
+  startAutoRefresh();
+};
+</script>
+</body>
+</html>
