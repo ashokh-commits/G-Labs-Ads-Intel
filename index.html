@@ -502,14 +502,27 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <script>
 // ── ACCOUNTS ──────────────────────────────────────────────────────────────
 const ACCOUNTS=[
-  {id:'854069203683598', name:'I-Sihat Dental Care 2'},
-  {id:'185825224320502', name:'I-Sihat Dental Care'},
-  {id:'523654495274543', name:'Ang Dental'},
-  {id:'429121129294808', name:'Toothland Dental'},
-  {id:'548718067784065', name:'Putih Dental'},
-  {id:'5841452755981834',name:'Smile Borneo'},
-  {id:'1027194858744741',name:'Purple Antz'},
-  {id:'509470387773096', name:'SVASIKA'},
+  // I-Sihat Dental Care
+  {id:'854069203683598', name:'I-Sihat Dental Care 2',  group:'isihat'},
+  {id:'185825224320502', name:'I-Sihat Dental Care',    group:'isihat'},
+  // Dental clients
+  {id:'523654495274543', name:'Ang Dental',             group:'dental'},
+  {id:'429121129294808', name:'Toothland Dental',       group:'dental'},
+  {id:'548718067784065', name:'Putih Dental',           group:'dental'},
+  {id:'5841452755981834',name:'Smile Borneo',           group:'smile'},
+  // Other clients
+  {id:'1027194858744741',name:'Purple Antz',            group:'other'},
+  {id:'509470387773096', name:'SVASIKA',                group:'other'},
+  // Dr Glow
+  {id:'4486576511589217',name:'Dr. Glow Medispa',       group:'other'},
+  {id:'2236534650109223',name:'DML x Dr Glow',          group:'other'},
+  // Anytime Fitness
+  {id:'1199916453380050',name:'Anytime Fitness Anggun', group:'fitness'},
+  // T-Low Dental
+  {id:'296798740118523', name:'T-Low Dental',           group:'dental'},
+  // Klinik
+  {id:'3638836659528611',name:'Klinik Pancasila',       group:'clinic'},
+  {id:'1698587930478234',name:'Klinik Sentosa',         group:'clinic'},
 ];
 
 let activeId=null, cache={}, curFilter='all', curTab='overview';
@@ -551,7 +564,9 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 
 // ── SELECT ────────────────────────────────────────────────────────────────
 function selectAccount(id){
-  activeId=id;curFilter='all';curTab='overview';closeSidebar();
+  activeId=id;curFilter='all';curTab='overview';
+  leadsData=null; // reset so leads reload for correct client
+  closeSidebar();
   document.querySelectorAll('.acc-item').forEach(e=>e.classList.remove('active'));
   const el=document.getElementById('ai-'+id);if(el)el.classList.add('active');
   const acc=ACCOUNTS.find(a=>a.id===id);
@@ -695,9 +710,13 @@ async function loadAnalytics(force=false) {
       <div class="tab-section active" style="padding:24px 28px">
         <div class="state-wrap"><div class="state-icon">📊</div>
         <div class="state-title">Google Analytics not connected</div>
-        <div class="state-sub">${e.message}<br><br>
-          Add GA4_PROPERTY_ID and GA4_SERVICE_ACCOUNT_KEY in Vercel env vars.
-        </div>
+        <div class="state-sub">${e.message.includes('has not been used')
+          ? `Enable the Google Analytics Data API first:<br><br>
+             <a href="https://console.cloud.google.com/apis/api/analyticsdata.googleapis.com/overview" target="_blank"
+               style="color:var(--blue)">Click here to enable it →</a><br><br>
+             Then wait 1-2 minutes and retry.`
+          : e.message + '<br><br>Add GA4_PROPERTY_ID and GA4_SERVICE_ACCOUNT_KEY in Vercel env vars.'
+        }</div>
         <button onclick="loadAnalytics(true)" style="margin-top:16px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Retry</button>
         </div>
       </div>`;
@@ -1217,36 +1236,38 @@ const PROGRESS_COLORS = {
 
 async function loadLeads(force=false) {
   if (leadsLoading) return;
-  if (leadsData && !force) { renderLeads(); return; }
+
+  // Pick client based on active account group
+  const acc    = ACCOUNTS.find(a => a.id === activeId);
+  const client = acc?.group === 'smile' ? 'smile' : 'isihat';
+
+  if (leadsData?._client === client && !force) { renderLeads(); return; }
   leadsLoading = true;
 
   document.getElementById('content').innerHTML = `
     <div class="tab-section active" style="padding:24px 28px">
       <div class="state-wrap"><div class="spinner"></div>
       <div class="state-title">Loading leads from Lark</div>
-      <div class="state-sub">Fetching PG · KL · T-Low zones</div></div>
+      <div class="state-sub">Fetching ${client === 'smile' ? 'Kota Kinabalu' : 'PG · KL · T-Low'} zones</div></div>
     </div>`;
 
   try {
-    const res  = await authedFetch('/api/lark-proxy');
+    const res  = await authedFetch(`/api/lark-proxy?client=${client}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    console.log('[Leads] Data received:', JSON.stringify({total: data.total, zoneKeys: Object.keys(data.zones||{}), statsKeys: Object.keys(data.stats||{})}));
-    leadsData = data;
+    leadsData = { ...data, _client: client };
 
-    // Show count badge on tab
     const badge = document.getElementById('leadsCountBadge');
     if (badge) { badge.textContent = data.total; badge.style.display = 'inline'; }
-
     renderLeads();
   } catch(e) {
-    console.error('[Leads] Render error:', e);
+    console.error('[Leads] Error:', e);
     document.getElementById('content').innerHTML = `
       <div class="tab-section active" style="padding:24px 28px">
         <div class="state-wrap"><div class="state-icon">⚠️</div>
         <div class="state-title">Failed to load Lark data</div>
         <div class="state-sub">${e.message}<br><br>
-          Check that LARK_APP_ID, LARK_APP_SECRET, LARK_APP_TOKEN,<br>LARK_TABLE_PG, LARK_TABLE_KL, LARK_TABLE_TLOW are set in Netlify.
+          Check LARK_APP_ID, LARK_APP_SECRET, LARK_APP_TOKEN,<br>LARK_TABLE_PG, LARK_TABLE_KL, LARK_TABLE_TLOW in Vercel.
         </div>
         <button onclick="loadLeads(true)" style="margin-top:16px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Retry</button>
         </div>

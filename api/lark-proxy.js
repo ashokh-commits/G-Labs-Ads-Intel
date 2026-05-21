@@ -7,10 +7,10 @@ const APP_TOKEN  = process.env.LARK_APP_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET || 'G6LabsAsia2026SecureKey';
 
 const ZONES = [
-  { id: 'pg',   name: 'Pasir Gudang', tableEnv: 'LARK_TABLE_PG',   appToken: process.env.LARK_APP_TOKEN },
-  { id: 'kl',   name: 'KL',           tableEnv: 'LARK_TABLE_KL',   appToken: process.env.LARK_APP_TOKEN },
-  { id: 'tlow', name: 'T-Low',        tableEnv: 'LARK_TABLE_TLOW', appToken: process.env.LARK_APP_TOKEN },
-  { id: 'sb_kk',name: 'Kota Kinabalu (Smile Borneo)', tableEnv: 'SMILE_TABLE_KK', appToken: process.env.SMILE_APP_TOKEN, client: 'smile_borneo' },
+  { id: 'pg',    name: 'Pasir Gudang',              tableEnv: 'LARK_TABLE_PG',   appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat' },
+  { id: 'kl',    name: 'KL',                        tableEnv: 'LARK_TABLE_KL',   appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat' },
+  { id: 'tlow',  name: 'T-Low',                     tableEnv: 'LARK_TABLE_TLOW', appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat' },
+  { id: 'sb_kk', name: 'Kota Kinabalu (Smile Borneo)', tableEnv: 'SMILE_TABLE_KK', appTokenEnv: 'SMILE_APP_TOKEN', appIdEnv: 'SMILE_APP_ID', appSecretEnv: 'SMILE_APP_SECRET', cacheKey: 'smile',  client: 'smile' },
 ];
 
 const PROGRESS_GROUPS = {
@@ -175,25 +175,36 @@ module.exports = async (req, res) => {
   if (!verifyToken(token)) return res.status(401).json({ error: 'Invalid or expired session' });
 
   try {
-    // Get tokens for each unique app
-    const isihatToken = await getLarkToken(APP_ID, APP_SECRET, 'isihat');
-    let smileToken = null;
-    const SMILE_APP_ID     = process.env.SMILE_APP_ID;
-    const SMILE_APP_SECRET = process.env.SMILE_APP_SECRET;
-    if (SMILE_APP_ID && SMILE_APP_SECRET) {
-      try { smileToken = await getLarkToken(SMILE_APP_ID, SMILE_APP_SECRET, 'smile'); }
-      catch(e) { console.error('[Lark] Smile Borneo auth failed:', e.message); }
+    // Build tokens per unique app
+    const tokenMap = {};
+    for (const zone of ZONES) {
+      if (!tokenMap[zone.cacheKey]) {
+        const appId     = process.env[zone.appIdEnv];
+        const appSecret = process.env[zone.appSecretEnv];
+        if (appId && appSecret) {
+          try {
+            tokenMap[zone.cacheKey] = await getLarkToken(appId, appSecret, zone.cacheKey);
+          } catch(e) {
+            console.error(`[Lark] Token fetch failed for ${zone.cacheKey}:`, e.message);
+            tokenMap[zone.cacheKey] = null;
+          }
+        }
+      }
     }
 
+    // Filter zones by client query param (default: isihat only)
+    const clientFilter = (req.query?.client || 'isihat');
+    const activeZones  = clientFilter === 'all' ? ZONES : ZONES.filter(z => z.client === clientFilter);
+
     const zoneResults = await Promise.allSettled(
-      ZONES.map(async zone => {
+      activeZones.map(async zone => {
         const tableId  = process.env[zone.tableEnv];
-        const appToken = zone.appToken;
-        const larkTok  = zone.client === 'smile_borneo' ? smileToken : isihatToken;
+        const appToken = process.env[zone.appTokenEnv];
+        const larkTok  = tokenMap[zone.cacheKey];
 
         if (!tableId)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Table ID not configured' };
         if (!appToken) return { zoneId: zone.id, name: zone.name, records: [], error: 'App token not configured' };
-        if (!larkTok)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Auth token unavailable' };
+        if (!larkTok)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Auth token unavailable — check LARK_APP_ID and LARK_APP_SECRET' };
 
         try {
           const records = await fetchTableRecords(larkTok, tableId, appToken);
