@@ -68,22 +68,62 @@ module.exports = async (req, res) => {
   const ip   = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
   const path = (req.url || '').replace('/api/auth', '').split('?')[0];
 
+  // POST /api/auth — login
   if (req.method === 'POST' && (path === '' || path === '/' || path === '/login')) {
     const { userId, password } = req.body || {};
-    if (!userId || !password) return res.status(400).json({ error: 'User ID and password required' });
+
+    if (!userId || !password) {
+      return res.status(400).json({ error: 'User ID and password required' });
+    }
+
     const lock = checkLock(ip);
-    if (lock.locked) return res.status(429).json({ error: `Too many failed attempts. Try again in ${lock.mins} minute${lock.mins>1?'s':''}.` });
+    if (lock.locked) {
+      return res.status(429).json({ error: `Too many failed attempts. Try again in ${lock.mins} minute${lock.mins>1?'s':''}.` });
+    }
+
     const user = USERS.find(u => u.userId.toLowerCase() === userId.toLowerCase().trim());
-    if (!user || hashPw(password) !== user.passwordHash) { recordFail(ip); const left = Math.max(0,MAX_ATTEMPTS-(attempts[ip]?.count||0)); return res.status(401).json({ error: 'Invalid User ID or password', attemptsLeft: left }); }
+
+    if (!user || hashPw(password) !== user.passwordHash) {
+      recordFail(ip);
+      const left = Math.max(0, MAX_ATTEMPTS - (attempts[ip]?.count || 0));
+      return res.status(401).json({ error: 'Invalid User ID or password', attemptsLeft: left });
+    }
+
     clearLock(ip);
     const now = Date.now();
+    const payload = {
+      sub:      user.userId,
+      userId:   user.userId,
+      name:     user.name,
+      role:     user.role,
+      accounts: user.accounts,
+      iat:      now,
+      exp:      now + SESSION_HOURS * 3600 * 1000,
+    };
+
     console.log(`[Auth] Login: ${user.userId} (${user.role})`);
-    return res.status(200).json({ token: makeToken({ sub: user.userId, userId: user.userId, name: user.name, role: user.role, accounts: user.accounts, iat: now, exp: now+SESSION_HOURS*3600*1000 }), user: { userId: user.userId, name: user.name, role: user.role, accounts: user.accounts } });
+    return res.status(200).json({
+      token: makeToken(payload),
+      user:  { userId: user.userId, name: user.name, role: user.role, accounts: user.accounts },
+    });
   }
+
+  // GET /api/auth/verify
   if (req.method === 'GET' && path === '/verify') {
     const token = (req.headers['authorization'] || '').replace('Bearer ', '').trim();
     if (!token) return res.status(401).json({ error: 'No token' });
-    try { const [h,b,s]=token.split('.'); const exp=crypto.createHmac('sha256',JWT_SECRET).update(`${h}.${b}`).digest('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); if(s!==exp)throw new Error('Bad'); const p=JSON.parse(Buffer.from(b,'base64').toString()); if(Date.now()>p.exp)throw new Error('Exp'); return res.status(200).json({ valid: true, user: p }); } catch { return res.status(401).json({ error: 'Invalid or expired token' }); }
+    try {
+      const [h,b,s] = token.split('.');
+      const exp = crypto.createHmac('sha256', JWT_SECRET).update(`${h}.${b}`).digest('base64')
+        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+      if (s !== exp) throw new Error('Bad sig');
+      const p = JSON.parse(Buffer.from(b, 'base64').toString());
+      if (Date.now() > p.exp) throw new Error('Expired');
+      return res.status(200).json({ valid: true, user: p });
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
   }
+
   return res.status(404).json({ error: 'Not found' });
 };

@@ -491,7 +491,7 @@ function buildSidebar(){
        <div class="acc-dot"></div>
        <div class="acc-name">${a.name}</div>
      </div>`
-  ).join('');
+  ).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
 }
 function setAccState(id,cls,tag){
   const el=document.getElementById('ai-'+id);if(!el)return;
@@ -1368,7 +1368,7 @@ async function doLogin() {
   btn.textContent = 'Signing in…';
 
   try {
-    const res  = await fetch('/api/auth/login', {
+    const res  = await fetch('/api/auth', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ userId, password }),
@@ -1488,5 +1488,7 @@ selectAccount = function(id) {
   startAutoRefresh();
 };
 </script>
+</div><!-- close .app -->
+</div><!-- close .app-wrap -->
 </body>
 </html>
