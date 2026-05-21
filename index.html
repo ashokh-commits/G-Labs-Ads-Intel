@@ -1621,7 +1621,7 @@ function healthLabel(score) {
   return              { label: 'Critical',  color: '#ef4444' };
 }
 
-function pct(a, b) { return b > 0 ? ((a/b)*100).toFixed(1) : '0.0'; }
+function salesPct(a, b) { return b > 0 ? ((a/b)*100).toFixed(1) : '0.0'; }
 function rmFmt(v)  { return 'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function deltaHtml(cur, prev) {
   if (!prev || prev === 0) return '<span class="delta-neutral">— no prev data</span>';
@@ -1809,10 +1809,10 @@ function renderSales() {
   const roas      = spend > 0 ? totRev / spend : 0;
   const cpl       = totLeads > 0 ? spend / totLeads : 0;
   const cps       = totSales > 0 ? spend / totSales : 0;
-  const convRate  = parseFloat(pct(totSales, totLeads));
-  const apptRate  = parseFloat(pct(totAppts, totLeads));
-  const showRate  = parseFloat(pct(totShowed, totAppts));
-  const closeRate = parseFloat(pct(totSales, totShowed));
+  const convRate  = parseFloat(salesPct(totSales, totLeads));
+  const apptRate  = parseFloat(salesPct(totAppts, totLeads));
+  const showRate  = parseFloat(salesPct(totShowed, totAppts));
+  const closeRate = parseFloat(salesPct(totSales, totShowed));
   const avgRev    = totSales > 0 ? totRev / totSales : 0;
   const profit    = totRev - spend;
 
@@ -2005,7 +2005,7 @@ function renderSales() {
                 <td>${v.leads}</td>
                 <td style="color:var(--green);font-weight:600">${v.sales}</td>
                 <td style="color:var(--blue);font-weight:600">${rmFmt(v.revenue)}</td>
-                <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${parseFloat(pct(v.sales,v.leads))>=10?'var(--green2)':'var(--amber2)'};color:${parseFloat(pct(v.sales,v.leads))>=10?'var(--green)':'var(--amber)'}">${pct(v.sales,v.leads)}%</span></td>
+                <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${parseFloat(salesPct(v.sales,v.leads))>=10?'var(--green2)':'var(--amber2)'};color:${parseFloat(salesPct(v.sales,v.leads))>=10?'var(--green)':'var(--amber)'}">${salesPct(v.sales,v.leads)}%</span></td>
               </tr>`).join('')}
             </tbody>
           </table></div>`}
@@ -2024,7 +2024,7 @@ function renderSales() {
             </div>
             <div style="text-align:right">
               <div style="font-size:13px;font-weight:600;color:var(--green)">${rmFmt(v.revenue)}</div>
-              <div style="font-size:10px;color:var(--text3)">${pct(v.sales,v.leads)}% close rate</div>
+              <div style="font-size:10px;color:var(--text3)">${salesPct(v.sales,v.leads)}% close rate</div>
             </div>
           </div>`).join('')}
       </div>
@@ -2094,7 +2094,7 @@ function renderSales() {
               <td>${e.appts}</td>
               <td style="color:var(--green);font-weight:600">${e.sales}</td>
               <td style="color:var(--blue);font-weight:600">${rmFmt(e.revenue)}</td>
-              <td style="color:${parseFloat(pct(e.sales,e.leads))>=10?'var(--green)':'var(--amber)'};font-weight:500">${pct(e.sales,e.leads)}%</td>
+              <td style="color:${parseFloat(salesPct(e.sales,e.leads))>=10?'var(--green)':'var(--amber)'};font-weight:500">${salesPct(e.sales,e.leads)}%</td>
               <td><button onclick="openSalesEntry('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px">✏️</button></td>
             </tr>`).join('')}
           </tbody>
