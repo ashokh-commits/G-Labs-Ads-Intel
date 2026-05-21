@@ -65,6 +65,18 @@ module.exports = async (req, res) => {
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k, v));
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Parse body manually for Vercel
+  if (req.method === 'POST' && !req.body) {
+    await new Promise((resolve) => {
+      let data = '';
+      req.on('data', chunk => { data += chunk; });
+      req.on('end', () => {
+        try { req.body = JSON.parse(data); } catch { req.body = {}; }
+        resolve();
+      });
+    });
+  }
+
   const ip   = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
   const path = (req.url || '').replace('/api/auth', '').split('?')[0];
 
