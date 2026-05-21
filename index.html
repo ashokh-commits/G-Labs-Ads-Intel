@@ -288,90 +288,113 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </head>
 <body>
 
-<!-- LOGIN PAGE — full screen, two panel -->
-<div class="login-page" id="loginPage">
 
-  <!-- LEFT PANEL — decorative -->
-  <div class="login-left">
-    <div class="login-left-logo">
-      <div class="login-left-mark">G6</div>
+<!-- LOGIN PAGE — full inline styles, no CSS classes needed -->
+<div id="loginPage" style="position:fixed;inset:0;z-index:2000;background:#0f1117;display:flex;align-items:stretch;min-height:100vh">
+
+  <!-- LEFT PANEL -->
+  <div style="flex:1;background:linear-gradient(145deg,#0d1f40 0%,#111827 60%,#0f1117 100%);padding:48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(79,156,249,.08) 0%,transparent 70%);pointer-events:none"></div>
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+      <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#4f9cf9);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">G6</div>
       <div>
-        <div class="login-left-brand">G6 Labs Asia</div>
-        <div class="login-left-sub">Ads Intelligence</div>
+        <div style="font-family:'Playfair Display',serif;font-size:17px;color:#e8ecf4;font-weight:600">G6 Labs Asia</div>
+        <div style="font-size:10px;color:#5a6080;letter-spacing:.08em;text-transform:uppercase;margin-top:2px">Ads Intelligence</div>
       </div>
     </div>
-    <div class="login-left-body">
-      <div class="login-left-title">Your ads,<br>under control.</div>
-      <div class="login-left-desc">Live Meta Ads performance dashboard — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
-      <div class="login-left-features">
-        <div class="login-feat"><div class="login-feat-dot"></div>Live Meta Ads data across all accounts</div>
-        <div class="login-feat"><div class="login-feat-dot"></div>Lead intelligence from Lark Bitable</div>
-        <div class="login-feat"><div class="login-feat-dot"></div>Automated email alerts when issues are detected</div>
-        <div class="login-feat"><div class="login-feat-dot"></div>Health scoring, CPL tracking, handler leaderboard</div>
+    <!-- Body -->
+    <div style="position:relative;z-index:1">
+      <div style="font-family:'Playfair Display',serif;font-size:36px;color:#e8ecf4;line-height:1.25;margin-bottom:16px">Your ads,<br>under control.</div>
+      <div style="font-size:13px;color:#8b92a8;line-height:1.8;max-width:320px;margin-bottom:32px">Live Meta Ads performance dashboard — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Live Meta Ads data across all accounts</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Lead intelligence from Lark Bitable</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Automated email alerts when issues detected</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Health scoring, CPL tracking, handler leaderboard</div>
       </div>
     </div>
-    <div class="login-left-footer">© 2026 G6 Labs Asia Sdn Bhd · Trisquare</div>
+    <div style="font-size:11px;color:#3a4060;position:relative;z-index:1">© 2026 G6 Labs Asia Sdn Bhd · Trisquare</div>
   </div>
 
-  <!-- RIGHT PANEL — login form -->
-  <div class="login-right">
-    <div class="login-card">
+  <!-- RIGHT PANEL — form -->
+  <div style="width:420px;flex-shrink:0;background:#181b23;border-left:1px solid #2a2f42;display:flex;align-items:center;justify-content:center;padding:40px 32px">
+    <div style="width:100%;max-width:340px">
 
-      <div class="login-card-logo">
-        <div class="login-card-mark">G6</div>
+      <!-- Card logo -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:36px">
+        <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#4f9cf9);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#fff;flex-shrink:0">G6</div>
         <div>
-          <div class="login-card-brand">G6 Labs Asia</div>
-          <div class="login-card-sub">Ads Intelligence</div>
+          <div style="font-family:'Playfair Display',serif;font-size:15px;color:#e8ecf4;font-weight:600">G6 Labs Asia</div>
+          <div style="font-size:10px;color:#5a6080;letter-spacing:.06em;text-transform:uppercase;margin-top:1px">Ads Intelligence</div>
         </div>
       </div>
 
-      <div class="login-card-title">Welcome back</div>
-      <div class="login-card-desc">Sign in to access the team dashboard, task generator, and live ads data.</div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px;color:#e8ecf4;margin-bottom:6px">Welcome back</div>
+      <div style="font-size:12px;color:#8b92a8;margin-bottom:28px;line-height:1.6">Sign in to access the dashboard and live ads data.</div>
 
-      <div class="login-alert" id="loginErr"></div>
+      <!-- Error box -->
+      <div id="loginErr" style="display:none;background:rgba(240,82,82,.08);border:1px solid rgba(240,82,82,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:#fca5a5;margin-bottom:16px;line-height:1.5"></div>
 
-      <div class="lf">
-        <label for="loginUser">Username</label>
-        <input type="text" id="loginUser" placeholder="e.g. ashokh" autocomplete="username"
-          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      <!-- Username -->
+      <div style="margin-bottom:16px">
+        <label for="loginUser" style="display:block;font-size:11px;font-weight:500;color:#8b92a8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Username</label>
+        <input id="loginUser" type="text" placeholder="e.g. ashokh" autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"
+          style="width:100%;background:#111318;border:1px solid #2a2f42;border-radius:8px;padding:12px 14px;color:#e8ecf4;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s"
+          onfocus="this.style.borderColor='#4f9cf9'" onblur="this.style.borderColor='#2a2f42'">
       </div>
 
-      <div class="lf">
-        <label for="loginPass">Password</label>
-        <div class="lf-pw">
-          <input type="password" id="loginPass" placeholder="••••••••••" autocomplete="current-password"
-            onkeydown="if(event.key==='Enter')doLogin()">
-          <button class="lf-eye" type="button" onclick="togglePw()" aria-label="Show/hide password">
+      <!-- Password -->
+      <div style="margin-bottom:6px">
+        <label for="loginPass" style="display:block;font-size:11px;font-weight:500;color:#8b92a8;margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Password</label>
+        <div style="position:relative">
+          <input id="loginPass" type="password" placeholder="••••••••••" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')doLogin()"
+            style="width:100%;background:#111318;border:1px solid #2a2f42;border-radius:8px;padding:12px 40px 12px 14px;color:#e8ecf4;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s"
+            onfocus="this.style.borderColor='#4f9cf9'" onblur="this.style.borderColor='#2a2f42'">
+          <button type="button" onclick="togglePw()" aria-label="Show/hide password"
+            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5a6080;font-size:16px;padding:0;line-height:1">
             <i class="ti ti-eye" id="pwEyeIcon"></i>
           </button>
         </div>
       </div>
 
-      <div class="login-attempts" id="loginWarn"></div>
+      <!-- Attempts warning -->
+      <div id="loginWarn" style="font-size:11px;color:#f59e0b;min-height:18px;margin-bottom:10px;text-align:center"></div>
 
-      <button class="login-submit" id="loginBtn" onclick="doLogin()">Sign in →</button>
+      <!-- Sign in button -->
+      <button id="loginBtn" onclick="doLogin()"
+        style="width:100%;padding:13px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#4f9cf9);color:#fff;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;letter-spacing:.02em;box-shadow:0 4px 16px rgba(79,156,249,.25);transition:opacity .15s"
+        onmouseover="this.style.opacity='.87'" onmouseout="this.style.opacity='1'">
+        Sign in →
+      </button>
 
       <!-- Quick select -->
-      <div class="quick-select">
-        <div class="qs-label">Quick select</div>
-        <div class="qs-row">
-          <button class="qs-btn" onclick="quickSelect('ashokh','admin')">
-            ashokh<span>Admin</span>
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #2a2f42">
+        <div style="font-size:10px;font-weight:500;color:#5a6080;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Quick select</div>
+        <div style="display:flex;gap:8px">
+          <button onclick="quickSelect('ashokh')"
+            style="flex:1;padding:8px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;text-align:center;transition:all .15s"
+            onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
+            ashokh<br><span style="font-size:9px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Admin</span>
           </button>
-          <button class="qs-btn" onclick="quickSelect('nanda','marketer')">
-            nanda<span>Client</span>
+          <button onclick="quickSelect('nanda')"
+            style="flex:1;padding:8px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;text-align:center;transition:all .15s"
+            onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
+            nanda<br><span style="font-size:9px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Client</span>
           </button>
         </div>
       </div>
 
-      <div class="login-footer-note">🔒 Secured · Sessions expire after 4 hours</div>
+      <div style="margin-top:20px;font-size:11px;color:#3a4060;text-align:center;line-height:1.6">🔒 Secured · Sessions expire after 4 hours</div>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-<div class="app-wrap" id="appWrap">
+<div id="appWrap" style="display:none">
 <div class="app">
 
   <!-- SIDEBAR -->
@@ -1353,14 +1376,14 @@ async function doLogin() {
   const warnEl   = document.getElementById('loginWarn');
   const btn      = document.getElementById('loginBtn');
 
-  errEl.classList.remove('show');
+  errEl.style.display = 'none';
   warnEl.textContent = '';
-  document.getElementById('loginUser').classList.remove('lerr');
-  document.getElementById('loginPass').classList.remove('lerr');
+  document.getElementById('loginUser').style.borderColor = '#2a2f42';
+  document.getElementById('loginPass').style.borderColor = '#2a2f42';
 
   if (!userId || !password) {
     errEl.textContent = 'Please enter your username and password.';
-    errEl.classList.add('show');
+    errEl.style.display = 'block';
     return;
   }
 
@@ -1377,9 +1400,9 @@ async function doLogin() {
 
     if (!res.ok) {
       errEl.textContent = data.error || 'Invalid credentials.';
-      errEl.classList.add('show');
-      document.getElementById('loginUser').classList.add('lerr');
-      document.getElementById('loginPass').classList.add('lerr');
+      errEl.style.display = 'block';
+      document.getElementById('loginUser').style.borderColor = '#ef4444';
+      document.getElementById('loginPass').style.borderColor = '#ef4444';
       if (data.attemptsLeft > 0) warnEl.textContent = `${data.attemptsLeft} attempt${data.attemptsLeft > 1 ? 's' : ''} remaining before lockout`;
       btn.disabled    = false;
       btn.textContent = 'Sign in →';
@@ -1397,7 +1420,7 @@ async function doLogin() {
 
     // Show app, hide login
     document.getElementById('loginPage').style.display  = 'none';
-    document.getElementById('appWrap').style.display    = 'block';
+    document.getElementById('appWrap').style.display    = 'flex';
 
     // Build sidebar filtered by role
     buildSidebar();
@@ -1429,8 +1452,8 @@ function doLogout() {
   document.getElementById('appWrap').style.display    = 'none';
   document.getElementById('loginUser').value          = '';
   document.getElementById('loginPass').value          = '';
-  document.getElementById('loginErr').classList.remove('show');
-  document.getElementById('loginWarn').textContent    = '';
+  document.getElementById('loginErr').style.display  = 'none';
+  document.getElementById('loginWarn').textContent   = '';
   document.getElementById('loginBtn').disabled        = false;
   document.getElementById('loginBtn').textContent     = 'Sign in →';
   document.getElementById('navTabs').style.display    = 'none';
