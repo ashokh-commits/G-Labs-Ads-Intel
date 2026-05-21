@@ -1269,7 +1269,7 @@ function renderLeads() {
               <span style="font-size:11px;color:var(--red)">Bad quality</span><span style="font-size:12px;color:var(--red)">${z.bad_quality||0}</span>
             </div>
             <div style="height:4px;background:var(--bg5);border-radius:2px;overflow:hidden">
-              <div style="height:4px;width:${pctVal}%;background:var(--green);border-radius:2px"></div>
+              <div style="height:4px;width:${pct}%;background:var(--green);border-radius:2px"></div>
             </div>
             <div style="font-size:10px;color:var(--text3);margin-top:4px">${rate}% conversion rate</div>
           </div>`;
@@ -1299,32 +1299,26 @@ function renderLeads() {
       <div class="s-card">
         ${leadsData._client === 'af' ? `
         <div class="s-card-title"><i class="ti ti-phone" aria-hidden="true"></i> Call status</div>
-        ${(Object.entries(stats?.byTreatment || {}).sort((a,b)=>b[1]-a[1])).map(([t,n]) => {
-          const pct2 = total > 0 ? (n/total*100) : 0;
-          return `<div style="margin-bottom:10px">
+        ${(Object.entries(stats?.byTreatment || {}).sort((a,b)=>b[1]-a[1])).map(([t,n]) => `<div style="margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
               <span style="font-size:12px;color:var(--text2)">${t||'—'}</span>
-              <span style="font-size:12px;font-weight:500;color:var(--text)">${n} <span style="color:var(--text3);font-size:10px">(${pct2.toFixed(0)}%)</span></span>
+              <span style="font-size:12px;font-weight:500;color:var(--text)">${n} <span style="color:var(--text3);font-size:10px">(${total>0?(n/total*100).toFixed(0):0}%)</span></span>
             </div>
             <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
-              <div style="height:4px;width:${pct2}%;background:var(--teal);border-radius:2px"></div>
+              <div style="height:4px;width:${total>0?(n/total*100):0}%;background:var(--teal);border-radius:2px"></div>
             </div>
-          </div>`;
-        }).join('')}
+          </div>`).join('')}
         ` : `
         <div class="s-card-title"><i class="ti ti-stethoscope" aria-hidden="true"></i> By treatment</div>
-        ${treatments.map(([t,n]) => {
-          const pct2 = total > 0 ? (n/total*100) : 0;
-          return `<div style="margin-bottom:10px">
+        ${treatments.map(([t,n]) => `<div style="margin-bottom:10px">
             <div style="display:flex;justify-content:space-between;margin-bottom:4px">
               <span style="font-size:12px;color:var(--text2)">${t||'Unknown'}</span>
-              <span style="font-size:12px;font-weight:500;color:var(--text)">${n} <span style="color:var(--text3);font-size:10px">(${pct2.toFixed(0)}%)</span></span>
+              <span style="font-size:12px;font-weight:500;color:var(--text)">${n} <span style="color:var(--text3);font-size:10px">(${total>0?(n/total*100).toFixed(0):0}%)</span></span>
             </div>
             <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
-              <div style="height:4px;width:${pct2}%;background:var(--purple);border-radius:2px"></div>
+              <div style="height:4px;width:${total>0?(n/total*100):0}%;background:var(--purple);border-radius:2px"></div>
             </div>
-          </div>`;
-        }).join('')}
+          </div>`).join('')}
         `}
       </div>
     </div>
