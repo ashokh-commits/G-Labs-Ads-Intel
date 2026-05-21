@@ -8,7 +8,7 @@
   "crons": [
     {
       "path": "/api/alert-scheduler",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 1 * * *"
     }
   ]
 }
