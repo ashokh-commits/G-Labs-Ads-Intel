@@ -90,16 +90,40 @@ async function fetchTableRecords(larkToken, tableId) {
     }
 
     pageCount++;
+
+    // Current month boundaries (Malaysia time, UTC+8)
+    const now        = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0,0,0,0);
+    const todayEnd   = new Date(now);
+    todayEnd.setHours(23,59,59,999);
+
     (data.data?.items || []).forEach(item => {
       const f = item.fields || {};
-      const name     = extractText(f['Customer Name'] || f['Name'] || '');
-      const platform = extractText(f['Platform'] || '');
-      const treatment= extractText(f['Treatment Requested'] || f['Treatment'] || '');
-      const progress = extractText(f['Progress'] || f['Status'] || '');
-      const handler  = extractText(f['Handled By'] || f['Handler'] || '');
-      const appointment = extractDate(f['Appointment Date'] || f['Date'] || null);
+      const name      = extractText(f['Customer Name'] || f['Name'] || '');
+      const platform  = extractText(f['Platform'] || '');
+      const treatment = extractText(f['Treatment Requested'] || f['Treatment'] || '');
+      const progress  = extractText(f['Progress'] || f['Status'] || '');
+      const handler   = extractText(f['Handled By'] || f['Handler'] || '');
+      const appointment = extractDate(f['Appointment Date'] || null);
+
+      // Date column — lead entry date, used for month filtering
+      const dateRaw = f['Date'] || f['date'] || f['Created Date'] || null;
+      const leadDate = dateRaw ? new Date(typeof dateRaw === 'number' ? dateRaw : dateRaw) : null;
+
+      // Filter: only include leads from current month
+      if (leadDate) {
+        if (leadDate < monthStart || leadDate > todayEnd) return;
+      }
+
       if (!name && !progress && !platform) return;
-      records.push({ id: item.record_id, name, platform, treatment, progress, appointment, handler, group: getGroup(progress), createdAt: item.created_time || null });
+      records.push({
+        id: item.record_id, name, platform, treatment, progress,
+        appointment, handler,
+        date: leadDate ? leadDate.toISOString().split('T')[0] : null,
+        group: getGroup(progress),
+        createdAt: item.created_time || null,
+      });
     });
 
     pageToken = (data.data?.has_more && pageCount < MAX_PAGES) ? data.data.page_token : null;

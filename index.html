@@ -1115,7 +1115,7 @@ function renderLeads() {
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
       <div>
         <div class="section-title">Leads Intelligence</div>
-        <div class="section-sub">I-Sihat Dental Care · PG · KL · T-Low · ${total} total leads</div>
+        <div class="section-sub">I-Sihat Dental Care · PG · KL · T-Low · ${total} leads · ${new Date().toLocaleString('en-MY',{month:'long',year:'numeric'})} only</div>
       </div>
       <button onclick="loadLeads(true)" style="padding:7px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
         <i class="ti ti-refresh" aria-hidden="true"></i> Refresh
@@ -1327,7 +1327,7 @@ function renderLeads() {
       <div style="overflow-x:auto">
         <table class="ad-table">
           <thead><tr>
-            <th>Name</th><th>Zone</th><th>Platform</th><th>Treatment</th><th>Progress</th><th>Appointment</th><th>Handler</th>
+            <th>Name</th><th>Zone</th><th>Platform</th><th>Treatment</th><th>Progress</th><th>Date</th><th>Appointment</th><th>Handler</th>
           </tr></thead>
           <tbody>
             ${allRecords.slice(0,100).map(r => {
@@ -1339,6 +1339,7 @@ function renderLeads() {
                 <td style="color:var(--text2);font-size:11px">${r.platform||'—'}</td>
                 <td style="color:var(--text2);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.treatment||'—'}</td>
                 <td><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:${gm.bg};color:${pc};font-weight:500">${r.progress||'—'}</span></td>
+                <td style="color:var(--blue);font-size:11px">${r.date||'—'}</td>
                 <td style="color:${r.appointment?'var(--amber)':'var(--text3)'};font-size:11px">${r.appointment||'—'}</td>
                 <td style="color:var(--text2);font-size:11px">${r.handler||'—'}</td>
               </tr>`;
