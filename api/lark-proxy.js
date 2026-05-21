@@ -85,7 +85,7 @@ async function fetchTableRecords(larkToken, tableId, appToken) {
     const text = await r.text();
     let data;
     try { data = JSON.parse(text); } catch { throw new Error(`Lark records invalid JSON: ${text.slice(0,100)}`); }
-    if (data.code !== 0) throw new Error(`Lark records failed (${data.code}): ${data.msg}`);
+    if (data.code !== 0) throw new Error(`Lark records failed (${data.code}): ${data.msg} — tableId: ${tableId}, appToken: ${appToken?.slice(0,8)}...`);
 
     if (pageCount === 0) {
       console.log(`[Lark] Table ${tableId}: ${(data.data?.items||[]).length} items, fields:`, Object.keys(data.data?.items?.[0]?.fields || {}));
