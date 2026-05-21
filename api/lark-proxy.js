@@ -7,10 +7,11 @@ const APP_TOKEN  = process.env.LARK_APP_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET || 'G6LabsAsia2026SecureKey';
 
 const ZONES = [
-  { id: 'pg',    name: 'Pasir Gudang',              tableEnv: 'LARK_TABLE_PG',   appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat' },
-  { id: 'kl',    name: 'KL',                        tableEnv: 'LARK_TABLE_KL',   appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat' },
-  { id: 'tlow',  name: 'T-Low',                     tableEnv: 'LARK_TABLE_TLOW', appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat' },
-  { id: 'sb_kk', name: 'Kota Kinabalu (Smile Borneo)', tableEnv: 'SMILE_TABLE_KK', appTokenEnv: 'SMILE_APP_TOKEN', appIdEnv: 'SMILE_APP_ID', appSecretEnv: 'SMILE_APP_SECRET', cacheKey: 'smile',  client: 'smile' },
+  { id: 'pg',    name: 'Pasir Gudang',              tableEnv: 'LARK_TABLE_PG',   appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat', larkBase: 'https://open.larksuite.com/open-apis' },
+  { id: 'kl',    name: 'KL',                        tableEnv: 'LARK_TABLE_KL',   appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat', larkBase: 'https://open.larksuite.com/open-apis' },
+  { id: 'tlow',  name: 'T-Low',                     tableEnv: 'LARK_TABLE_TLOW', appTokenEnv: 'LARK_APP_TOKEN',  appIdEnv: 'LARK_APP_ID',   appSecretEnv: 'LARK_APP_SECRET',   cacheKey: 'isihat', client: 'isihat', larkBase: 'https://open.larksuite.com/open-apis' },
+  { id: 'sb_kk', name: 'Kota Kinabalu (Smile Borneo)', tableEnv: 'SMILE_TABLE_KK', appTokenEnv: 'SMILE_APP_TOKEN', appIdEnv: 'SMILE_APP_ID', appSecretEnv: 'SMILE_APP_SECRET', cacheKey: 'smile',  client: 'smile',  larkBase: 'https://open.larksuite.com/open-apis' },
+  { id: 'af_sg', name: 'AF SG Mas Plaza',           tableEnv: 'AF_TABLE_SG',     appTokenEnv: 'AF_APP_TOKEN',    appIdEnv: 'AF_APP_ID',     appSecretEnv: 'AF_APP_SECRET',     cacheKey: 'af',     client: 'af',     larkBase: 'https://open.larksuite.com/open-apis' },
 ];
 
 const PROGRESS_GROUPS = {
@@ -42,10 +43,11 @@ function verifyToken(token) {
 
 const tokenCache = {};
 
-async function getLarkToken(appId, appSecret, cacheKey) {
+async function getLarkToken(appId, appSecret, cacheKey, larkBase) {
+  const base  = larkBase || LARK_BASE;
   const cache = tokenCache[cacheKey] || { token: null, expiresAt: 0 };
   if (cache.token && Date.now() < cache.expiresAt - 60000) return cache.token;
-  const r    = await fetch(`${LARK_BASE}/auth/v3/tenant_access_token/internal`, {
+  const r    = await fetch(`${base}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
@@ -73,64 +75,56 @@ function extractDate(val) {
   return null;
 }
 
-async function fetchTableRecords(larkToken, tableId, appToken) {
+async function fetchTableRecords(larkToken, tableId, appToken, larkBase, client) {
+  const base     = larkBase || LARK_BASE;
   const records  = [];
   let pageToken  = null;
   const MAX_PAGES = 6;
   let pageCount   = 0;
+  const now        = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  monthStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(now);
+  todayEnd.setHours(23,59,59,999);
 
   do {
-    const url = `${LARK_BASE}/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
+    const url = `${base}/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
     const r   = await fetch(url, { headers: { 'Authorization': `Bearer ${larkToken}` } });
     const text = await r.text();
     let data;
     try { data = JSON.parse(text); } catch { throw new Error(`Lark records invalid JSON: ${text.slice(0,100)}`); }
-    if (data.code !== 0) throw new Error(`Lark records failed (${data.code}): ${data.msg} — tableId: ${tableId}, appToken: ${appToken?.slice(0,8)}...`);
-
-    if (pageCount === 0) {
-      console.log(`[Lark] Table ${tableId}: ${(data.data?.items||[]).length} items, fields:`, Object.keys(data.data?.items?.[0]?.fields || {}));
-    }
-
+    if (data.code !== 0) throw new Error(`Lark records failed (${data.code}): ${data.msg}`);
+    if (pageCount === 0) console.log(`[Lark] ${client} ${tableId}: ${(data.data?.items||[]).length} items, fields:`, Object.keys(data.data?.items?.[0]?.fields || {}));
     pageCount++;
-
-    // Current month boundaries (Malaysia time, UTC+8)
-    const now        = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    monthStart.setHours(0,0,0,0);
-    const todayEnd   = new Date(now);
-    todayEnd.setHours(23,59,59,999);
 
     (data.data?.items || []).forEach(item => {
       const f = item.fields || {};
+      const dateRaw  = f['Date'] || f['date'] || null;
+      const leadDate = dateRaw ? new Date(typeof dateRaw === 'number' ? dateRaw : dateRaw) : null;
+      if (leadDate && (leadDate < monthStart || leadDate > todayEnd)) return;
+
+      if (client === 'af') {
+        const progress = extractText(f['Progress'] || '');
+        const platform = extractText(f['Platform'] || '');
+        const handler  = extractText(f['Handled By'] || f['handled by'] || '');
+        const call     = extractText(f['Call'] || '');
+        const closing  = extractDate(f['Closing Date'] || null);
+        records.push({ id: item.record_id, name: '', platform, treatment: call, progress, appointment: closing, handler, date: leadDate ? leadDate.toISOString().split('T')[0] : null, group: getGroup(progress), createdAt: item.created_time || null });
+        return;
+      }
+
       const name      = extractText(f['Customer Name'] || f['Name'] || '');
       const platform  = extractText(f['Platform'] || '');
       const treatment = extractText(f['Treatment Requested'] || f['Treatment'] || '');
       const progress  = extractText(f['Progress'] || f['Status'] || '');
       const handler   = extractText(f['Handled By'] || f['Handler'] || '');
       const appointment = extractDate(f['Appointment Date'] || null);
-
-      // Date column — lead entry date, used for month filtering
-      const dateRaw = f['Date'] || f['date'] || f['Created Date'] || null;
-      const leadDate = dateRaw ? new Date(typeof dateRaw === 'number' ? dateRaw : dateRaw) : null;
-
-      // Filter: only include leads from current month
-      if (leadDate) {
-        if (leadDate < monthStart || leadDate > todayEnd) return;
-      }
-
       if (!name && !progress && !platform) return;
-      records.push({
-        id: item.record_id, name, platform, treatment, progress,
-        appointment, handler,
-        date: leadDate ? leadDate.toISOString().split('T')[0] : null,
-        group: getGroup(progress),
-        createdAt: item.created_time || null,
-      });
+      records.push({ id: item.record_id, name, platform, treatment, progress, appointment, handler, date: leadDate ? leadDate.toISOString().split('T')[0] : null, group: getGroup(progress), createdAt: item.created_time || null });
     });
 
     pageToken = (data.data?.has_more && pageCount < MAX_PAGES) ? data.data.page_token : null;
   } while (pageToken);
-
   return records;
 }
 
@@ -183,7 +177,7 @@ module.exports = async (req, res) => {
         const appSecret = process.env[zone.appSecretEnv];
         if (appId && appSecret) {
           try {
-            tokenMap[zone.cacheKey] = await getLarkToken(appId, appSecret, zone.cacheKey);
+            tokenMap[zone.cacheKey] = await getLarkToken(appId, appSecret, zone.cacheKey, zone.larkBase);
           } catch(e) {
             console.error(`[Lark] Token fetch failed for ${zone.cacheKey}:`, e.message);
             tokenMap[zone.cacheKey] = null;
@@ -192,7 +186,6 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Filter zones by client query param (default: isihat only)
     const clientFilter = (req.query?.client || 'isihat');
     const activeZones  = clientFilter === 'all' ? ZONES : ZONES.filter(z => z.client === clientFilter);
 
@@ -204,10 +197,10 @@ module.exports = async (req, res) => {
 
         if (!tableId)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Table ID not configured' };
         if (!appToken) return { zoneId: zone.id, name: zone.name, records: [], error: 'App token not configured' };
-        if (!larkTok)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Auth token unavailable — check LARK_APP_ID and LARK_APP_SECRET' };
+        if (!larkTok)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Auth token unavailable — check app credentials' };
 
         try {
-          const records = await fetchTableRecords(larkTok, tableId, appToken);
+          const records = await fetchTableRecords(larkTok, tableId, appToken, zone.larkBase, zone.client);
           return { zoneId: zone.id, name: zone.name, records };
         } catch(e) {
           return { zoneId: zone.id, name: zone.name, records: [], error: e.message };

@@ -567,6 +567,7 @@ const ACCOUNTS=[
   {id:'4486576511589217',name:'Dr. Glow Medispa',       group:'other'},
   {id:'2236534650109223',name:'DML x Dr Glow',          group:'other'},
   // Anytime Fitness
+  {id:'835864508826292', name:'AF SG Mas Plaza',        group:'fitness'},
   {id:'1199916453380050',name:'Anytime Fitness Anggun', group:'fitness'},
   // T-Low Dental
   {id:'296798740118523', name:'T-Low Dental',           group:'dental'},
@@ -1105,7 +1106,7 @@ async function loadLeads(force=false) {
 
   // Pick client based on active account group
   const acc    = ACCOUNTS.find(a => a.id === activeId);
-  const client = acc?.group === 'smile' ? 'smile' : 'isihat';
+  const client = acc?.group === 'smile' ? 'smile' : acc?.group === 'fitness' ? 'af' : 'isihat';
 
   if (leadsData?._client === client && !force) { renderLeads(); return; }
   leadsLoading = true;
