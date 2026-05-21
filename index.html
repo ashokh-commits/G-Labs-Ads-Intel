@@ -304,6 +304,56 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   #loginPage > div:first-child{display:none}
   #loginPage > div:last-child{width:100%;border-left:none;border-top:1px solid #2a2f42;padding:32px 20px}
 }
+/* ── SALES MODULE ── */
+.sales-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px}
+.sales-kpi{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;transition:transform .15s}
+.sales-kpi:hover{transform:translateY(-1px)}
+.sales-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kpi-color,var(--blue))}
+.sales-kpi-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.sales-kpi-value{font-size:22px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.sales-kpi-delta{font-size:11px;display:flex;align-items:center;gap:3px}
+.delta-up{color:var(--green)}
+.delta-down{color:var(--red)}
+.delta-neutral{color:var(--text3)}
+.funnel-wrap{display:flex;flex-direction:column;gap:0;margin:8px 0}
+.funnel-step{position:relative;display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;transition:background .15s;cursor:default}
+.funnel-step:hover{background:var(--bg4)}
+.funnel-bar-bg{flex:1;height:28px;background:var(--bg4);border-radius:6px;overflow:hidden;position:relative}
+.funnel-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:10px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.funnel-label{width:110px;font-size:12px;color:var(--text2);flex-shrink:0}
+.funnel-count{width:60px;text-align:right;font-size:12px;font-weight:600;color:var(--text);flex-shrink:0}
+.funnel-drop{width:50px;text-align:right;font-size:10px;color:var(--red);flex-shrink:0}
+.funnel-arrow{width:16px;text-align:center;color:var(--text3);font-size:10px;flex-shrink:0}
+.health-ring{position:relative;width:120px;height:120px;flex-shrink:0}
+.health-ring svg{transform:rotate(-90deg)}
+.health-ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.health-score-num{font-size:26px;font-weight:700;line-height:1}
+.health-score-tag{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.insight-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--insight-color,var(--blue));border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px}
+.insight-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.insight-text{font-size:12px;color:var(--text2);line-height:1.6}
+.insight-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.alert-badge{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;margin-bottom:8px;width:100%}
+.alert-critical{background:var(--red2);border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+.alert-warn{background:var(--amber2);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
+.alert-good{background:var(--green2);border:1px solid rgba(34,197,94,.2);color:#86efac}
+.entry-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px}
+.entry-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
+.entry-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--text);margin-bottom:18px}
+.entry-field{margin-bottom:14px}
+.entry-label{font-size:11px;color:var(--text2);font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px;display:block}
+.entry-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
+.entry-input:focus{border-color:var(--blue)}
+.entry-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.entry-btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600}
+.entry-btn-primary{background:var(--blue);color:#fff}
+.entry-btn-cancel{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+.agent-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.agent-rank{width:24px;height:24px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0}
+.agent-rank.gold{background:#2d1a00;color:#f59e0b}
+.agent-rank.silver{background:#1a1f2e;color:#8b92a8}
+.agent-rank.bronze{background:#1f1008;color:#c2773a}
+@media(max-width:768px){.sales-grid{grid-template-columns:repeat(2,1fr)}.funnel-label{width:80px}.entry-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -482,8 +532,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <i class="ti ti-users" aria-hidden="true" style="margin-right:4px"></i>Leads
         <span id="leadsCountBadge" style="display:none;background:var(--blue);color:#fff;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:600"></span>
       </button>
-      <button class="tab-btn" onclick="switchTab('analytics',this)">
-        <i class="ti ti-chart-line" aria-hidden="true" style="margin-right:4px"></i>Analytics
+      <button class="tab-btn" onclick="switchTab('sales',this)">
+        <i class="ti ti-currency-dollar" aria-hidden="true" style="margin-right:4px"></i>Sales
       </button>
     </div>
 
@@ -678,193 +728,9 @@ function switchTab(tab,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   if(tab==='leads'){ loadLeads(); return; }
-  if(tab==='analytics'){ loadAnalytics(); return; }
+  if(tab==='sales'){ renderSales(); return; }
   const ads=cache[activeId];
   if(ads)renderAll(ads);
-}
-
-// ── GOOGLE ANALYTICS TAB ──────────────────────────────────────────────────
-let gaData    = null;
-let gaLoading = false;
-
-async function loadAnalytics(force=false) {
-  if (gaLoading) return;
-  if (gaData && !force) { renderAnalytics(); return; }
-  gaLoading = true;
-
-  document.getElementById('content').innerHTML = `
-    <div class="tab-section active" style="padding:24px 28px">
-      <div class="state-wrap"><div class="spinner"></div>
-      <div class="state-title">Loading Google Analytics</div>
-      <div class="state-sub">Fetching current month data…</div></div>
-    </div>`;
-
-  try {
-    const res  = await authedFetch('/api/ga-proxy');
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    gaData = data;
-    renderAnalytics();
-  } catch(e) {
-    document.getElementById('content').innerHTML = `
-      <div class="tab-section active" style="padding:24px 28px">
-        <div class="state-wrap"><div class="state-icon">📊</div>
-        <div class="state-title">Google Analytics not connected</div>
-        <div class="state-sub">${e.message.includes('has not been used')
-          ? `Enable the Google Analytics Data API first:<br><br>
-             <a href="https://console.cloud.google.com/apis/api/analyticsdata.googleapis.com/overview" target="_blank"
-               style="color:var(--blue)">Click here to enable it →</a><br><br>
-             Then wait 1-2 minutes and retry.`
-          : e.message + '<br><br>Add GA4_PROPERTY_ID and GA4_SERVICE_ACCOUNT_KEY in Vercel env vars.'
-        }</div>
-        <button onclick="loadAnalytics(true)" style="margin-top:16px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Retry</button>
-        </div>
-      </div>`;
-  }
-  gaLoading = false;
-}
-
-function fmtDur(secs) {
-  const s = parseInt(secs) || 0;
-  const m = Math.floor(s/60), rem = s%60;
-  return m > 0 ? `${m}m ${rem}s` : `${s}s`;
-}
-
-function renderAnalytics() {
-  if (!gaData) return;
-  const { metrics, topPages, traffic, countries, devices, daily, period } = gaData;
-
-  const totalSessions = parseInt(metrics.sessions || 0);
-  const c = document.getElementById('content');
-  c.innerHTML = `
-  <div class="tab-section active" style="padding:20px 24px 48px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
-      <div>
-        <div class="section-title">Web Analytics</div>
-        <div class="section-sub">Google Analytics · ${period}</div>
-      </div>
-      <button onclick="loadAnalytics(true)" style="padding:7px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
-        <i class="ti ti-refresh"></i> Refresh
-      </button>
-    </div>
-
-    <!-- KPI STRIP -->
-    <div class="kpi-grid" style="margin-bottom:16px">
-      <div class="kpi-card">
-        <div class="kpi-label">Sessions</div>
-        <div class="kpi-value" style="color:var(--blue)">${parseInt(metrics.sessions||0).toLocaleString()}</div>
-        <div class="kpi-hint">This month</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Active users</div>
-        <div class="kpi-value" style="color:var(--green)">${parseInt(metrics.users||0).toLocaleString()}</div>
-        <div class="kpi-hint">${parseInt(metrics.newUsers||0).toLocaleString()} new users</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Pageviews</div>
-        <div class="kpi-value" style="color:var(--purple)">${parseInt(metrics.pageviews||0).toLocaleString()}</div>
-        <div class="kpi-hint">${totalSessions > 0 ? (parseInt(metrics.pageviews)/totalSessions).toFixed(1) : 0} pages/session</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Bounce rate</div>
-        <div class="kpi-value" style="color:${parseFloat(metrics.bounceRate||0)>60?'var(--red)':'var(--amber)'}">${metrics.bounceRate||0}%</div>
-        <div class="kpi-hint">${parseFloat(metrics.bounceRate||0)>60?'High — review landing pages':'Acceptable'}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Avg session</div>
-        <div class="kpi-value" style="color:var(--teal)">${fmtDur(metrics.avgDuration)}</div>
-        <div class="kpi-hint">${parseInt(metrics.avgDuration||0)>120?'Good engagement':'Low — improve content'}</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Conversions</div>
-        <div class="kpi-value" style="color:var(--green)">${parseInt(metrics.conversions||0).toLocaleString()}</div>
-        <div class="kpi-hint">${totalSessions>0?((parseInt(metrics.conversions||0)/totalSessions)*100).toFixed(2):0}% conv rate</div>
-      </div>
-    </div>
-
-    <!-- CHARTS ROW -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-
-      <!-- Traffic sources -->
-      <div class="s-card">
-        <div class="s-card-title"><i class="ti ti-arrows-split-2"></i> Traffic sources</div>
-        ${(traffic||[]).map(r => {
-          const n = parseInt(r.sessions||0);
-          const pct = totalSessions > 0 ? (n/totalSessions*100).toFixed(0) : 0;
-          const colors = {'Organic Search':'var(--green)','Direct':'var(--blue)','Referral':'var(--purple)','Organic Social':'var(--teal)','Paid Search':'var(--amber)','Paid Social':'var(--red)'};
-          const col = colors[r.sessionDefaultChannelGroup] || 'var(--text2)';
-          return `<div style="margin-bottom:10px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span style="font-size:12px;color:var(--text2)">${r.sessionDefaultChannelGroup||'Other'}</span>
-              <span style="font-size:12px;font-weight:500;color:var(--text)">${n.toLocaleString()} <span style="color:var(--text3);font-size:10px">(${pct}%)</span></span>
-            </div>
-            <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
-              <div style="height:4px;width:${pct}%;background:${col};border-radius:2px"></div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-
-      <!-- Devices -->
-      <div class="s-card">
-        <div class="s-card-title"><i class="ti ti-device-mobile"></i> Devices</div>
-        ${(devices||[]).map(r => {
-          const n = parseInt(r.sessions||0);
-          const pct = totalSessions > 0 ? (n/totalSessions*100).toFixed(0) : 0;
-          const icons = {mobile:'📱',desktop:'🖥️',tablet:'📲'};
-          return `<div style="margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-              <span style="font-size:13px;color:var(--text2)">${icons[r.deviceCategory]||'📱'} ${r.deviceCategory}</span>
-              <span style="font-size:13px;font-weight:600;color:var(--text)">${pct}%</span>
-            </div>
-            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
-              <div style="height:6px;width:${pct}%;background:var(--blue);border-radius:3px"></div>
-            </div>
-            <div style="font-size:11px;color:var(--text3);margin-top:3px">${n.toLocaleString()} sessions</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <!-- TOP PAGES -->
-    <div class="s-card" style="margin-bottom:16px">
-      <div class="s-card-title"><i class="ti ti-file-analytics"></i> Top pages</div>
-      <div style="overflow-x:auto">
-        <table class="ad-table">
-          <thead><tr>
-            <th>Page</th><th>Views</th><th>Users</th><th>Bounce rate</th>
-          </tr></thead>
-          <tbody>
-            ${(topPages||[]).map(r => `<tr>
-              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                <div style="font-size:12px;color:var(--text);font-weight:500">${r.pageTitle||'—'}</div>
-                <div style="font-size:10px;color:var(--text3)">${r.pagePath}</div>
-              </td>
-              <td style="font-weight:600;color:var(--blue)">${parseInt(r.screenPageViews||0).toLocaleString()}</td>
-              <td style="color:var(--text2)">${parseInt(r.activeUsers||0).toLocaleString()}</td>
-              <td style="color:${parseFloat(r.bounceRate||0)*100>60?'var(--red)':'var(--text2)'}">${(parseFloat(r.bounceRate||0)*100).toFixed(0)}%</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- COUNTRIES -->
-    <div class="s-card">
-      <div class="s-card-title"><i class="ti ti-map"></i> Top countries</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
-        ${(countries||[]).slice(0,8).map(r => {
-          const n = parseInt(r.sessions||0);
-          const pct = totalSessions > 0 ? (n/totalSessions*100).toFixed(0) : 0;
-          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
-            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">${r.country}</div>
-            <div style="font-size:18px;font-weight:700;color:var(--blue)">${n.toLocaleString()}</div>
-            <div style="font-size:10px;color:var(--text3)">${pct}% of sessions</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-  </div>`;
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────────────────
@@ -1700,6 +1566,555 @@ async function authedFetch(url, options = {}) {
   });
   if (res.status === 401) { doLogout(); throw new Error('Session expired — please sign in again'); }
   return res;
+}
+
+// ── SALES PERFORMANCE MODULE ──────────────────────────────────────────────
+const SALES_KEY = 'g6_sales_data_v1';
+let salesChart = null;
+
+// Load/save sales data from localStorage
+function loadSalesData() {
+  try { return JSON.parse(localStorage.getItem(SALES_KEY) || '{"entries":[],"targets":{}}'); }
+  catch { return { entries: [], targets: {} }; }
+}
+function saveSalesData(data) {
+  localStorage.setItem(SALES_KEY, JSON.stringify(data));
+}
+
+// Get current month Meta Ads totals from cache
+function getMetaTotals() {
+  const ads = cache[activeId] || [];
+  let spend=0, impressions=0, clicks=0, leads=0;
+  ads.forEach(ad => {
+    spend       += parseFloat(ad.insights?.data?.[0]?.spend || 0);
+    impressions += parseInt(ad.insights?.data?.[0]?.impressions || 0);
+    clicks      += parseInt(ad.insights?.data?.[0]?.link_clicks || 0);
+    // Count conversations as leads
+    const acts = ad.insights?.data?.[0]?.actions || [];
+    const conv = acts.find(a => a.action_type?.includes('messaging_conversation'));
+    leads += parseInt(conv?.value || 0);
+  });
+  return { spend, impressions, clicks, leads };
+}
+
+// Calculate health score
+function calcHealthScore(kpis) {
+  let score = 100;
+  const { roas, cpl, convRate, apptRate, spend } = kpis;
+  if (roas < 1)    score -= 30;
+  else if (roas < 2) score -= 15;
+  else if (roas > 4) score += 5;
+  if (cpl > 50)    score -= 20;
+  else if (cpl > 25) score -= 10;
+  if (convRate < 3)  score -= 20;
+  else if (convRate < 10) score -= 10;
+  if (apptRate < 20) score -= 15;
+  else if (apptRate < 40) score -= 5;
+  if (spend === 0)   score -= 25;
+  return Math.max(0, Math.min(100, score));
+}
+
+function healthLabel(score) {
+  if (score >= 92) return { label: 'Excellent', color: '#22c55e' };
+  if (score >= 75) return { label: 'Healthy',   color: '#4f9cf9' };
+  if (score >= 50) return { label: 'Warning',   color: '#f59e0b' };
+  return              { label: 'Critical',  color: '#ef4444' };
+}
+
+function pct(a, b) { return b > 0 ? ((a/b)*100).toFixed(1) : '0.0'; }
+function rmFmt(v)  { return 'RM '+parseFloat(v||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function deltaHtml(cur, prev) {
+  if (!prev || prev === 0) return '<span class="delta-neutral">— no prev data</span>';
+  const d = ((cur - prev) / prev * 100).toFixed(1);
+  const up = cur >= prev;
+  return `<span class="${up?'delta-up':'delta-down'}">${up?'▲':'▼'} ${Math.abs(d)}% vs last period</span>`;
+}
+
+// Generate AI insights
+function generateInsights(kpis, entries, meta) {
+  const insights = [];
+  const { roas, cpl, convRate, apptRate, revenue, sales, leads } = kpis;
+
+  if (roas > 4)   insights.push({ type:'good', icon:'🚀', title:'Strong ROAS', text:`Your ROAS of ${roas.toFixed(2)}× is excellent. Every RM spent returns RM ${roas.toFixed(2)} in revenue.` });
+  if (roas < 1.5 && roas > 0) insights.push({ type:'warn', icon:'⚠️', title:'Low ROAS', text:`ROAS of ${roas.toFixed(2)}× is below breakeven. Review ad creatives and targeting.` });
+  if (cpl > 30)   insights.push({ type:'warn', icon:'💸', title:'High cost per lead', text:`CPL of ${rmFmt(cpl)} is above target. Optimize landing pages or ad targeting.` });
+  if (cpl < 15 && cpl > 0)   insights.push({ type:'good', icon:'✅', title:'Efficient lead generation', text:`CPL of ${rmFmt(cpl)} is healthy. Maintain current strategy.` });
+  if (convRate > 15) insights.push({ type:'good', icon:'🎯', title:'High conversion rate', text:`${convRate}% lead-to-sale conversion is above industry average for dental/aesthetic.` });
+  if (convRate < 5 && leads > 10) insights.push({ type:'bad', icon:'📉', title:'Low conversion rate', text:`Only ${convRate}% of leads are converting. Review agent follow-up speed and quality.` });
+  if (apptRate < 30 && leads > 10) insights.push({ type:'warn', icon:'📅', title:'Low appointment rate', text:`Only ${apptRate}% of leads booked appointments. Consider faster response SOP.` });
+  if (sales === 0 && meta.spend > 0) insights.push({ type:'bad', icon:'🔴', title:'No sales recorded', text:'No sales have been entered yet. Add your sales data to unlock all metrics.' });
+
+  // Agent insights
+  const agentMap = {};
+  entries.forEach(e => {
+    if (!e.agent) return;
+    if (!agentMap[e.agent]) agentMap[e.agent] = { sales:0, revenue:0 };
+    agentMap[e.agent].sales   += parseInt(e.sales || 0);
+    agentMap[e.agent].revenue += parseFloat(e.revenue || 0);
+  });
+  const agents = Object.entries(agentMap).sort((a,b) => b[1].revenue - a[1].revenue);
+  if (agents.length > 1) {
+    insights.push({ type:'info', icon:'🏆', title:`Top agent: ${agents[0][0]}`, text:`${agents[0][0]} generated ${rmFmt(agents[0][1].revenue)} revenue from ${agents[0][1].sales} sales this month.` });
+  }
+
+  if (insights.length === 0) insights.push({ type:'info', icon:'💡', title:'Add more data', text:'Enter sales records to unlock AI-powered insights and recommendations.' });
+  return insights.slice(0, 6);
+}
+
+// Generate alerts
+function generateAlerts(kpis) {
+  const alerts = [];
+  const { roas, cpl, convRate, sales, spend } = kpis;
+  if (spend > 0 && sales === 0)   alerts.push({ level:'critical', text:'🔴 No sales detected — check your tracking and agent follow-up' });
+  if (roas > 0 && roas < 1)       alerts.push({ level:'critical', text:'🔴 ROAS below 1× — you are losing money on ads' });
+  if (cpl > 50)                   alerts.push({ level:'critical', text:'🔴 CPL above RM 50 — leads are too expensive' });
+  if (convRate > 0 && convRate < 3) alerts.push({ level:'warn', text:'🟡 Sales conversion below 3% — review follow-up process' });
+  if (roas > 0 && roas < 2)       alerts.push({ level:'warn', text:'🟡 ROAS below 2× — room for improvement' });
+  if (alerts.length === 0)        alerts.push({ level:'good', text:'✅ All metrics within healthy range' });
+  return alerts;
+}
+
+// Entry modal
+let entryModal = null;
+function openSalesEntry(existingId=null) {
+  const data = loadSalesData();
+  const existing = existingId ? data.entries.find(e => e.id === existingId) : null;
+
+  const modal = document.createElement('div');
+  modal.className = 'entry-modal';
+  modal.id = 'salesEntryModal';
+  modal.innerHTML = `
+    <div class="entry-box">
+      <div class="entry-title">${existing ? 'Edit' : 'Add'} Sales Record</div>
+      <div class="entry-row">
+        <div class="entry-field">
+          <label class="entry-label">Month</label>
+          <input class="entry-input" type="month" id="ef-month" value="${existing?.month || new Date().toISOString().slice(0,7)}">
+        </div>
+        <div class="entry-field">
+          <label class="entry-label">Campaign / Source</label>
+          <input class="entry-input" type="text" id="ef-campaign" placeholder="e.g. Braces May" value="${existing?.campaign||''}">
+        </div>
+      </div>
+      <div class="entry-row">
+        <div class="entry-field">
+          <label class="entry-label">Agent name</label>
+          <input class="entry-input" type="text" id="ef-agent" placeholder="e.g. Nanda" value="${existing?.agent||''}">
+        </div>
+        <div class="entry-field">
+          <label class="entry-label">Branch / Zone</label>
+          <input class="entry-input" type="text" id="ef-branch" placeholder="e.g. KL" value="${existing?.branch||''}">
+        </div>
+      </div>
+      <div class="entry-row">
+        <div class="entry-field">
+          <label class="entry-label">Leads received</label>
+          <input class="entry-input" type="number" id="ef-leads" placeholder="0" min="0" value="${existing?.leads||''}">
+        </div>
+        <div class="entry-field">
+          <label class="entry-label">Appointments booked</label>
+          <input class="entry-input" type="number" id="ef-appts" placeholder="0" min="0" value="${existing?.appts||''}">
+        </div>
+      </div>
+      <div class="entry-row">
+        <div class="entry-field">
+          <label class="entry-label">Showed up</label>
+          <input class="entry-input" type="number" id="ef-showed" placeholder="0" min="0" value="${existing?.showed||''}">
+        </div>
+        <div class="entry-field">
+          <label class="entry-label">Sales closed</label>
+          <input class="entry-input" type="number" id="ef-sales" placeholder="0" min="0" value="${existing?.sales||''}">
+        </div>
+      </div>
+      <div class="entry-field">
+        <label class="entry-label">Total revenue (RM)</label>
+        <input class="entry-input" type="number" id="ef-revenue" placeholder="0.00" min="0" step="0.01" value="${existing?.revenue||''}">
+      </div>
+      <div class="entry-field">
+        <label class="entry-label">Notes (optional)</label>
+        <input class="entry-input" type="text" id="ef-notes" placeholder="Any remarks..." value="${existing?.notes||''}">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="entry-btn entry-btn-primary" onclick="saveSalesEntry('${existingId||''}')">
+          <i class="ti ti-check"></i> ${existing ? 'Update' : 'Save record'}
+        </button>
+        <button class="entry-btn entry-btn-cancel" onclick="closeSalesEntry()">Cancel</button>
+        ${existing ? `<button class="entry-btn" style="background:var(--red2);color:var(--red);border:1px solid rgba(239,68,68,.2);margin-left:auto" onclick="deleteSalesEntry('${existingId}')">Delete</button>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) closeSalesEntry(); });
+}
+
+function closeSalesEntry() {
+  document.getElementById('salesEntryModal')?.remove();
+}
+
+function saveSalesEntry(existingId) {
+  const data = loadSalesData();
+  const entry = {
+    id:       existingId || Date.now().toString(),
+    month:    document.getElementById('ef-month').value,
+    campaign: document.getElementById('ef-campaign').value.trim(),
+    agent:    document.getElementById('ef-agent').value.trim(),
+    branch:   document.getElementById('ef-branch').value.trim(),
+    leads:    parseInt(document.getElementById('ef-leads').value)||0,
+    appts:    parseInt(document.getElementById('ef-appts').value)||0,
+    showed:   parseInt(document.getElementById('ef-showed').value)||0,
+    sales:    parseInt(document.getElementById('ef-sales').value)||0,
+    revenue:  parseFloat(document.getElementById('ef-revenue').value)||0,
+    notes:    document.getElementById('ef-notes').value.trim(),
+    savedAt:  Date.now(),
+  };
+
+  if (existingId) {
+    const idx = data.entries.findIndex(e => e.id === existingId);
+    if (idx >= 0) data.entries[idx] = entry;
+    else data.entries.push(entry);
+  } else {
+    data.entries.push(entry);
+  }
+
+  saveSalesData(data);
+  closeSalesEntry();
+  renderSales();
+}
+
+function deleteSalesEntry(id) {
+  if (!confirm('Delete this record?')) return;
+  const data = loadSalesData();
+  data.entries = data.entries.filter(e => e.id !== id);
+  saveSalesData(data);
+  closeSalesEntry();
+  renderSales();
+}
+
+// Main render
+function renderSales() {
+  const data    = loadSalesData();
+  const curMonth= new Date().toISOString().slice(0,7);
+  const entries = data.entries.filter(e => e.month === curMonth);
+  const meta    = getMetaTotals();
+
+  // Aggregate totals
+  const totLeads  = entries.reduce((s,e) => s+e.leads, 0)  || meta.leads;
+  const totAppts  = entries.reduce((s,e) => s+e.appts, 0);
+  const totShowed = entries.reduce((s,e) => s+e.showed, 0);
+  const totSales  = entries.reduce((s,e) => s+e.sales, 0);
+  const totRev    = entries.reduce((s,e) => s+e.revenue, 0);
+  const spend     = meta.spend;
+  const impr      = meta.impressions;
+  const clicks    = meta.clicks;
+
+  const roas      = spend > 0 ? totRev / spend : 0;
+  const cpl       = totLeads > 0 ? spend / totLeads : 0;
+  const cps       = totSales > 0 ? spend / totSales : 0;
+  const convRate  = parseFloat(pct(totSales, totLeads));
+  const apptRate  = parseFloat(pct(totAppts, totLeads));
+  const showRate  = parseFloat(pct(totShowed, totAppts));
+  const closeRate = parseFloat(pct(totSales, totShowed));
+  const avgRev    = totSales > 0 ? totRev / totSales : 0;
+  const profit    = totRev - spend;
+
+  const kpis = { roas, cpl, cps, convRate, apptRate, revenue: totRev, sales: totSales, leads: totLeads, spend };
+  const score = calcHealthScore(kpis);
+  const health = healthLabel(score);
+  const insights = generateInsights(kpis, entries, meta);
+  const alerts   = generateAlerts(kpis);
+
+  // Campaign breakdown
+  const campMap = {};
+  entries.forEach(e => {
+    const k = e.campaign || 'Untagged';
+    if (!campMap[k]) campMap[k] = { leads:0, appts:0, sales:0, revenue:0 };
+    campMap[k].leads   += e.leads;
+    campMap[k].appts   += e.appts;
+    campMap[k].sales   += e.sales;
+    campMap[k].revenue += e.revenue;
+  });
+
+  // Agent breakdown
+  const agentMap = {};
+  entries.forEach(e => {
+    const k = e.agent || 'Unassigned';
+    if (!agentMap[k]) agentMap[k] = { leads:0, appts:0, sales:0, revenue:0 };
+    agentMap[k].leads   += e.leads;
+    agentMap[k].appts   += e.appts;
+    agentMap[k].sales   += e.sales;
+    agentMap[k].revenue += e.revenue;
+  });
+  const agents = Object.entries(agentMap).sort((a,b) => b[1].revenue - a[1].revenue);
+
+  // Branch breakdown
+  const branchMap = {};
+  entries.forEach(e => {
+    const k = e.branch || 'Main';
+    if (!branchMap[k]) branchMap[k] = { leads:0, sales:0, revenue:0 };
+    branchMap[k].leads   += e.leads;
+    branchMap[k].sales   += e.sales;
+    branchMap[k].revenue += e.revenue;
+  });
+
+  // Funnel steps
+  const funnel = [
+    { label:'Impressions',  count: impr,      color:'#4f9cf9' },
+    { label:'Clicks',       count: clicks,     color:'#a78bfa' },
+    { label:'Leads',        count: totLeads,   color:'#14b8a6' },
+    { label:'Appointments', count: totAppts,   color:'#f59e0b' },
+    { label:'Showed up',    count: totShowed,  color:'#f97316' },
+    { label:'Sales closed', count: totSales,   color:'#22c55e' },
+  ];
+  const maxFunnel = funnel[0].count || 1;
+
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="tab-section active" style="padding:18px 22px 60px">
+
+    <!-- HEADER -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div>
+        <div class="section-title">Sales Performance</div>
+        <div class="section-sub">${new Date().toLocaleString('en-MY',{month:'long',year:'numeric'})} · ${entries.length} record${entries.length!==1?'s':''} entered</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="exportSalesCSV()" style="padding:8px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-download"></i> Export CSV
+        </button>
+        <button onclick="openSalesEntry()" style="padding:8px 16px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-plus"></i> Add Sales Record
+        </button>
+      </div>
+    </div>
+
+    <!-- ALERTS -->
+    <div style="margin-bottom:16px">
+      ${alerts.map(a => `<div class="alert-badge alert-${a.level}" style="font-size:12px">${a.text}</div>`).join('')}
+    </div>
+
+    <!-- KPI GRID -->
+    <div class="sales-grid" style="margin-bottom:16px">
+      <div class="sales-kpi" style="--kpi-color:var(--red)">
+        <div class="sales-kpi-label">Ad spend</div>
+        <div class="sales-kpi-value">${rmFmt(spend)}</div>
+        <div class="sales-kpi-delta"><span class="delta-neutral">This month from Meta</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--green)">
+        <div class="sales-kpi-label">Total revenue</div>
+        <div class="sales-kpi-value">${rmFmt(totRev)}</div>
+        <div class="sales-kpi-delta"><span class="${profit>=0?'delta-up':'delta-down'}">${profit>=0?'▲':'▼'} Profit ${rmFmt(Math.abs(profit))}</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:${roas>=3?'var(--green)':roas>=1.5?'var(--amber)':'var(--red)'}">
+        <div class="sales-kpi-label">ROAS</div>
+        <div class="sales-kpi-value">${roas>0?roas.toFixed(2)+'×':'—'}</div>
+        <div class="sales-kpi-delta"><span class="${roas>=2?'delta-up':'delta-down'}">${roas>=2?'▲ Above':'▼ Below'} 2× target</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--blue)">
+        <div class="sales-kpi-label">Total leads</div>
+        <div class="sales-kpi-value">${totLeads.toLocaleString()}</div>
+        <div class="sales-kpi-delta"><span class="delta-neutral">From Meta + manual</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--amber)">
+        <div class="sales-kpi-label">Appointments</div>
+        <div class="sales-kpi-value">${totAppts.toLocaleString()}</div>
+        <div class="sales-kpi-delta"><span class="${apptRate>=40?'delta-up':'delta-down'}">${apptRate}% of leads</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--green)">
+        <div class="sales-kpi-label">Sales closed</div>
+        <div class="sales-kpi-value">${totSales.toLocaleString()}</div>
+        <div class="sales-kpi-delta"><span class="${convRate>=10?'delta-up':'delta-down'}">${convRate}% conversion</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--purple)">
+        <div class="sales-kpi-label">Cost per lead</div>
+        <div class="sales-kpi-value">${cpl>0?rmFmt(cpl):'—'}</div>
+        <div class="sales-kpi-delta"><span class="${cpl>0&&cpl<20?'delta-up':cpl>40?'delta-down':'delta-neutral'}">${cpl<20&&cpl>0?'✓ Healthy':cpl>40?'High':cpl===0?'—':'Moderate'}</span></div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--teal)">
+        <div class="sales-kpi-label">Cost per sale</div>
+        <div class="sales-kpi-value">${cps>0?rmFmt(cps):'—'}</div>
+        <div class="sales-kpi-delta"><span class="delta-neutral">Avg ${rmFmt(avgRev)} rev/sale</span></div>
+      </div>
+    </div>
+
+    <!-- HEALTH + FUNNEL ROW -->
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:16px">
+
+      <!-- HEALTH SCORE -->
+      <div class="s-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px">
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px">Sales Health Score</div>
+        <div class="health-ring">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg4)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="${health.color}" stroke-width="10"
+              stroke-dasharray="${(score/100)*314} 314" stroke-linecap="round"/>
+          </svg>
+          <div class="health-ring-label">
+            <div class="health-score-num" style="color:${health.color}">${score}</div>
+            <div class="health-score-tag" style="color:${health.color}">${health.label}</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--text3);line-height:1.6">
+          Based on ROAS, CPL,<br>conversion & appointment rate
+        </div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;width:100%;text-align:left">
+          ${[['ROAS',roas>0?roas.toFixed(1)+'×':'—',roas>=2],['Conv %',convRate+'%',convRate>=10],['Appt %',apptRate+'%',apptRate>=40]].map(([l,v,g])=>`
+          <div style="display:flex;justify-content:space-between;font-size:11px">
+            <span style="color:var(--text3)">${l}</span>
+            <span style="color:${g?'var(--green)':'var(--amber)'};font-weight:600">${v}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- FUNNEL -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-filter"></i> Lead to Revenue Funnel</div>
+        <div class="funnel-wrap">
+          ${funnel.map((step, i) => {
+            const prev    = i > 0 ? funnel[i-1].count : null;
+            const dropPct = prev && prev > 0 ? (100 - step.count/prev*100).toFixed(0) : null;
+            const barW    = maxFunnel > 0 ? Math.max(4,(step.count/maxFunnel*100)) : 4;
+            return `
+            <div class="funnel-step">
+              <div class="funnel-label">${step.label}</div>
+              <div class="funnel-bar-bg">
+                <div class="funnel-bar-fill" style="width:${barW}%;background:${step.color}">
+                  ${step.count > 0 ? step.count.toLocaleString() : ''}
+                </div>
+              </div>
+              <div class="funnel-count">${step.count.toLocaleString()}</div>
+              <div class="funnel-drop">${dropPct ? '-'+dropPct+'%' : ''}</div>
+            </div>
+            ${i < funnel.length-1 ? '<div class="funnel-arrow" style="padding-left:110px;color:var(--text3)">↓</div>' : ''}`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMPAIGN + AGENT ROW -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+
+      <!-- CAMPAIGN BREAKDOWN -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-speakerphone"></i> Revenue by campaign</div>
+        ${Object.keys(campMap).length === 0 ? '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">No campaign data — add sales records</div>' :
+          `<div style="overflow-x:auto"><table class="ad-table">
+            <thead><tr><th>Campaign</th><th>Leads</th><th>Sales</th><th>Revenue</th><th>Conv%</th></tr></thead>
+            <tbody>
+              ${Object.entries(campMap).sort((a,b)=>b[1].revenue-a[1].revenue).map(([k,v])=>`
+              <tr>
+                <td style="font-weight:500;color:var(--text)">${k}</td>
+                <td>${v.leads}</td>
+                <td style="color:var(--green);font-weight:600">${v.sales}</td>
+                <td style="color:var(--blue);font-weight:600">${rmFmt(v.revenue)}</td>
+                <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${parseFloat(pct(v.sales,v.leads))>=10?'var(--green2)':'var(--amber2)'};color:${parseFloat(pct(v.sales,v.leads))>=10?'var(--green)':'var(--amber)'}">${pct(v.sales,v.leads)}%</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table></div>`}
+      </div>
+
+      <!-- AGENT LEADERBOARD -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-trophy"></i> Agent leaderboard</div>
+        ${agents.length === 0 ? '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">No agent data — add agent name in records</div>' :
+          agents.map(([name, v], i) => `
+          <div class="agent-row">
+            <div class="agent-rank ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${name}</div>
+              <div style="font-size:11px;color:var(--text3)">${v.leads} leads · ${v.appts} appts · ${v.sales} sales</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:13px;font-weight:600;color:var(--green)">${rmFmt(v.revenue)}</div>
+              <div style="font-size:10px;color:var(--text3)">${pct(v.sales,v.leads)}% close rate</div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- BRANCH + AI INSIGHTS ROW -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+
+      <!-- BRANCH BREAKDOWN -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-building"></i> Revenue by branch</div>
+        ${Object.keys(branchMap).length === 0 ? '<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">No branch data — add branch in records</div>' :
+          Object.entries(branchMap).sort((a,b)=>b[1].revenue-a[1].revenue).map(([k,v]) => {
+            const maxRev = Math.max(...Object.values(branchMap).map(b=>b.revenue)) || 1;
+            const barW   = (v.revenue/maxRev*100).toFixed(0);
+            return `<div style="margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+                <span style="font-size:13px;color:var(--text);font-weight:500">${k}</span>
+                <span style="font-size:13px;font-weight:600;color:var(--blue)">${rmFmt(v.revenue)}</span>
+              </div>
+              <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-bottom:4px">
+                <div style="height:6px;width:${barW}%;background:var(--blue);border-radius:3px"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text3)">${v.leads} leads · ${v.sales} sales · CPL ${v.leads>0?rmFmt((spend/Object.values(branchMap).reduce((s,b)=>s+b.leads,0)||1)*v.leads):'—'}</div>
+            </div>`;
+          }).join('')}
+      </div>
+
+      <!-- AI INSIGHTS -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-brain"></i> AI insights</div>
+        ${insights.map(ins => {
+          const colors = { good:'var(--green)', warn:'var(--amber)', bad:'var(--red)', info:'var(--blue)' };
+          return `<div class="insight-card" style="--insight-color:${colors[ins.type]||'var(--blue)'}">
+            <div class="insight-icon">${ins.icon}</div>
+            <div>
+              <div class="insight-title">${ins.title}</div>
+              <div class="insight-text">${ins.text}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- ENTRIES TABLE -->
+    <div class="s-card">
+      <div class="s-card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span><i class="ti ti-list-details"></i> Sales records — ${new Date().toLocaleString('en-MY',{month:'long',year:'numeric'})}</span>
+        <button onclick="openSalesEntry()" style="padding:5px 12px;border-radius:6px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">+ Add</button>
+      </div>
+      ${entries.length === 0 ? `
+        <div style="text-align:center;padding:40px;color:var(--text3)">
+          <div style="font-size:32px;margin-bottom:10px">📊</div>
+          <div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:6px">No sales records yet</div>
+          <div style="font-size:12px;margin-bottom:16px">Add your first record to unlock the full dashboard</div>
+          <button onclick="openSalesEntry()" style="padding:10px 20px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Add first record</button>
+        </div>` :
+        `<div style="overflow-x:auto"><table class="ad-table">
+          <thead><tr><th>Campaign</th><th>Agent</th><th>Branch</th><th>Leads</th><th>Appts</th><th>Sales</th><th>Revenue</th><th>Conv%</th><th></th></tr></thead>
+          <tbody>
+            ${entries.sort((a,b)=>b.savedAt-a.savedAt).map(e=>`
+            <tr>
+              <td style="font-weight:500;color:var(--text)">${e.campaign||'—'}</td>
+              <td style="color:var(--text2)">${e.agent||'—'}</td>
+              <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg4);color:var(--text2)">${e.branch||'—'}</span></td>
+              <td>${e.leads}</td>
+              <td>${e.appts}</td>
+              <td style="color:var(--green);font-weight:600">${e.sales}</td>
+              <td style="color:var(--blue);font-weight:600">${rmFmt(e.revenue)}</td>
+              <td style="color:${parseFloat(pct(e.sales,e.leads))>=10?'var(--green)':'var(--amber)'};font-weight:500">${pct(e.sales,e.leads)}%</td>
+              <td><button onclick="openSalesEntry('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px">✏️</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>`}
+    </div>
+  </div>`;
+}
+
+function exportSalesCSV() {
+  const data    = loadSalesData();
+  const curMonth= new Date().toISOString().slice(0,7);
+  const entries = data.entries.filter(e => e.month === curMonth);
+  if (!entries.length) { alert('No records to export'); return; }
+  const headers = ['Campaign','Agent','Branch','Leads','Appointments','Showed','Sales','Revenue','Notes'];
+  const rows    = entries.map(e => [e.campaign,e.agent,e.branch,e.leads,e.appts,e.showed,e.sales,e.revenue,e.notes].join(','));
+  const csv     = [headers.join(','), ...rows].join('\n');
+  const a       = document.createElement('a');
+  a.href        = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download    = `g6-sales-${curMonth}.csv`;
+  a.click();
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
