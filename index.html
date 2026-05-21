@@ -167,19 +167,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ── MOBILE ── */
 @media(max-width:768px){
-  .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:100;box-shadow:4px 0 32px rgba(0,0,0,.6)}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:100;box-shadow:4px 0 32px rgba(0,0,0,.6);width:260px}
   .sidebar.open{transform:translateX(0)}
   .menu-btn{display:flex}
   .thresh-pill{display:none}
   .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50}
   .overlay.show{display:block}
-  .tab-section{padding:16px 14px 40px}
-  .main-header{padding:12px 16px}
+  .tab-section{padding:14px 12px 60px}
+  .main-header{padding:10px 14px;gap:6px}
+  .header-account{font-size:16px}
+  .nav-tabs{padding:0 12px}
+  .tab-btn{padding:11px 12px;font-size:12px}
+  .s-card{padding:14px 14px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .gauge-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .ad-table th,.ad-table td{padding:8px 8px;font-size:11px}
+  .section-title{font-size:16px}
+  .user-chip span:not(.role-pip){display:none}
+  .header-right{gap:5px}
 }
 @media(max-width:480px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .gauge-row{grid-template-columns:repeat(2,1fr)}
   .kpi-value{font-size:20px}
+  .header-account{font-size:14px}
+  .tab-btn{padding:10px 10px;font-size:11px}
+}
 /* ── LOGIN — full page ── */
 .login-page{
   position:fixed;inset:0;z-index:2000;
@@ -285,6 +298,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .rp-client{background:#042320;color:var(--teal)}
 .logout-ico{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;transition:color .15s;font-size:15px;line-height:1}
 .logout-ico:hover{color:var(--red)}
+/* ── LOGIN MOBILE ── */
+@media(max-width:768px){
+  #loginPage{flex-direction:column}
+  #loginPage > div:first-child{display:none}
+  #loginPage > div:last-child{width:100%;border-left:none;border-top:1px solid #2a2f42;padding:32px 20px}
+}
 </style>
 </head>
 <body>
@@ -462,6 +481,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="tab-btn" onclick="switchTab('leads',this)">
         <i class="ti ti-users" aria-hidden="true" style="margin-right:4px"></i>Leads
         <span id="leadsCountBadge" style="display:none;background:var(--blue);color:#fff;font-size:9px;padding:1px 5px;border-radius:10px;margin-left:4px;font-weight:600"></span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('analytics',this)">
+        <i class="ti ti-chart-line" aria-hidden="true" style="margin-right:4px"></i>Analytics
       </button>
     </div>
 
@@ -641,8 +663,189 @@ function switchTab(tab,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   if(tab==='leads'){ loadLeads(); return; }
+  if(tab==='analytics'){ loadAnalytics(); return; }
   const ads=cache[activeId];
   if(ads)renderAll(ads);
+}
+
+// ── GOOGLE ANALYTICS TAB ──────────────────────────────────────────────────
+let gaData    = null;
+let gaLoading = false;
+
+async function loadAnalytics(force=false) {
+  if (gaLoading) return;
+  if (gaData && !force) { renderAnalytics(); return; }
+  gaLoading = true;
+
+  document.getElementById('content').innerHTML = `
+    <div class="tab-section active" style="padding:24px 28px">
+      <div class="state-wrap"><div class="spinner"></div>
+      <div class="state-title">Loading Google Analytics</div>
+      <div class="state-sub">Fetching current month data…</div></div>
+    </div>`;
+
+  try {
+    const res  = await authedFetch('/api/ga-proxy');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    gaData = data;
+    renderAnalytics();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `
+      <div class="tab-section active" style="padding:24px 28px">
+        <div class="state-wrap"><div class="state-icon">📊</div>
+        <div class="state-title">Google Analytics not connected</div>
+        <div class="state-sub">${e.message}<br><br>
+          Add GA4_PROPERTY_ID and GA4_SERVICE_ACCOUNT_KEY in Vercel env vars.
+        </div>
+        <button onclick="loadAnalytics(true)" style="margin-top:16px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px">Retry</button>
+        </div>
+      </div>`;
+  }
+  gaLoading = false;
+}
+
+function fmtDur(secs) {
+  const s = parseInt(secs) || 0;
+  const m = Math.floor(s/60), rem = s%60;
+  return m > 0 ? `${m}m ${rem}s` : `${s}s`;
+}
+
+function renderAnalytics() {
+  if (!gaData) return;
+  const { metrics, topPages, traffic, countries, devices, daily, period } = gaData;
+
+  const totalSessions = parseInt(metrics.sessions || 0);
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="tab-section active" style="padding:20px 24px 48px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px">
+      <div>
+        <div class="section-title">Web Analytics</div>
+        <div class="section-sub">Google Analytics · ${period}</div>
+      </div>
+      <button onclick="loadAnalytics(true)" style="padding:7px 16px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
+        <i class="ti ti-refresh"></i> Refresh
+      </button>
+    </div>
+
+    <!-- KPI STRIP -->
+    <div class="kpi-grid" style="margin-bottom:16px">
+      <div class="kpi-card">
+        <div class="kpi-label">Sessions</div>
+        <div class="kpi-value" style="color:var(--blue)">${parseInt(metrics.sessions||0).toLocaleString()}</div>
+        <div class="kpi-hint">This month</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active users</div>
+        <div class="kpi-value" style="color:var(--green)">${parseInt(metrics.users||0).toLocaleString()}</div>
+        <div class="kpi-hint">${parseInt(metrics.newUsers||0).toLocaleString()} new users</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Pageviews</div>
+        <div class="kpi-value" style="color:var(--purple)">${parseInt(metrics.pageviews||0).toLocaleString()}</div>
+        <div class="kpi-hint">${totalSessions > 0 ? (parseInt(metrics.pageviews)/totalSessions).toFixed(1) : 0} pages/session</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Bounce rate</div>
+        <div class="kpi-value" style="color:${parseFloat(metrics.bounceRate||0)>60?'var(--red)':'var(--amber)'}">${metrics.bounceRate||0}%</div>
+        <div class="kpi-hint">${parseFloat(metrics.bounceRate||0)>60?'High — review landing pages':'Acceptable'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg session</div>
+        <div class="kpi-value" style="color:var(--teal)">${fmtDur(metrics.avgDuration)}</div>
+        <div class="kpi-hint">${parseInt(metrics.avgDuration||0)>120?'Good engagement':'Low — improve content'}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Conversions</div>
+        <div class="kpi-value" style="color:var(--green)">${parseInt(metrics.conversions||0).toLocaleString()}</div>
+        <div class="kpi-hint">${totalSessions>0?((parseInt(metrics.conversions||0)/totalSessions)*100).toFixed(2):0}% conv rate</div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+
+      <!-- Traffic sources -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-arrows-split-2"></i> Traffic sources</div>
+        ${(traffic||[]).map(r => {
+          const n = parseInt(r.sessions||0);
+          const pct = totalSessions > 0 ? (n/totalSessions*100).toFixed(0) : 0;
+          const colors = {'Organic Search':'var(--green)','Direct':'var(--blue)','Referral':'var(--purple)','Organic Social':'var(--teal)','Paid Search':'var(--amber)','Paid Social':'var(--red)'};
+          const col = colors[r.sessionDefaultChannelGroup] || 'var(--text2)';
+          return `<div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:12px;color:var(--text2)">${r.sessionDefaultChannelGroup||'Other'}</span>
+              <span style="font-size:12px;font-weight:500;color:var(--text)">${n.toLocaleString()} <span style="color:var(--text3);font-size:10px">(${pct}%)</span></span>
+            </div>
+            <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden">
+              <div style="height:4px;width:${pct}%;background:${col};border-radius:2px"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Devices -->
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-device-mobile"></i> Devices</div>
+        ${(devices||[]).map(r => {
+          const n = parseInt(r.sessions||0);
+          const pct = totalSessions > 0 ? (n/totalSessions*100).toFixed(0) : 0;
+          const icons = {mobile:'📱',desktop:'🖥️',tablet:'📲'};
+          return `<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+              <span style="font-size:13px;color:var(--text2)">${icons[r.deviceCategory]||'📱'} ${r.deviceCategory}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text)">${pct}%</span>
+            </div>
+            <div style="height:6px;background:var(--bg4);border-radius:3px;overflow:hidden">
+              <div style="height:6px;width:${pct}%;background:var(--blue);border-radius:3px"></div>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">${n.toLocaleString()} sessions</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- TOP PAGES -->
+    <div class="s-card" style="margin-bottom:16px">
+      <div class="s-card-title"><i class="ti ti-file-analytics"></i> Top pages</div>
+      <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead><tr>
+            <th>Page</th><th>Views</th><th>Users</th><th>Bounce rate</th>
+          </tr></thead>
+          <tbody>
+            ${(topPages||[]).map(r => `<tr>
+              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                <div style="font-size:12px;color:var(--text);font-weight:500">${r.pageTitle||'—'}</div>
+                <div style="font-size:10px;color:var(--text3)">${r.pagePath}</div>
+              </td>
+              <td style="font-weight:600;color:var(--blue)">${parseInt(r.screenPageViews||0).toLocaleString()}</td>
+              <td style="color:var(--text2)">${parseInt(r.activeUsers||0).toLocaleString()}</td>
+              <td style="color:${parseFloat(r.bounceRate||0)*100>60?'var(--red)':'var(--text2)'}">${(parseFloat(r.bounceRate||0)*100).toFixed(0)}%</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COUNTRIES -->
+    <div class="s-card">
+      <div class="s-card-title"><i class="ti ti-map"></i> Top countries</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+        ${(countries||[]).slice(0,8).map(r => {
+          const n = parseInt(r.sessions||0);
+          const pct = totalSessions > 0 ? (n/totalSessions*100).toFixed(0) : 0;
+          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">${r.country}</div>
+            <div style="font-size:18px;font-weight:700;color:var(--blue)">${n.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--text3)">${pct}% of sessions</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
 }
 
 // ── RENDER ALL ────────────────────────────────────────────────────────────

@@ -7,9 +7,10 @@ const APP_TOKEN  = process.env.LARK_APP_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET || 'G6LabsAsia2026SecureKey';
 
 const ZONES = [
-  { id: 'pg',   name: 'Pasir Gudang', tableEnv: 'LARK_TABLE_PG' },
-  { id: 'kl',   name: 'KL',           tableEnv: 'LARK_TABLE_KL' },
-  { id: 'tlow', name: 'T-Low',        tableEnv: 'LARK_TABLE_TLOW' },
+  { id: 'pg',   name: 'Pasir Gudang', tableEnv: 'LARK_TABLE_PG',   appToken: process.env.LARK_APP_TOKEN },
+  { id: 'kl',   name: 'KL',           tableEnv: 'LARK_TABLE_KL',   appToken: process.env.LARK_APP_TOKEN },
+  { id: 'tlow', name: 'T-Low',        tableEnv: 'LARK_TABLE_TLOW', appToken: process.env.LARK_APP_TOKEN },
+  { id: 'sb_kk',name: 'Kota Kinabalu (Smile Borneo)', tableEnv: 'SMILE_TABLE_KK', appToken: process.env.SMILE_APP_TOKEN, client: 'smile_borneo' },
 ];
 
 const PROGRESS_GROUPS = {
@@ -39,21 +40,22 @@ function verifyToken(token) {
   } catch { return null; }
 }
 
-let tokenCache = { token: null, expiresAt: 0 };
+const tokenCache = {};
 
-async function getLarkToken() {
-  if (tokenCache.token && Date.now() < tokenCache.expiresAt - 60000) return tokenCache.token;
+async function getLarkToken(appId, appSecret, cacheKey) {
+  const cache = tokenCache[cacheKey] || { token: null, expiresAt: 0 };
+  if (cache.token && Date.now() < cache.expiresAt - 60000) return cache.token;
   const r    = await fetch(`${LARK_BASE}/auth/v3/tenant_access_token/internal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ app_id: APP_ID, app_secret: APP_SECRET }),
+    body: JSON.stringify({ app_id: appId, app_secret: appSecret }),
   });
   const text = await r.text();
   let data;
   try { data = JSON.parse(text); } catch { throw new Error(`Lark auth invalid JSON: ${text.slice(0,100)}`); }
   if (data.code !== 0) throw new Error(`Lark auth failed (${data.code}): ${data.msg}`);
-  tokenCache = { token: data.tenant_access_token, expiresAt: Date.now() + data.expire * 1000 };
-  return tokenCache.token;
+  tokenCache[cacheKey] = { token: data.tenant_access_token, expiresAt: Date.now() + data.expire * 1000 };
+  return tokenCache[cacheKey].token;
 }
 
 function extractText(val) {
@@ -71,14 +73,14 @@ function extractDate(val) {
   return null;
 }
 
-async function fetchTableRecords(larkToken, tableId) {
+async function fetchTableRecords(larkToken, tableId, appToken) {
   const records  = [];
   let pageToken  = null;
   const MAX_PAGES = 6;
   let pageCount   = 0;
 
   do {
-    const url = `${LARK_BASE}/bitable/v1/apps/${APP_TOKEN}/tables/${tableId}/records?page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
+    const url = `${LARK_BASE}/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
     const r   = await fetch(url, { headers: { 'Authorization': `Bearer ${larkToken}` } });
     const text = await r.text();
     let data;
@@ -173,13 +175,28 @@ module.exports = async (req, res) => {
   if (!verifyToken(token)) return res.status(401).json({ error: 'Invalid or expired session' });
 
   try {
-    const larkToken = await getLarkToken();
+    // Get tokens for each unique app
+    const isihatToken = await getLarkToken(APP_ID, APP_SECRET, 'isihat');
+    let smileToken = null;
+    const SMILE_APP_ID     = process.env.SMILE_APP_ID;
+    const SMILE_APP_SECRET = process.env.SMILE_APP_SECRET;
+    if (SMILE_APP_ID && SMILE_APP_SECRET) {
+      try { smileToken = await getLarkToken(SMILE_APP_ID, SMILE_APP_SECRET, 'smile'); }
+      catch(e) { console.error('[Lark] Smile Borneo auth failed:', e.message); }
+    }
+
     const zoneResults = await Promise.allSettled(
       ZONES.map(async zone => {
-        const tableId = process.env[zone.tableEnv];
-        if (!tableId) return { zoneId: zone.id, name: zone.name, records: [], error: 'Table ID not configured' };
+        const tableId  = process.env[zone.tableEnv];
+        const appToken = zone.appToken;
+        const larkTok  = zone.client === 'smile_borneo' ? smileToken : isihatToken;
+
+        if (!tableId)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Table ID not configured' };
+        if (!appToken) return { zoneId: zone.id, name: zone.name, records: [], error: 'App token not configured' };
+        if (!larkTok)  return { zoneId: zone.id, name: zone.name, records: [], error: 'Auth token unavailable' };
+
         try {
-          const records = await fetchTableRecords(larkToken, tableId);
+          const records = await fetchTableRecords(larkTok, tableId, appToken);
           return { zoneId: zone.id, name: zone.name, records };
         } catch(e) {
           return { zoneId: zone.id, name: zone.name, records: [], error: e.message };
