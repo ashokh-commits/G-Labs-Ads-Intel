@@ -15,17 +15,22 @@ const ZONES = [
 ];
 
 const PROGRESS_GROUPS = {
-  converted:    ['Completed', 'Set Appointment'],
-  good_quality: ['Responsive', 'Waiting Reply', 'Yet to set appt', 'Surveying', 'No resp after price', 'No resp before price'],
-  bad_quality:  ['No Respond at all', 'No Respond after 1st message/price', 'Delete Message'],
-  disqualified: ['SPAM/Job vacancy', 'Out of location', 'Language Problem', 'Another clinic', 'Pass to Other Branch'],
+  converted:    ['Completed', 'Set Appointment', 'Done', 'Closed', 'Joined', 'Member', 'Closing Date'],
+  good_quality: ['Responsive', 'Waiting Reply', 'Yet to set appt', 'Surveying', 'No resp after price', 'No resp before price', 'Contacted', 'Interested', 'Follow up', 'Appointment set', 'Coming'],
+  bad_quality:  ['No Respond at all', 'No Respond after 1st message/price', 'Delete Message', 'Not Reply', 'No Reply', 'Not Replied', 'No response', 'No Response', 'Not respond', 'Not Respond', 'No reply at all', 'Spam'],
+  disqualified: ['SPAM/Job vacancy', 'Out of location', 'Language Problem', 'Another clinic', 'Pass to Other Branch', 'Not Interested', 'Cancel', 'Wrong number', 'Blacklisted', 'Job', 'Out of location', 'Vacancy'],
 };
 
 function getGroup(progress) {
   if (!progress) return 'good_quality';
+  const p = progress.toLowerCase();
   for (const [group, statuses] of Object.entries(PROGRESS_GROUPS)) {
-    if (statuses.some(s => s.toLowerCase() === progress.toLowerCase())) return group;
+    if (statuses.some(s => s.toLowerCase() === p)) return group;
   }
+  // Partial match for "not reply", "no reply" variants
+  if (p.includes('not reply') || p.includes('no reply') || p.includes('not respond') || p.includes('no respond') || p.includes('tidak') || p.includes('tak balas')) return 'bad_quality';
+  if (p.includes('done') || p.includes('close') || p.includes('join') || p.includes('member') || p.includes('paid')) return 'converted';
+  if (p.includes('cancel') || p.includes('spam') || p.includes('wrong') || p.includes('not interested')) return 'disqualified';
   return 'good_quality';
 }
 
