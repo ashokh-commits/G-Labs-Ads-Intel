@@ -2271,8 +2271,13 @@ function exportSalesCSV() {
 // ── SUPABASE HELPER ───────────────────────────────────────────────────────
 async function sbFetch(action, params={}, body=null) {
   const qs  = Object.entries({action,...params}).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
-  const res = await authedFetch(`/api/supabase-proxy?${qs}`, body ? { method:'POST', body: JSON.stringify(body) } : { method:'GET' });
-  return res.json();
+  if (body) {
+    const res = await authedFetch(`/api/supabase-proxy?${qs}`, { method:'POST', body: JSON.stringify(body) });
+    return res.json();
+  } else {
+    const res = await authedFetch(`/api/supabase-proxy?${qs}`);
+    return res.json();
+  }
 }
 
 // ── TASK MANAGER ──────────────────────────────────────────────────────────
