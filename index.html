@@ -354,6 +354,49 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .agent-rank.silver{background:#1a1f2e;color:#8b92a8}
 .agent-rank.bronze{background:#1f1008;color:#c2773a}
 @media(max-width:768px){.sales-grid{grid-template-columns:repeat(2,1fr)}.funnel-label{width:80px}.entry-row{grid-template-columns:1fr}}
+/* ── TASK MANAGER ── */
+.task-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;transition:border-color .15s}
+.task-card:hover{border-color:var(--border2)}
+.task-card.done{opacity:.5}
+.task-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;margin-top:1px;transition:all .15s}
+.task-check.checked{background:var(--green);border-color:var(--green)}
+.task-check:hover{border-color:var(--blue)}
+.task-body{flex:1;min-width:0}
+.task-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;line-height:1.4}
+.task-title.done{text-decoration:line-through;color:var(--text3)}
+.task-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.task-tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.tag-ads{background:#0d1f40;color:var(--blue)}
+.tag-content{background:#1e1040;color:var(--purple)}
+.tag-design{background:#1a2e1a;color:var(--green)}
+.tag-report{background:#2d1a00;color:var(--amber)}
+.tag-general{background:var(--bg4);color:var(--text3)}
+.pri-urgent{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.pri-high{background:rgba(245,158,11,.1);color:var(--amber)}
+.pri-medium{background:var(--bg4);color:var(--text3)}
+.pri-low{background:var(--bg4);color:var(--text3)}
+.task-assignee{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:3px}
+.freq-badge{font-size:9px;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.freq-daily{background:#052e16;color:var(--green)}
+.freq-weekly{background:#0d1f40;color:var(--blue)}
+.freq-monthly{background:#2d1a00;color:var(--amber)}
+.freq-once{background:var(--bg4);color:var(--text3)}
+.task-form{background:var(--bg3);border:1px solid var(--blue);border-radius:10px;padding:16px;margin-bottom:12px}
+.task-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg3);padding:4px;border-radius:10px}
+.task-tab{flex:1;padding:8px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;background:none;color:var(--text2);transition:all .15s;text-align:center}
+.task-tab.active{background:var(--bg);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+/* Sidebar group styles */
+.acc-group{margin-bottom:4px}
+.acc-group-label{display:flex;align-items:center;justify-content:space-between;padding:6px 12px 4px;cursor:pointer;user-select:none}
+.acc-group-name{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+.acc-group-arrow{font-size:10px;color:var(--text3);transition:transform .2s}
+.acc-group.collapsed .acc-group-arrow{transform:rotate(-90deg)}
+.acc-group.collapsed .acc-group-items{display:none}
+.acc-group-items{padding:0 4px}
+.nav-active{background:var(--bg3)!important;color:var(--text)!important}
+/* History tab */
+.hist-period-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
+.hist-period-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
 </style>
 </head>
 <body>
@@ -476,8 +519,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <div class="brand-sub">Ads Intelligence</div>
       </div>
     </div>
-    <div class="sidebar-section">Ad Accounts</div>
+
+    <!-- SIDEBAR NAV -->
+    <div style="padding:8px 8px 0">
+      <button onclick="showTasks()" id="tasksNavBtn"
+        style="width:100%;display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text2);transition:background .15s;text-align:left"
+        onmouseover="this.style.background='var(--bg3)'" onmouseout="if(!this.classList.contains('nav-active'))this.style.background='none'">
+        <i class="ti ti-checklist" style="font-size:16px;color:var(--text3)"></i>
+        <span>Task Manager</span>
+        <span id="tasksBadge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700"></span>
+      </button>
+      <button onclick="showHistory()" id="historyNavBtn"
+        style="width:100%;display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text2);transition:background .15s;text-align:left;margin-top:2px"
+        onmouseover="this.style.background='var(--bg3)'" onmouseout="if(!this.classList.contains('nav-active'))this.style.background='none'">
+        <i class="ti ti-history" style="font-size:16px;color:var(--text3)"></i>
+        <span>Performance History</span>
+      </button>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:10px 8px"></div>
+
+    <!-- CLIENT GROUPS -->
     <div class="account-list" id="accountList"></div>
+
     <div class="sidebar-foot">
       <button class="sidebar-refresh" id="refreshBtn" onclick="refreshCurrent()">
         <i class="ti ti-refresh" aria-hidden="true"></i> Refresh Data
@@ -593,15 +657,49 @@ const rmN=v=>parseFloat(v)||0;
 const intN=v=>parseInt(v)||0;
 
 // ── SIDEBAR ───────────────────────────────────────────────────────────────
+const ACCOUNT_GROUPS = [
+  { label: '🦷 Dental Clinics',  key: 'dental',  ids: ['523654495274543','429121129294808','548718067784065','296798723118523'] },
+  { label: '🦷 I-Sihat Dental',  key: 'isihat',  ids: ['854069203683598','185825224320502'] },
+  { label: '🌟 Smile Borneo',    key: 'smile',   ids: ['5841452755981834'] },
+  { label: '💪 Anytime Fitness', key: 'fitness', ids: ['835864508826292','1199916453380050'] },
+  { label: '🏥 Clinics',         key: 'clinic',  ids: ['3638836659528611','1698587930478234'] },
+  { label: '✨ Other Clients',   key: 'other',   ids: ['1027194858744741','509470387773096','4486576511589217','2236534650109223'] },
+];
+
 function buildSidebar(){
-  const allowed = currentUser?.accounts || ['*'];
-  const visible = allowed.includes('*') ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id));
-  document.getElementById('accountList').innerHTML = visible.map(a =>
-    `<div class="acc-item" id="ai-${a.id}" onclick="selectAccount('${a.id}')">
-       <div class="acc-dot"></div>
-       <div class="acc-name">${a.name}</div>
-     </div>`
-  ).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
+  const allowed  = currentUser?.accounts || ['*'];
+  const isAdmin  = allowed.includes('*');
+  const visible  = isAdmin ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id));
+  const collapsed= JSON.parse(localStorage.getItem('g6_sidebar_collapsed')||'{}');
+
+  const html = ACCOUNT_GROUPS.map(group => {
+    const groupAccs = visible.filter(a => group.ids.includes(a.id));
+    if (!groupAccs.length) return '';
+    const isCollapsed = collapsed[group.key];
+    return `<div class="acc-group ${isCollapsed?'collapsed':''}" id="grp-${group.key}">
+      <div class="acc-group-label" onclick="toggleGroup('${group.key}')">
+        <span class="acc-group-name">${group.label}</span>
+        <span class="acc-group-arrow">▾</span>
+      </div>
+      <div class="acc-group-items">
+        ${groupAccs.map(a=>`
+        <div class="acc-item" id="ai-${a.id}" onclick="selectAccount('${a.id}')">
+          <div class="acc-dot"></div>
+          <div class="acc-name">${a.name}</div>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('accountList').innerHTML = html || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
+}
+
+function toggleGroup(key) {
+  const el = document.getElementById(`grp-${key}`);
+  el.classList.toggle('collapsed');
+  const stored = JSON.parse(localStorage.getItem('g6_sidebar_collapsed')||'{}');
+  stored[key] = el.classList.contains('collapsed');
+  localStorage.setItem('g6_sidebar_collapsed', JSON.stringify(stored));
 }
 function setAccState(id,cls,tag){
   const el=document.getElementById('ai-'+id);if(!el)return;
@@ -616,7 +714,11 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 // ── SELECT ────────────────────────────────────────────────────────────────
 function selectAccount(id){
   activeId=id;curFilter='all';curTab='overview';
-  leadsData=null; // reset so leads reload for correct client
+  leadsData=null;
+  // Reset nav buttons
+  document.getElementById('tasksNavBtn').classList.remove('nav-active');
+  document.getElementById('historyNavBtn').classList.remove('nav-active');
+  document.getElementById('headerMeta').style.display = '';
   closeSidebar();
   document.querySelectorAll('.acc-item').forEach(e=>e.classList.remove('active'));
   const el=document.getElementById('ai-'+id);if(el)el.classList.add('active');
@@ -678,6 +780,7 @@ async function loadAccount(id){
     document.getElementById('liveLabel').textContent='Live · '+new Date().toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'});
     document.getElementById('navTabs').style.display='flex';
     renderAll(ads);
+    autoSaveSnapshot(id, ads).catch(()=>{});
   }catch(e){
     setAccState(id,'err',{c:'err',t:'Error'});
     document.getElementById('liveLabel').textContent='Error';
@@ -2163,6 +2266,396 @@ function exportSalesCSV() {
   a.href        = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
   a.download    = `g6-sales-${curMonth}.csv`;
   a.click();
+}
+
+// ── SUPABASE HELPER ───────────────────────────────────────────────────────
+async function sbFetch(action, params={}, body=null) {
+  const qs  = Object.entries({action,...params}).map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&');
+  const res = await authedFetch(`/api/supabase-proxy?${qs}`, body ? { method:'POST', body: JSON.stringify(body) } : { method:'GET' });
+  return res.json();
+}
+
+// ── TASK MANAGER ──────────────────────────────────────────────────────────
+let allTasks = [], todayDone = new Set(), taskTab = 'daily';
+
+async function showTasks() {
+  // Set nav active state
+  document.getElementById('tasksNavBtn').classList.add('nav-active');
+  document.getElementById('historyNavBtn').classList.remove('nav-active');
+  document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
+
+  document.getElementById('navTabs').style.display = 'none';
+  document.getElementById('headerAccount').textContent = 'Task Manager';
+  document.getElementById('headerMeta').style.display = 'none';
+
+  document.getElementById('content').innerHTML = `
+    <div class="tab-section active" style="padding:20px 24px 60px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div>
+          <div class="section-title">Task Manager</div>
+          <div class="section-sub">Marketing operations · ${new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long'})}</div>
+        </div>
+        <button onclick="openTaskForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-plus"></i> Add Task
+        </button>
+      </div>
+      <div class="task-tabs" id="taskTabBar">
+        <button class="task-tab active" onclick="switchTaskTab('daily',this)">📅 Daily</button>
+        <button class="task-tab" onclick="switchTaskTab('weekly',this)">📆 Weekly</button>
+        <button class="task-tab" onclick="switchTaskTab('monthly',this)">🗓 Monthly</button>
+        <button class="task-tab" onclick="switchTaskTab('once',this)">📌 One-time</button>
+      </div>
+      <div id="taskList"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+    </div>`;
+
+  await loadTasks();
+}
+
+async function loadTasks() {
+  try {
+    const [tasks, completions] = await Promise.all([
+      sbFetch('get_tasks', { frequency: taskTab }),
+      sbFetch('get_completions', { date: new Date().toISOString().split('T')[0] }),
+    ]);
+    allTasks = Array.isArray(tasks) ? tasks : [];
+    todayDone = new Set((Array.isArray(completions) ? completions : []).map(c => c.task_id));
+    renderTasks();
+    // Update badge
+    const pending = allTasks.filter(t => !todayDone.has(t.id) && t.status !== 'done').length;
+    const badge = document.getElementById('tasksBadge');
+    if (badge) { badge.textContent = pending; badge.style.display = pending > 0 ? 'inline' : 'none'; }
+  } catch(e) {
+    document.getElementById('taskList').innerHTML = `<div style="text-align:center;padding:30px;color:var(--red)">Failed to load tasks: ${e.message}</div>`;
+  }
+}
+
+function renderTasks() {
+  const me = currentUser?.userId || 'ashokh';
+  const myTasks    = allTasks.filter(t => t.assignee === me || t.assignee === 'all');
+  const otherTasks = allTasks.filter(t => t.assignee !== me && t.assignee !== 'all');
+
+  const renderGroup = (tasks, label) => {
+    if (!tasks.length) return '';
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;padding:0 2px">${label}</div>
+      ${tasks.map(t => renderTaskCard(t)).join('')}
+    </div>`;
+  };
+
+  const html = myTasks.length === 0 && otherTasks.length === 0
+    ? `<div style="text-align:center;padding:48px;color:var(--text3)">
+        <div style="font-size:32px;margin-bottom:10px">✅</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text2)">No ${taskTab} tasks yet</div>
+        <div style="font-size:12px;margin-top:6px">Click "Add Task" to create one</div>
+       </div>`
+    : renderGroup(myTasks, `My tasks (${myTasks.length})`) +
+      renderGroup(otherTasks, 'Team tasks');
+
+  document.getElementById('taskList').innerHTML = html;
+}
+
+function renderTaskCard(t) {
+  const done    = todayDone.has(t.id) || t.status === 'done';
+  const tagCls  = `tag-${t.category||'general'}`;
+  const priCls  = `pri-${t.priority||'medium'}`;
+  const freqCls = `freq-${t.frequency||'once'}`;
+  return `<div class="task-card ${done?'done':''}">
+    <div class="task-check ${done?'checked':''}" onclick="toggleTask('${t.id}','${done}')">
+      ${done ? '<i class="ti ti-check" style="font-size:11px;color:#fff"></i>' : ''}
+    </div>
+    <div class="task-body">
+      <div class="task-title ${done?'done':''}">${t.title}</div>
+      ${t.description ? `<div style="font-size:11px;color:var(--text3);margin-bottom:6px;line-height:1.5">${t.description}</div>` : ''}
+      <div class="task-meta">
+        <span class="task-tag ${tagCls}">${t.category||'general'}</span>
+        <span class="task-tag ${priCls}">${t.priority||'medium'}</span>
+        <span class="freq-badge ${freqCls}">${t.frequency||'once'}</span>
+        ${t.assignee && t.assignee !== 'all' ? `<span class="task-assignee"><i class="ti ti-user" style="font-size:10px"></i>${t.assignee}</span>` : '<span class="task-assignee">all team</span>'}
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Edit">✏️</button>
+      <button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Delete">🗑</button>
+    </div>
+  </div>`;
+}
+
+async function toggleTask(id, isDone) {
+  if (isDone === 'true') return;
+  try {
+    await sbFetch('complete_task', {}, { task_id: id });
+    await loadTasks();
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  try {
+    await sbFetch('delete_task', {}, { id });
+    await loadTasks();
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+function switchTaskTab(tab, btn) {
+  taskTab = tab;
+  document.querySelectorAll('.task-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadTasks();
+}
+
+function openTaskForm(existing=null) {
+  const modal = document.createElement('div');
+  modal.className = 'entry-modal';
+  modal.id = 'taskFormModal';
+  modal.innerHTML = `<div class="entry-box">
+    <div class="entry-title">${existing?'Edit':'New'} Task</div>
+    <div class="entry-field">
+      <label class="entry-label">Task title *</label>
+      <input class="entry-input" id="tf-title" type="text" placeholder="e.g. Check Meta Ads performance" value="${existing?.title||''}">
+    </div>
+    <div class="entry-field">
+      <label class="entry-label">Description</label>
+      <input class="entry-input" id="tf-desc" type="text" placeholder="Optional details..." value="${existing?.description||''}">
+    </div>
+    <div class="entry-row">
+      <div class="entry-field">
+        <label class="entry-label">Assignee</label>
+        <select class="entry-input" id="tf-assignee">
+          <option value="all" ${existing?.assignee==='all'?'selected':''}>All team</option>
+          <option value="ashokh" ${existing?.assignee==='ashokh'?'selected':''}>Ashokh</option>
+          <option value="diva" ${existing?.assignee==='diva'?'selected':''}>Diva</option>
+          <option value="anisa" ${existing?.assignee==='anisa'?'selected':''}>Anisa</option>
+        </select>
+      </div>
+      <div class="entry-field">
+        <label class="entry-label">Frequency</label>
+        <select class="entry-input" id="tf-freq">
+          <option value="daily"   ${existing?.frequency==='daily'?'selected':''}>Daily</option>
+          <option value="weekly"  ${existing?.frequency==='weekly'?'selected':''}>Weekly</option>
+          <option value="monthly" ${existing?.frequency==='monthly'?'selected':''}>Monthly</option>
+          <option value="once"    ${existing?.frequency==='once'?'selected':''}>One-time</option>
+        </select>
+      </div>
+    </div>
+    <div class="entry-row">
+      <div class="entry-field">
+        <label class="entry-label">Category</label>
+        <select class="entry-input" id="tf-cat">
+          <option value="ads"     ${existing?.category==='ads'?'selected':''}>Ads</option>
+          <option value="content" ${existing?.category==='content'?'selected':''}>Content</option>
+          <option value="design"  ${existing?.category==='design'?'selected':''}>Design</option>
+          <option value="report"  ${existing?.category==='report'?'selected':''}>Report</option>
+          <option value="general" ${existing?.category==='general'?'selected':''}>General</option>
+        </select>
+      </div>
+      <div class="entry-field">
+        <label class="entry-label">Priority</label>
+        <select class="entry-input" id="tf-priority">
+          <option value="urgent" ${existing?.priority==='urgent'?'selected':''}>🔴 Urgent</option>
+          <option value="high"   ${existing?.priority==='high'?'selected':''}>🟡 High</option>
+          <option value="medium" ${!existing||existing?.priority==='medium'?'selected':''}>🔵 Medium</option>
+          <option value="low"    ${existing?.priority==='low'?'selected':''}>⚪ Low</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="entry-btn entry-btn-primary" onclick="saveTask('${existing?.id||''}')">
+        ${existing?'Update':'Create'} task
+      </button>
+      <button class="entry-btn entry-btn-cancel" onclick="document.getElementById('taskFormModal').remove()">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+}
+
+async function editTask(id) {
+  const t = allTasks.find(t => t.id === id);
+  if (t) openTaskForm(t);
+}
+
+async function saveTask(existingId) {
+  const title = document.getElementById('tf-title').value.trim();
+  if (!title) { alert('Title required'); return; }
+  const body = {
+    title,
+    description: document.getElementById('tf-desc').value.trim(),
+    assignee:    document.getElementById('tf-assignee').value,
+    frequency:   document.getElementById('tf-freq').value,
+    category:    document.getElementById('tf-cat').value,
+    priority:    document.getElementById('tf-priority').value,
+    status:      'pending',
+  };
+  try {
+    if (existingId) {
+      await sbFetch('update_task', {}, { id: existingId, ...body });
+    } else {
+      await sbFetch('create_task', {}, body);
+    }
+    document.getElementById('taskFormModal')?.remove();
+    await loadTasks();
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+// ── PERFORMANCE HISTORY ───────────────────────────────────────────────────
+async function showHistory() {
+  document.getElementById('historyNavBtn').classList.add('nav-active');
+  document.getElementById('tasksNavBtn').classList.remove('nav-active');
+  document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('navTabs').style.display = 'none';
+  document.getElementById('headerAccount').textContent = 'Performance History';
+  document.getElementById('headerMeta').style.display = 'none';
+
+  document.getElementById('content').innerHTML = `
+    <div class="tab-section active" style="padding:20px 24px 60px">
+      <div style="margin-bottom:16px">
+        <div class="section-title">Performance History</div>
+        <div class="section-sub">Compare periods · Meta Ads historical data</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="hist-period-btn active" onclick="loadHistoryPeriod('this_month',this)">This month</button>
+        <button class="hist-period-btn" onclick="loadHistoryPeriod('last_month',this)">Last month</button>
+        <button class="hist-period-btn" onclick="loadHistoryPeriod('last_7',this)">Last 7 days</button>
+        <button class="hist-period-btn" onclick="loadHistoryPeriod('last_30',this)">Last 30 days</button>
+      </div>
+      <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center">
+        <select id="histAccount" style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+          ${ACCOUNTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}
+        </select>
+        <button onclick="loadHistoryData()" style="padding:8px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Load</button>
+        <button onclick="saveCurrentSnapshot()" style="padding:8px 18px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:13px">💾 Save today's snapshot</button>
+      </div>
+      <div id="historyContent"><div style="text-align:center;padding:40px;color:var(--text3)">Select an account and period, then click Load</div></div>
+    </div>`;
+}
+
+let histPeriod = 'this_month';
+function loadHistoryPeriod(period, btn) {
+  histPeriod = period;
+  document.querySelectorAll('.hist-period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function loadHistoryData() {
+  const accountId = document.getElementById('histAccount')?.value;
+  if (!accountId) return;
+  const el = document.getElementById('historyContent');
+  el.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+
+  try {
+    const now   = new Date();
+    let from, to = now.toISOString().split('T')[0];
+    if (histPeriod === 'this_month') { from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`; }
+    else if (histPeriod === 'last_month') {
+      const lm = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      from = lm.toISOString().split('T')[0];
+      to   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+    }
+    else if (histPeriod === 'last_7')  { const d = new Date(now); d.setDate(d.getDate()-7); from = d.toISOString().split('T')[0]; }
+    else if (histPeriod === 'last_30') { const d = new Date(now); d.setDate(d.getDate()-30); from = d.toISOString().split('T')[0]; }
+
+    const rows = await sbFetch('get_meta_history', { account_id: accountId, from, to });
+    if (!Array.isArray(rows) || rows.length === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)">No historical data found for this period.<br><br>Click "Save today\'s snapshot" to start building history.</div>';
+      return;
+    }
+
+    const tot = rows.reduce((a,r) => ({
+      spend: a.spend+parseFloat(r.spend||0),
+      impressions: a.impressions+parseInt(r.impressions||0),
+      clicks: a.clicks+parseInt(r.clicks||0),
+      leads: a.leads+parseInt(r.leads||0),
+    }), {spend:0,impressions:0,clicks:0,leads:0});
+
+    const cpl  = tot.leads > 0 ? (tot.spend/tot.leads).toFixed(2) : '—';
+    const ctr  = tot.impressions > 0 ? (tot.clicks/tot.impressions*100).toFixed(2) : '—';
+
+    el.innerHTML = `
+      <div class="sales-grid" style="margin-bottom:16px">
+        <div class="sales-kpi" style="--kpi-color:var(--red)"><div class="sales-kpi-label">Total Spend</div><div class="sales-kpi-value">RM ${tot.spend.toLocaleString('en-MY',{minimumFractionDigits:2})}</div></div>
+        <div class="sales-kpi" style="--kpi-color:var(--blue)"><div class="sales-kpi-label">Impressions</div><div class="sales-kpi-value">${tot.impressions.toLocaleString()}</div></div>
+        <div class="sales-kpi" style="--kpi-color:var(--purple)"><div class="sales-kpi-label">Clicks</div><div class="sales-kpi-value">${tot.clicks.toLocaleString()}</div></div>
+        <div class="sales-kpi" style="--kpi-color:var(--teal)"><div class="sales-kpi-label">CTR</div><div class="sales-kpi-value">${ctr}%</div></div>
+        <div class="sales-kpi" style="--kpi-color:var(--green)"><div class="sales-kpi-label">Leads</div><div class="sales-kpi-value">${tot.leads.toLocaleString()}</div></div>
+        <div class="sales-kpi" style="--kpi-color:var(--amber)"><div class="sales-kpi-label">CPL</div><div class="sales-kpi-value">RM ${cpl}</div></div>
+      </div>
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-table"></i> Daily breakdown — ${rows.length} days</div>
+        <div style="overflow-x:auto">
+          <table class="ad-table">
+            <thead><tr><th>Date</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Leads</th><th>CPL</th></tr></thead>
+            <tbody>
+              ${rows.map(r=>`<tr>
+                <td style="color:var(--text);font-weight:500">${r.date}</td>
+                <td style="color:var(--red)">RM ${parseFloat(r.spend||0).toFixed(2)}</td>
+                <td>${parseInt(r.impressions||0).toLocaleString()}</td>
+                <td>${parseInt(r.clicks||0).toLocaleString()}</td>
+                <td>${r.ctr?parseFloat(r.ctr).toFixed(2)+'%':'—'}</td>
+                <td style="color:var(--green);font-weight:600">${r.leads||0}</td>
+                <td style="color:var(--amber)">${r.leads>0?'RM '+(parseFloat(r.spend||0)/parseInt(r.leads)).toFixed(2):'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:20px">${e.message}</div>`;
+  }
+}
+
+async function saveCurrentSnapshot() {
+  const ads = cache[activeId];
+  if (!ads || !activeId) { alert('Load an account first'); return; }
+  const acc = ACCOUNTS.find(a => a.id === activeId);
+  let spend=0, impressions=0, clicks=0, leads=0;
+  ads.forEach(ad => {
+    const ins = ad.insights?.data?.[0] || {};
+    spend       += parseFloat(ins.spend||0);
+    impressions += parseInt(ins.impressions||0);
+    clicks      += parseInt(ins.link_clicks||ins.clicks||0);
+    const acts   = ins.actions || [];
+    const conv   = acts.find(a => a.action_type?.includes('messaging_conversation'));
+    leads       += parseInt(conv?.value||0);
+  });
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await sbFetch('save_meta_snapshot', {}, { snapshots: [{
+      account_id:   activeId,
+      account_name: acc?.name || activeId,
+      date:         today,
+      spend:        spend.toFixed(2),
+      impressions, clicks, leads,
+      cpl:          leads > 0 ? (spend/leads).toFixed(2) : 0,
+      ctr:          impressions > 0 ? (clicks/impressions*100).toFixed(4) : 0,
+    }]});
+    alert(`✅ Snapshot saved for ${acc?.name} — ${today}`);
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+// Auto-save snapshot when account loads (if admin)
+async function autoSaveSnapshot(accountId, ads) {
+  if (currentUser?.role !== 'admin') return;
+  const acc = ACCOUNTS.find(a => a.id === accountId);
+  let spend=0, impressions=0, clicks=0, leads=0;
+  ads.forEach(ad => {
+    const ins = ad.insights?.data?.[0] || {};
+    spend       += parseFloat(ins.spend||0);
+    impressions += parseInt(ins.impressions||0);
+    clicks      += parseInt(ins.link_clicks||ins.clicks||0);
+    const acts   = ins.actions || [];
+    const conv   = acts.find(a => a.action_type?.includes('messaging_conversation'));
+    leads       += parseInt(conv?.value||0);
+  });
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    await sbFetch('save_meta_snapshot', {}, { snapshots: [{
+      account_id: accountId, account_name: acc?.name||accountId,
+      date: today, spend: spend.toFixed(2), impressions, clicks, leads,
+      cpl: leads>0?(spend/leads).toFixed(2):0,
+      ctr: impressions>0?(clicks/impressions*100).toFixed(4):0,
+    }]});
+    console.log('[Snapshot] Auto-saved:', acc?.name, today);
+  } catch(e) { console.warn('[Snapshot] Auto-save failed:', e.message); }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
