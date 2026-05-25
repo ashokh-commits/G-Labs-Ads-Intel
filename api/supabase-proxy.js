@@ -56,6 +56,8 @@ async function sb(method, table, body=null, query='') {
 
 module.exports = async (req, res) => {
   Object.entries(CORS).forEach(([k,v]) => res.setHeader(k,v));
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const token = (req.headers['authorization']||'').replace('Bearer ','').trim();
