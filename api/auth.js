@@ -20,6 +20,20 @@ const USERS = [
     role:         'client',
     accounts:     ['854069203683598', '185825224320502'],
   },
+  {
+    userId:       'diva',
+    name:         'Diva',
+    passwordHash: crypto.createHmac('sha256', JWT_SECRET).update('DivaG6!2026').digest('hex'),
+    role:         'admin',
+    accounts:     ['*'],
+  },
+  {
+    userId:       'anisa',
+    name:         'Anisa',
+    passwordHash: crypto.createHmac('sha256', JWT_SECRET).update('AnisaG6!2026').digest('hex'),
+    role:         'admin',
+    accounts:     ['*'],
+  },
 ];
 
 const attempts = {};

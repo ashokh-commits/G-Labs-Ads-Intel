@@ -515,10 +515,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
             onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
             ashokh<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Admin</span>
           </button>
-          <button onclick="quickSelect('nanda')"
+          <button onclick="quickSelect('diva')"
             style="flex:1;padding:10px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
             onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
-            nanda<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Client</span>
+            diva<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Team</span>
+          </button>
+          <button onclick="quickSelect('anisa')"
+            style="flex:1;padding:10px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
+            onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
+            anisa<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Team</span>
           </button>
         </div>
       </div>
@@ -551,12 +556,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <i class="ti ti-checklist" style="font-size:16px;color:var(--text3)"></i>
         <span>Task Manager</span>
         <span id="tasksBadge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700"></span>
-      </button>
-      <button onclick="showHistory()" id="historyNavBtn"
-        style="width:100%;display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text2);transition:background .15s;text-align:left;margin-top:2px"
-        onmouseover="this.style.background='var(--bg3)'" onmouseout="if(!this.classList.contains('nav-active'))this.style.background='none'">
-        <i class="ti ti-history" style="font-size:16px;color:var(--text3)"></i>
-        <span>Performance History</span>
       </button>
     </div>
 
@@ -621,6 +620,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </button>
       <button class="tab-btn" onclick="switchTab('sales',this)">
         <i class="ti ti-currency-dollar" aria-hidden="true" style="margin-right:4px"></i>Sales
+      </button>
+      <button class="tab-btn" onclick="switchTab('history',this)">
+        <i class="ti ti-history" aria-hidden="true" style="margin-right:4px"></i>History
       </button>
     </div>
 
@@ -740,7 +742,7 @@ function selectAccount(id){
   leadsData=null;
   // Reset nav buttons
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
-  document.getElementById('historyNavBtn').classList.remove('nav-active');
+  document.getElementById('historyNavBtn')?.classList.remove('nav-active');
   document.getElementById('headerMeta').style.display = '';
   closeSidebar();
   document.querySelectorAll('.acc-item').forEach(e=>e.classList.remove('active'));
@@ -856,6 +858,7 @@ function switchTab(tab,btn){
   btn.classList.add('active');
   if(tab==='leads'){ loadLeads(); return; }
   if(tab==='sales'){ renderSales(); return; }
+  if(tab==='history'){ renderHistoryTab(); return; }
   const ads=cache[activeId];
   if(ads)renderAll(ads);
 }
@@ -1617,8 +1620,8 @@ function renderLeads() {
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
-let authToken   = null;
-let currentUser = null;
+let authToken   = localStorage.getItem('g6_token') || null;
+let currentUser = JSON.parse(localStorage.getItem('g6_user') || 'null');
 let sessionTimeout = null;
 const SESSION_MS = 4 * 60 * 60 * 1000; // 4 hours
 
@@ -1677,6 +1680,8 @@ async function doLogin() {
 
     authToken   = data.token;
     currentUser = data.user;
+    localStorage.setItem('g6_token', authToken);
+    localStorage.setItem('g6_user', JSON.stringify(currentUser));
 
     // Update user chip
     document.getElementById('chipUser').textContent = currentUser.userId;
@@ -1713,6 +1718,8 @@ function doLogout() {
   currentUser = null;
   cache       = {};
   activeId    = null;
+  localStorage.removeItem('g6_token');
+  localStorage.removeItem('g6_user');
   if (sessionTimeout) clearTimeout(sessionTimeout);
   document.getElementById('loginPage').style.display  = 'flex';
   document.getElementById('appWrap').style.display    = 'none';
@@ -2313,7 +2320,7 @@ let taskSearch = '';
 
 async function showTasks() {
   document.getElementById('tasksNavBtn').classList.add('nav-active');
-  document.getElementById('historyNavBtn').classList.remove('nav-active');
+  document.getElementById('historyNavBtn')?.classList.remove('nav-active');
   document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Task Manager';
@@ -2867,7 +2874,7 @@ async function handleFileUpload(taskId, input) {
   }
 }
 async function showHistory() {
-  document.getElementById('historyNavBtn').classList.add('nav-active');
+  document.getElementById('historyNavBtn')?.classList.add('nav-active');
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
   document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
   document.getElementById('navTabs').style.display = 'none';
@@ -3026,9 +3033,244 @@ async function autoSaveSnapshot(accountId, ads) {
   } catch(e) { console.warn('[Snapshot] Auto-save failed:', e.message); }
 }
 
+// ── HISTORY TAB (inside account) ──────────────────────────────────────────
+let histPeriodAcct = 'this_month';
+
+async function renderHistoryTab() {
+  const acc = ACCOUNTS.find(a => a.id === activeId);
+  const c   = document.getElementById('content');
+
+  c.innerHTML = `
+    <div class="tab-section active" style="padding:20px 24px 60px">
+      <div style="margin-bottom:16px">
+        <div class="section-title">Performance History</div>
+        <div class="section-sub">${acc?.name||''} · Historical Meta Ads data</div>
+      </div>
+
+      <!-- Period selector -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          ${['this_month','last_month','last_7','last_30','compare'].map(p=>`
+          <button class="hist-period-btn ${histPeriodAcct===p?'active':''}" onclick="setHistPeriod('${p}',this)">
+            ${{this_month:'This month',last_month:'Last month',last_7:'Last 7 days',last_30:'Last 30 days',compare:'Compare periods'}[p]}
+          </button>`).join('')}
+        </div>
+        <button onclick="saveCurrentSnapshot()" style="margin-left:auto;padding:7px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
+          💾 Save today's snapshot
+        </button>
+      </div>
+
+      <div id="histAcctContent"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+    </div>`;
+
+  await loadHistAcctData();
+}
+
+function setHistPeriod(p, btn) {
+  histPeriodAcct = p;
+  document.querySelectorAll('.hist-period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadHistAcctData();
+}
+
+async function loadHistAcctData() {
+  const el  = document.getElementById('histAcctContent');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+
+  const now   = new Date();
+  let from, to = now.toISOString().split('T')[0];
+  let fromPrev, toPrev;
+
+  if (histPeriodAcct === 'this_month') {
+    from     = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    fromPrev = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString().split('T')[0];
+    toPrev   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+  } else if (histPeriodAcct === 'last_month') {
+    const lm = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    from     = lm.toISOString().split('T')[0];
+    to       = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+    fromPrev = new Date(now.getFullYear(), now.getMonth()-2, 1).toISOString().split('T')[0];
+    toPrev   = new Date(now.getFullYear(), now.getMonth()-1, 0).toISOString().split('T')[0];
+  } else if (histPeriodAcct === 'last_7') {
+    const d = new Date(now); d.setDate(d.getDate()-7); from = d.toISOString().split('T')[0];
+    const dp= new Date(now); dp.setDate(dp.getDate()-14); fromPrev = dp.toISOString().split('T')[0];
+    toPrev  = from;
+  } else if (histPeriodAcct === 'last_30') {
+    const d = new Date(now); d.setDate(d.getDate()-30); from = d.toISOString().split('T')[0];
+    const dp= new Date(now); dp.setDate(dp.getDate()-60); fromPrev = dp.toISOString().split('T')[0];
+    toPrev  = from;
+  } else if (histPeriodAcct === 'compare') {
+    // Custom compare — show date pickers
+    el.innerHTML = `
+      <div class="s-card" style="margin-bottom:14px">
+        <div class="s-card-title">Compare two periods</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Period A</div>
+            <input type="date" id="compA1" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px">
+            <input type="date" id="compA2" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Period B</div>
+            <input type="date" id="compB1" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:6px">
+            <input type="date" id="compB2" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+          </div>
+        </div>
+        <button onclick="runComparison()" style="margin-top:14px;padding:9px 20px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Compare →</button>
+      </div>
+      <div id="compResult"></div>`;
+    return;
+  }
+
+  try {
+    const [rows, prevRows] = await Promise.all([
+      sbFetch('get_meta_history', { account_id: activeId, from, to }),
+      fromPrev ? sbFetch('get_meta_history', { account_id: activeId, from: fromPrev, to: toPrev }) : Promise.resolve([]),
+    ]);
+
+    renderHistData(el, rows, prevRows, from, to, fromPrev, toPrev);
+  } catch(e) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">
+      <div style="font-size:28px;margin-bottom:10px">📭</div>
+      <div style="font-size:14px;font-weight:500;color:var(--text2)">No historical data yet</div>
+      <div style="font-size:12px;margin-top:6px;margin-bottom:16px">Click "Save today's snapshot" to start building history</div>
+    </div>`;
+  }
+}
+
+async function runComparison() {
+  const a1 = document.getElementById('compA1')?.value;
+  const a2 = document.getElementById('compA2')?.value;
+  const b1 = document.getElementById('compB1')?.value;
+  const b2 = document.getElementById('compB2')?.value;
+  if (!a1||!a2||!b1||!b2) { alert('Please fill all 4 dates'); return; }
+  const el = document.getElementById('compResult');
+  el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
+  const [rowsA, rowsB] = await Promise.all([
+    sbFetch('get_meta_history', { account_id: activeId, from: a1, to: a2 }),
+    sbFetch('get_meta_history', { account_id: activeId, from: b1, to: b2 }),
+  ]);
+  renderHistData(el, rowsA, rowsB, a1, a2, b1, b2);
+}
+
+function renderHistData(el, rows, prevRows, from, to, fromPrev, toPrev) {
+  const agg = r => r.reduce((a,x) => ({
+    spend:       a.spend       + parseFloat(x.spend||0),
+    impressions: a.impressions + parseInt(x.impressions||0),
+    clicks:      a.clicks      + parseInt(x.clicks||0),
+    leads:       a.leads       + parseInt(x.leads||0),
+  }), {spend:0,impressions:0,clicks:0,leads:0});
+
+  const tot  = agg(rows||[]);
+  const prev = agg(prevRows||[]);
+
+  const delta = (cur, prv) => {
+    if (!prv) return '';
+    const d = prv > 0 ? ((cur-prv)/prv*100).toFixed(1) : 0;
+    const up = cur >= prv;
+    return `<div style="font-size:11px;color:${up?'var(--green)':'var(--red)'};margin-top:3px">${up?'▲':'▼'} ${Math.abs(d)}% vs prev</div>`;
+  };
+
+  const cpl  = tot.leads > 0 ? (tot.spend/tot.leads).toFixed(2) : '—';
+  const ctr  = tot.impressions > 0 ? (tot.clicks/tot.impressions*100).toFixed(2) : '—';
+  const pcpl = prev.leads > 0 ? prev.spend/prev.leads : 0;
+  const pctr = prev.impressions > 0 ? prev.clicks/prev.impressions*100 : 0;
+
+  if (!rows?.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">
+      <div style="font-size:28px;margin-bottom:10px">📭</div>
+      <div style="font-size:14px;font-weight:500;color:var(--text2)">No data for this period</div>
+      <div style="font-size:12px;margin-top:6px">Data is saved automatically when you load an account each day.<br>Or click "Save today's snapshot" to save now.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <!-- KPI comparison -->
+    <div class="sales-grid" style="margin-bottom:16px">
+      <div class="sales-kpi" style="--kpi-color:var(--red)">
+        <div class="sales-kpi-label">Spend</div>
+        <div class="sales-kpi-value">RM ${tot.spend.toLocaleString('en-MY',{minimumFractionDigits:2})}</div>
+        ${delta(tot.spend, prev.spend)}
+        ${prev.spend>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: RM ${prev.spend.toFixed(2)}</div>`:''}
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--blue)">
+        <div class="sales-kpi-label">Impressions</div>
+        <div class="sales-kpi-value">${tot.impressions.toLocaleString()}</div>
+        ${delta(tot.impressions, prev.impressions)}
+        ${prev.impressions>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${prev.impressions.toLocaleString()}</div>`:''}
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--purple)">
+        <div class="sales-kpi-label">Clicks</div>
+        <div class="sales-kpi-value">${tot.clicks.toLocaleString()}</div>
+        ${delta(tot.clicks, prev.clicks)}
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--teal)">
+        <div class="sales-kpi-label">CTR</div>
+        <div class="sales-kpi-value">${ctr}%</div>
+        ${delta(parseFloat(ctr||0), pctr)}
+        ${pctr>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${pctr.toFixed(2)}%</div>`:''}
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--green)">
+        <div class="sales-kpi-label">Leads</div>
+        <div class="sales-kpi-value">${tot.leads.toLocaleString()}</div>
+        ${delta(tot.leads, prev.leads)}
+        ${prev.leads>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${prev.leads}</div>`:''}
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--amber)">
+        <div class="sales-kpi-label">CPL</div>
+        <div class="sales-kpi-value">${cpl==='—'?'—':'RM '+cpl}</div>
+        ${pcpl>0?delta(parseFloat(cpl||0), pcpl):''}
+        ${pcpl>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: RM ${pcpl.toFixed(2)}</div>`:''}
+      </div>
+    </div>
+
+    <!-- Daily table -->
+    <div class="s-card">
+      <div class="s-card-title"><i class="ti ti-table"></i> Daily breakdown — ${from} to ${to} · ${rows.length} days tracked</div>
+      <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead><tr><th>Date</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Leads</th><th>CPL</th></tr></thead>
+          <tbody>
+            ${rows.map(r=>`<tr>
+              <td style="color:var(--text);font-weight:500">${r.date}</td>
+              <td style="color:var(--red)">RM ${parseFloat(r.spend||0).toFixed(2)}</td>
+              <td>${parseInt(r.impressions||0).toLocaleString()}</td>
+              <td>${parseInt(r.clicks||0).toLocaleString()}</td>
+              <td>${r.ctr?parseFloat(r.ctr).toFixed(2)+'%':'—'}</td>
+              <td style="color:var(--green);font-weight:600">${r.leads||0}</td>
+              <td style="color:var(--amber)">${r.leads>0?'RM '+(parseFloat(r.spend||0)/parseInt(r.leads)).toFixed(2):'—'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────
-// App hidden until login — buildSidebar called after successful auth
 document.getElementById('datePill').textContent = mStart() + ' → ' + yDay();
+
+// Restore session from localStorage if token exists and not expired
+(async function restoreSession() {
+  if (!authToken || !currentUser) return;
+  try {
+    const res  = await fetch('/api/auth?path=/verify', { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const data = await res.json();
+    if (!res.ok || !data.valid) { doLogout(); return; }
+    // Session valid — restore app
+    document.getElementById('chipUser').textContent = currentUser.userId;
+    const rolePip = document.getElementById('chipRole');
+    rolePip.textContent = currentUser.role;
+    rolePip.className   = `role-pip ${currentUser.role === 'admin' ? 'rp-admin' : 'rp-client'}`;
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appWrap').style.display   = 'block';
+    buildSidebar();
+    if (currentUser.role === 'client' && currentUser.accounts?.length === 1) {
+      selectAccount(currentUser.accounts[0]);
+    }
+  } catch(e) { /* network error — stay on login */ }
+})();
 
 // ── AUTO-REFRESH every 15 minutes ─────────────────────────────────────────
 const REFRESH_INTERVAL = 15 * 60;

@@ -1,9 +1,11 @@
--- Clear all existing tasks and insert from CSV
+-- G6 Labs — Clear and reload tasks from CSV
+-- Run in Supabase SQL Editor
+
+-- Step 1: Clear existing tasks
 DELETE FROM task_completions;
-DELETE FROM task_comments;
-DELETE FROM task_attachments;
 DELETE FROM tasks;
 
+-- Step 2: Insert 55 tasks from CSV
 INSERT INTO tasks (title, description, assignee, priority, category, frequency, status, created_by) VALUES
   ('Ads Monitoring — Toothland Dental', 'Client: Toothland Dental', 'anisa', 'high', 'ads', 'daily', 'pending', 'system'),
   ('Ads Report — Toothland Dental', 'Client: Toothland Dental', 'anisa', 'high', 'report', 'daily', 'pending', 'system'),
