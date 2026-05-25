@@ -1,4 +1,5 @@
-const crypto = require('crypto');
+const crypto       = require('crypto');
+const sendTaskNotif = require('./task-notify');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
@@ -41,7 +42,7 @@ async function sb(method, table, body=null, query='') {
   };
   if (method === 'GET') hdrs['Range'] = '0-9999';
   const opts = { method, headers: hdrs };
-  if (body)  opts.body = JSON.stringify(body);
+  if (body) opts.body = JSON.stringify(body);
   const res  = await fetch(url, opts);
   const text = await res.text();
   try {
@@ -62,8 +63,7 @@ module.exports = async (req, res) => {
   const user = verifyToken(token);
   if (!user)  return res.status(401).json({ error: 'Invalid session' });
   if (user.role === 'client') return res.status(403).json({ error: 'Access denied' });
-
-  if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Supabase not configured — check SUPABASE_URL and SUPABASE_ANON_KEY' });
+  if (!SUPABASE_URL || !SUPABASE_KEY) return res.status(500).json({ error: 'Supabase not configured' });
 
   const action = (req.query?.action || '').toLowerCase();
   const body   = await parseBody(req);
@@ -78,18 +78,46 @@ module.exports = async (req, res) => {
       return res.status(200).json(Array.isArray(r.data) ? r.data : []);
     }
 
+    if (action === 'get_all_tasks') {
+      const r = await sb('GET', 'tasks', null, '?order=created_at.desc');
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
     if (action === 'create_task') {
-      const payload = { ...body, created_by: user.userId, status: 'pending', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      const payload = {
+        ...body,
+        created_by: user.userId,
+        status:     body.status || 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
       const r = await sb('POST', 'tasks', payload, '');
-      console.log('[SB] create_task result:', JSON.stringify(r.data).slice(0,200));
-      return res.status(200).json(r.data);
+      const created = Array.isArray(r.data) ? r.data[0] : r.data;
+      // Send notification if assigned to specific person
+      if (created && created.assignee && created.assignee !== 'all' && created.assignee !== user.userId) {
+        sendTaskNotif(created, user.userId).catch(()=>{});
+      }
+      return res.status(200).json(created || {});
     }
 
     if (action === 'update_task') {
       const { id, ...updates } = body;
+      const prevR    = await sb('GET', 'tasks', null, `?id=eq.${id}`);
+      const prev     = Array.isArray(prevR.data) ? prevR.data[0] : null;
       updates.updated_at = new Date().toISOString();
       const r = await sb('PATCH', 'tasks', updates, `?id=eq.${id}`);
-      return res.status(200).json(r.data);
+      const updated = Array.isArray(r.data) ? r.data[0] : r.data;
+      // Notify if assignee changed
+      if (updated && prev && updated.assignee !== prev.assignee && updated.assignee !== 'all' && updated.assignee !== user.userId) {
+        sendTaskNotif(updated, user.userId).catch(()=>{});
+      }
+      return res.status(200).json(updated || {});
+    }
+
+    if (action === 'update_task_status') {
+      const { id, status } = body;
+      const r = await sb('PATCH', 'tasks', { status, updated_at: new Date().toISOString() }, `?id=eq.${id}`);
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'delete_task') {
@@ -99,10 +127,8 @@ module.exports = async (req, res) => {
 
     if (action === 'complete_task') {
       await sb('POST', 'task_completions', {
-        task_id:      body.task_id,
-        completed_by: user.userId,
-        notes:        body.notes || '',
-        date:         new Date().toISOString().split('T')[0],
+        task_id: body.task_id, completed_by: user.userId,
+        notes: body.notes || '', date: new Date().toISOString().split('T')[0],
       }, '');
       const taskR = await sb('GET', 'tasks', null, `?id=eq.${body.task_id}`);
       const task  = Array.isArray(taskR.data) ? taskR.data[0] : null;
@@ -115,6 +141,44 @@ module.exports = async (req, res) => {
     if (action === 'get_completions') {
       const date = req.query?.date || new Date().toISOString().split('T')[0];
       const r    = await sb('GET', 'task_completions', null, `?date=eq.${date}`);
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    // ── COMMENTS ───────────────────────────────────────────────────────────
+    if (action === 'get_comments') {
+      const r = await sb('GET', 'task_comments', null, `?task_id=eq.${req.query?.task_id}&order=created_at.asc`);
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'add_comment') {
+      const r = await sb('POST', 'task_comments', {
+        task_id:    body.task_id,
+        author:     user.userId,
+        message:    body.message,
+        created_at: new Date().toISOString(),
+      }, '');
+      return res.status(200).json(Array.isArray(r.data) ? r.data[0] : r.data);
+    }
+
+    if (action === 'delete_comment') {
+      await sb('DELETE', 'task_comments', null, `?id=eq.${body.id}`);
+      return res.status(200).json({ ok: true });
+    }
+
+    // ── ATTACHMENTS ────────────────────────────────────────────────────────
+    if (action === 'save_attachment') {
+      const r = await sb('POST', 'task_attachments', {
+        task_id:     body.task_id,
+        filename:    body.filename,
+        url:         body.url,
+        uploaded_by: user.userId,
+        created_at:  new Date().toISOString(),
+      }, '');
+      return res.status(200).json(Array.isArray(r.data) ? r.data[0] : r.data);
+    }
+
+    if (action === 'get_attachments') {
+      const r = await sb('GET', 'task_attachments', null, `?task_id=eq.${req.query?.task_id}&order=created_at.desc`);
       return res.status(200).json(Array.isArray(r.data) ? r.data : []);
     }
 
@@ -152,6 +216,19 @@ module.exports = async (req, res) => {
       if (to)   q += `&date=lte.${to}`;
       const r = await sb('GET', 'leads_snapshots', null, q);
       return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    // ── FILE UPLOAD ────────────────────────────────────────────────────────
+    if (action === 'get_upload_url') {
+      // Return Supabase storage upload URL
+      const filename = body.filename || 'file';
+      const path     = `tasks/${body.task_id}/${Date.now()}_${filename}`;
+      return res.status(200).json({
+        uploadUrl: `${SUPABASE_URL}/storage/v1/object/task-files/${path}`,
+        publicUrl: `${SUPABASE_URL}/storage/v1/object/public/task-files/${path}`,
+        path,
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` },
+      });
     }
 
     return res.status(404).json({ error: `Unknown action: ${action}` });

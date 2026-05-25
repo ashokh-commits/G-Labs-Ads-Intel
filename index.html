@@ -397,6 +397,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* History tab */
 .hist-period-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
 .hist-period-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+/* ── KANBAN ── */
+.kanban-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+.kanban-col{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px;min-height:200px}
+.kanban-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 2px}
+.kanban-col-title{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.kanban-col-count{font-size:11px;padding:1px 7px;border-radius:10px;font-weight:600}
+.kanban-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;cursor:grab;transition:border-color .15s,box-shadow .15s;user-select:none}
+.kanban-card:hover{border-color:var(--border2);box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.kanban-card.dragging{opacity:.4;cursor:grabbing}
+.kanban-drop-zone.over{outline:2px dashed var(--blue);border-radius:8px}
+.view-toggle{display:flex;gap:4px;background:var(--bg3);padding:3px;border-radius:8px}
+.view-btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;background:none;color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:5px}
+.view-btn.active{background:var(--bg);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+/* Comment / Task detail modal */
+.cmodal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:16px}
+.cbox{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:580px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+.cbox-head{padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0}
+.cbox-body{flex:1;overflow-y:auto;padding:16px 20px}
+.cbox-foot{padding:12px 20px;border-top:1px solid var(--border);flex-shrink:0}
+.cavatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.cbubble{background:var(--bg3);border:1px solid var(--border);border-radius:0 8px 8px 8px;padding:8px 12px;flex:1}
+.attach-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+@media(max-width:768px){.kanban-wrap{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -2283,12 +2306,12 @@ async function sbFetch(action, params={}, body=null) {
 // ── TASK MANAGER ──────────────────────────────────────────────────────────
 let allTasks = [], todayDone = new Set(), taskTab = 'daily';
 
+let taskView = 'list'; // 'list' or 'kanban'
+
 async function showTasks() {
-  // Set nav active state
   document.getElementById('tasksNavBtn').classList.add('nav-active');
   document.getElementById('historyNavBtn').classList.remove('nav-active');
   document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
-
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Task Manager';
   document.getElementById('headerMeta').style.display = 'none';
@@ -2300,26 +2323,40 @@ async function showTasks() {
           <div class="section-title">Task Manager</div>
           <div class="section-sub">Marketing operations · ${new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long'})}</div>
         </div>
-        <button onclick="openTaskForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-plus"></i> Add Task
-        </button>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="view-toggle">
+            <button class="view-btn ${taskView==='list'?'active':''}" onclick="switchView('list',this)"><i class="ti ti-list"></i> List</button>
+            <button class="view-btn ${taskView==='kanban'?'active':''}" onclick="switchView('kanban',this)"><i class="ti ti-layout-kanban"></i> Kanban</button>
+          </div>
+          <button onclick="openTaskForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+            <i class="ti ti-plus"></i> Add Task
+          </button>
+        </div>
       </div>
+      ${taskView === 'list' ? `
       <div class="task-tabs" id="taskTabBar">
         <button class="task-tab active" onclick="switchTaskTab('daily',this)">📅 Daily</button>
         <button class="task-tab" onclick="switchTaskTab('weekly',this)">📆 Weekly</button>
         <button class="task-tab" onclick="switchTaskTab('monthly',this)">🗓 Monthly</button>
         <button class="task-tab" onclick="switchTaskTab('once',this)">📌 One-time</button>
-      </div>
+      </div>` : ''}
       <div id="taskList"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
     </div>`;
 
   await loadTasks();
 }
 
+function switchView(view, btn) {
+  taskView = view;
+  showTasks();
+}
+
 async function loadTasks() {
   try {
+    const action = taskView === 'kanban' ? 'get_all_tasks' : 'get_tasks';
+    const params = taskView === 'kanban' ? {} : { frequency: taskTab };
     const [tasks, completions] = await Promise.all([
-      sbFetch('get_tasks', { frequency: taskTab }),
+      sbFetch(action, params),
       sbFetch('get_completions', { date: new Date().toISOString().split('T')[0] }),
     ]);
     allTasks = Array.isArray(tasks) ? tasks : [];
@@ -2335,6 +2372,8 @@ async function loadTasks() {
 }
 
 function renderTasks() {
+  if (taskView === 'kanban') { renderKanban(); return; }
+
   const me = currentUser?.userId || 'ashokh';
   const myTasks    = allTasks.filter(t => t.assignee === me || t.assignee === 'all');
   const otherTasks = allTasks.filter(t => t.assignee !== me && t.assignee !== 'all');
@@ -2359,18 +2398,80 @@ function renderTasks() {
   document.getElementById('taskList').innerHTML = html;
 }
 
+function renderKanban() {
+  const statuses = [
+    { key:'pending',     label:'To Do',       color:'var(--text3)', bg:'var(--bg4)' },
+    { key:'in_progress', label:'In Progress',  color:'var(--blue)',  bg:'rgba(79,156,249,.1)' },
+    { key:'done',        label:'Done',         color:'var(--green)', bg:'rgba(34,197,94,.1)' },
+  ];
+
+  // Group by status regardless of tab filter in kanban
+  const byStatus = {};
+  statuses.forEach(s => byStatus[s.key] = allTasks.filter(t => (t.status||'pending') === s.key));
+
+  const colsHtml = statuses.map(s => `
+    <div class="kanban-col kanban-drop-zone" id="kcol-${s.key}"
+      ondragover="event.preventDefault();this.classList.add('over')"
+      ondragleave="this.classList.remove('over')"
+      ondrop="onKanbanDrop(event,'${s.key}')">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title" style="color:${s.color}">${s.label}</span>
+        <span class="kanban-col-count" style="background:${s.bg};color:${s.color}">${byStatus[s.key].length}</span>
+      </div>
+      ${byStatus[s.key].map(t => `
+      <div class="kanban-card" draggable="true" id="kcard-${t.id}"
+        ondragstart="onKanbanDragStart(event,'${t.id}')"
+        ondragend="this.classList.remove('dragging')">
+        <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px;line-height:1.4">${t.title}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+          <span class="task-tag tag-${t.category||'general'}">${t.category||'general'}</span>
+          <span class="task-tag pri-${t.priority||'medium'}">${t.priority||'medium'}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:10px;color:var(--text3)">${t.assignee||'all'} · ${t.frequency}</span>
+          <div style="display:flex;gap:4px">
+            <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px" title="Comments">💬</button>
+            <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px">✏️</button>
+          </div>
+        </div>
+        ${t.due_date ? `<div style="font-size:10px;color:var(--amber);margin-top:4px">📅 ${t.due_date}${t.due_time?' '+t.due_time:''}</div>` : ''}
+      </div>`).join('')}
+    </div>`).join('');
+
+  document.getElementById('taskList').innerHTML = `<div class="kanban-wrap">${colsHtml}</div>`;
+}
+
+let dragTaskId = null;
+function onKanbanDragStart(e, id) {
+  dragTaskId = id;
+  setTimeout(() => document.getElementById('kcard-'+id)?.classList.add('dragging'), 0);
+}
+async function onKanbanDrop(e, newStatus) {
+  e.preventDefault();
+  document.querySelectorAll('.kanban-drop-zone').forEach(el => el.classList.remove('over'));
+  if (!dragTaskId) return;
+  try {
+    await sbFetch('update_task_status', {}, { id: dragTaskId, status: newStatus });
+    allTasks = allTasks.map(t => t.id === dragTaskId ? {...t, status: newStatus} : t);
+    renderKanban();
+  } catch(e) { console.error(e); }
+  dragTaskId = null;
+}
+
 function renderTaskCard(t) {
   const done    = todayDone.has(t.id) || t.status === 'done';
   const tagCls  = `tag-${t.category||'general'}`;
   const priCls  = `pri-${t.priority||'medium'}`;
   const freqCls = `freq-${t.frequency||'once'}`;
+  const overdue = t.due_date && new Date(t.due_date) < new Date() && !done;
   return `<div class="task-card ${done?'done':''}">
     <div class="task-check ${done?'checked':''}" onclick="toggleTask('${t.id}','${done}')">
       ${done ? '<i class="ti ti-check" style="font-size:11px;color:#fff"></i>' : ''}
     </div>
     <div class="task-body">
       <div class="task-title ${done?'done':''}">${t.title}</div>
-      ${t.description ? `<div style="font-size:11px;color:var(--text3);margin-bottom:6px;line-height:1.5">${t.description}</div>` : ''}
+      ${t.description ? `<div style="font-size:11px;color:var(--text3);margin-bottom:5px;line-height:1.5">${t.description}</div>` : ''}
+      ${t.due_date ? `<div style="font-size:11px;color:${overdue?'var(--red)':'var(--amber)'};margin-bottom:5px">📅 ${t.due_date}${t.due_time?' at '+t.due_time:''} ${overdue?'⚠️ Overdue':''}</div>` : ''}
       <div class="task-meta">
         <span class="task-tag ${tagCls}">${t.category||'general'}</span>
         <span class="task-tag ${priCls}">${t.priority||'medium'}</span>
@@ -2378,9 +2479,12 @@ function renderTaskCard(t) {
         ${t.assignee && t.assignee !== 'all' ? `<span class="task-assignee"><i class="ti ti-user" style="font-size:10px"></i>${t.assignee}</span>` : '<span class="task-assignee">all team</span>'}
       </div>
     </div>
-    <div style="display:flex;gap:6px;flex-shrink:0">
-      <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Edit">✏️</button>
-      <button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Delete">🗑</button>
+    <div style="display:flex;gap:4px;flex-shrink:0;flex-direction:column;align-items:flex-end">
+      <div style="display:flex;gap:4px">
+        <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px" title="Comments & Details">💬</button>
+        <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Edit">✏️</button>
+        <button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Delete">🗑</button>
+      </div>
     </div>
   </div>`;
 }
@@ -2463,6 +2567,16 @@ function openTaskForm(existing=null) {
         </select>
       </div>
     </div>
+    <div class="entry-row">
+      <div class="entry-field">
+        <label class="entry-label">Due date</label>
+        <input class="entry-input" id="tf-due-date" type="date" value="${existing?.due_date||''}">
+      </div>
+      <div class="entry-field">
+        <label class="entry-label">Due time</label>
+        <input class="entry-input" id="tf-due-time" type="time" value="${existing?.due_time||''}">
+      </div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:6px">
       <button class="entry-btn entry-btn-primary" onclick="saveTask('${existing?.id||''}')">
         ${existing?'Update':'Create'} task
@@ -2489,6 +2603,8 @@ async function saveTask(existingId) {
     frequency:   document.getElementById('tf-freq').value,
     category:    document.getElementById('tf-cat').value,
     priority:    document.getElementById('tf-priority').value,
+    due_date:    document.getElementById('tf-due-date')?.value || null,
+    due_time:    document.getElementById('tf-due-time')?.value || null,
     status:      'pending',
   };
   try {
@@ -2502,7 +2618,141 @@ async function saveTask(existingId) {
   } catch(e) { alert('Failed: '+e.message); }
 }
 
-// ── PERFORMANCE HISTORY ───────────────────────────────────────────────────
+// ── COMMENTS MODAL ───────────────────────────────────────────────────────
+async function openComments(taskId) {
+  const task = allTasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'cmodal';
+  modal.id = 'commentModal';
+  modal.innerHTML = `
+    <div class="cbox">
+      <div class="cbox-head">
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">${task.title}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="task-tag tag-${task.category||'general'}">${task.category||'general'}</span>
+            <span class="task-tag pri-${task.priority||'medium'}">${task.priority||'medium'}</span>
+            <span class="freq-badge freq-${task.frequency||'once'}">${task.frequency||'once'}</span>
+            ${task.due_date?`<span style="font-size:10px;color:var(--amber)">📅 ${task.due_date}${task.due_time?' '+task.due_time:''}</span>`:''}
+          </div>
+          ${task.description?`<div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5">${task.description}</div>`:''}
+        </div>
+        <button onclick="document.getElementById('commentModal').remove()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:0;flex-shrink:0">✕</button>
+      </div>
+
+      ${task.category === 'design' ? `
+      <div style="padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg3)">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.04em;text-transform:uppercase">🎨 Design Files</div>
+        <div id="attachList" style="margin-bottom:8px"></div>
+        <label style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--bg2);border:1px dashed var(--border2);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2)">
+          <i class="ti ti-upload"></i> Upload file
+          <input type="file" id="fileUploadInput" style="display:none" onchange="handleFileUpload('${taskId}',this)">
+        </label>
+        <span id="uploadStatus" style="font-size:11px;color:var(--text3);margin-left:8px"></span>
+      </div>` : ''}
+
+      <div class="cbox-body" id="commentList">
+        <div style="text-align:center;padding:20px"><div class="spinner"></div></div>
+      </div>
+
+      <div class="cbox-foot">
+        <input id="commentInput" type="text" placeholder="Write a comment..." onkeydown="if(event.key==='Enter')submitComment('${taskId}')"
+          style="flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 13px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border2)'">
+        <button onclick="submitComment('${taskId}')"
+          style="margin-left:8px;padding:9px 16px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;flex-shrink:0">
+          Send
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+
+  // Load comments + attachments
+  loadComments(taskId);
+  if (task.category === 'design') loadAttachments(taskId);
+}
+
+async function loadComments(taskId) {
+  try {
+    const comments = await sbFetch('get_comments', { task_id: taskId });
+    const el = document.getElementById('commentList');
+    if (!el) return;
+    if (!comments.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:var(--text3)">No comments yet — be the first to comment</div>';
+      return;
+    }
+    const avatarColors = { ashokh:'#2563eb', diva:'#7c3aed', anisa:'#059669', system:'#8b92a8' };
+    el.innerHTML = comments.map(c => `
+      <div class="comment-item" style="display:flex;gap:10px;margin-bottom:14px">
+        <div class="cavatar" style="background:${avatarColors[c.author]||'#4f9cf9'};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">
+          ${(c.author||'?')[0].toUpperCase()}
+        </div>
+        <div class="cbubble" style="flex:1">
+          <div style="font-size:11px;font-weight:600;color:var(--blue);margin-bottom:3px">${c.author}</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.5">${c.message}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">${new Date(c.created_at).toLocaleString('en-MY')}</div>
+        </div>
+      </div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  } catch(e) {
+    document.getElementById('commentList').innerHTML = `<div style="color:var(--red);padding:16px;font-size:12px">${e.message}</div>`;
+  }
+}
+
+async function submitComment(taskId) {
+  const input = document.getElementById('commentInput');
+  const msg   = input?.value?.trim();
+  if (!msg) return;
+  input.value = '';
+  try {
+    await sbFetch('add_comment', {}, { task_id: taskId, message: msg });
+    await loadComments(taskId);
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+async function loadAttachments(taskId) {
+  try {
+    const files = await sbFetch('get_attachments', { task_id: taskId });
+    const el = document.getElementById('attachList');
+    if (!el) return;
+    if (!files.length) { el.innerHTML = '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">No files uploaded yet</div>'; return; }
+    el.innerHTML = files.map(f => `
+      <div class="attach-item">
+        <i class="ti ti-file" style="color:var(--blue);font-size:14px"></i>
+        <a href="${f.url}" target="_blank" style="font-size:12px;color:var(--text2);flex:1;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.filename}</a>
+        <span style="font-size:10px;color:var(--text3)">${f.uploaded_by}</span>
+      </div>`).join('');
+  } catch(e) { console.warn('[Attachments]', e.message); }
+}
+
+async function handleFileUpload(taskId, input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const status = document.getElementById('uploadStatus');
+  if (status) status.textContent = 'Uploading...';
+
+  try {
+    // Get upload URL from proxy
+    const urlData = await sbFetch('get_upload_url', {}, { task_id: taskId, filename: file.name });
+    // Upload to Supabase storage
+    const uploadRes = await fetch(urlData.uploadUrl, {
+      method:  'POST',
+      headers: { ...urlData.headers, 'Content-Type': file.type || 'application/octet-stream' },
+      body:    file,
+    });
+    if (!uploadRes.ok) throw new Error('Upload failed: '+uploadRes.status);
+    // Save attachment record
+    await sbFetch('save_attachment', {}, { task_id: taskId, filename: file.name, url: urlData.publicUrl });
+    if (status) status.textContent = '✅ Uploaded';
+    await loadAttachments(taskId);
+  } catch(e) {
+    if (status) status.textContent = '❌ '+e.message;
+  }
+}
 async function showHistory() {
   document.getElementById('historyNavBtn').classList.add('nav-active');
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
