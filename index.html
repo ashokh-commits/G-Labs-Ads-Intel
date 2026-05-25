@@ -2305,8 +2305,11 @@ async function sbFetch(action, params={}, body=null) {
 
 // ── TASK MANAGER ──────────────────────────────────────────────────────────
 let allTasks = [], todayDone = new Set(), taskTab = 'daily';
-
-let taskView = 'list'; // 'list' or 'kanban'
+let taskView = 'list';
+let taskSort = 'priority'; // priority, assignee, category, due_date, title
+let taskFilterAssignee = 'all';
+let taskFilterCategory = 'all';
+let taskSearch = '';
 
 async function showTasks() {
   document.getElementById('tasksNavBtn').classList.add('nav-active');
@@ -2317,8 +2320,10 @@ async function showTasks() {
   document.getElementById('headerMeta').style.display = 'none';
 
   document.getElementById('content').innerHTML = `
-    <div class="tab-section active" style="padding:20px 24px 60px">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    <div class="tab-section active" style="padding:18px 22px 60px">
+
+      <!-- HEADER -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
         <div>
           <div class="section-title">Task Manager</div>
           <div class="section-sub">Marketing operations · ${new Date().toLocaleDateString('en-MY',{weekday:'long',day:'numeric',month:'long'})}</div>
@@ -2333,13 +2338,77 @@ async function showTasks() {
           </button>
         </div>
       </div>
+
+      <!-- FILTER + SORT BAR -->
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <!-- Search -->
+        <div style="position:relative;flex:1;min-width:160px">
+          <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
+          <input id="taskSearchInput" type="text" placeholder="Search tasks..." value="${taskSearch}"
+            oninput="taskSearch=this.value;applyTaskFilters()"
+            style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:7px 10px 7px 30px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+
+        <!-- Assignee filter -->
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">Who:</span>
+          <div style="display:flex;gap:3px">
+            ${['all','ashokh','diva','anisa'].map(a=>`
+            <button onclick="taskFilterAssignee='${a}';applyTaskFilters();document.querySelectorAll('.af-btn').forEach(b=>b.classList.remove('active-filter'));this.classList.add('active-filter')"
+              class="af-btn" style="padding:5px 10px;border-radius:6px;border:1px solid ${taskFilterAssignee===a?'var(--blue)':'var(--border2)'};background:${taskFilterAssignee===a?'rgba(79,156,249,.15)':'var(--bg2)'};color:${taskFilterAssignee===a?'var(--blue)':'var(--text2)'};cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;white-space:nowrap">
+              ${a==='all'?'All':a.charAt(0).toUpperCase()+a.slice(1)}
+            </button>`).join('')}
+          </div>
+        </div>
+
+        <!-- Category filter -->
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">Category:</span>
+          <select onchange="taskFilterCategory=this.value;applyTaskFilters()"
+            style="background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;cursor:pointer">
+            <option value="all" ${taskFilterCategory==='all'?'selected':''}>All</option>
+            <option value="ads"     ${taskFilterCategory==='ads'?'selected':''}>📊 Ads</option>
+            <option value="content" ${taskFilterCategory==='content'?'selected':''}>✍️ Content</option>
+            <option value="design"  ${taskFilterCategory==='design'?'selected':''}>🎨 Design</option>
+            <option value="report"  ${taskFilterCategory==='report'?'selected':''}>📋 Report</option>
+            <option value="general" ${taskFilterCategory==='general'?'selected':''}>📌 General</option>
+          </select>
+        </div>
+
+        <!-- Sort -->
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">Sort:</span>
+          <select onchange="taskSort=this.value;applyTaskFilters()"
+            style="background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;cursor:pointer">
+            <option value="priority"  ${taskSort==='priority'?'selected':''}>Priority</option>
+            <option value="assignee"  ${taskSort==='assignee'?'selected':''}>Assignee</option>
+            <option value="category"  ${taskSort==='category'?'selected':''}>Category</option>
+            <option value="frequency" ${taskSort==='frequency'?'selected':''}>Frequency</option>
+            <option value="due_date"  ${taskSort==='due_date'?'selected':''}>Due date</option>
+            <option value="title"     ${taskSort==='title'?'selected':''}>Task name</option>
+          </select>
+        </div>
+
+        <!-- Clear filters -->
+        <button onclick="clearTaskFilters()" style="padding:6px 11px;border-radius:7px;background:none;border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-family:inherit;font-size:11px;white-space:nowrap">
+          Clear
+        </button>
+
+        <!-- Task count badge -->
+        <span id="taskCountBadge" style="font-size:11px;color:var(--text3);margin-left:auto;white-space:nowrap"></span>
+      </div>
+
+      <!-- FREQUENCY TABS (list view only) -->
       ${taskView === 'list' ? `
       <div class="task-tabs" id="taskTabBar">
         <button class="task-tab active" onclick="switchTaskTab('daily',this)">📅 Daily</button>
         <button class="task-tab" onclick="switchTaskTab('weekly',this)">📆 Weekly</button>
         <button class="task-tab" onclick="switchTaskTab('monthly',this)">🗓 Monthly</button>
         <button class="task-tab" onclick="switchTaskTab('once',this)">📌 One-time</button>
+        <button class="task-tab" onclick="switchTaskTab('',this)">🔍 All</button>
       </div>` : ''}
+
       <div id="taskList"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
     </div>`;
 
@@ -2349,6 +2418,111 @@ async function showTasks() {
 function switchView(view, btn) {
   taskView = view;
   showTasks();
+}
+
+function clearTaskFilters() {
+  taskSearch = ''; taskFilterAssignee = 'all'; taskFilterCategory = 'all'; taskSort = 'priority';
+  showTasks();
+}
+
+function applyTaskFilters() {
+  const priorityOrder = { urgent:0, high:1, medium:2, low:3 };
+  const freqOrder     = { daily:0, weekly:1, monthly:2, once:3 };
+
+  let filtered = allTasks.filter(t => {
+    if (taskFilterAssignee !== 'all' && t.assignee !== taskFilterAssignee && t.assignee !== 'all') return false;
+    if (taskFilterCategory !== 'all' && t.category !== taskFilterCategory) return false;
+    if (taskSearch) {
+      const s = taskSearch.toLowerCase();
+      if (!t.title?.toLowerCase().includes(s) && !t.description?.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a,b) => {
+    if (taskSort === 'priority')  return (priorityOrder[a.priority]||2) - (priorityOrder[b.priority]||2);
+    if (taskSort === 'assignee')  return (a.assignee||'').localeCompare(b.assignee||'');
+    if (taskSort === 'category')  return (a.category||'').localeCompare(b.category||'');
+    if (taskSort === 'frequency') return (freqOrder[a.frequency]||3) - (freqOrder[b.frequency]||3);
+    if (taskSort === 'due_date')  return (a.due_date||'9999') > (b.due_date||'9999') ? 1 : -1;
+    if (taskSort === 'title')     return (a.title||'').localeCompare(b.title||'');
+    return 0;
+  });
+
+  // Update count
+  const badge = document.getElementById('taskCountBadge');
+  if (badge) badge.textContent = filtered.length + ' task' + (filtered.length !== 1 ? 's' : '');
+
+  // Render filtered list
+  if (taskView === 'kanban') { renderKanbanFiltered(filtered); return; }
+
+  const me = currentUser?.userId || 'ashokh';
+  const myTasks    = filtered.filter(t => t.assignee === me || t.assignee === 'all');
+  const otherTasks = filtered.filter(t => t.assignee !== me && t.assignee !== 'all');
+
+  const renderGroup = (tasks, label, color='var(--text3)') => {
+    if (!tasks.length) return '';
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:600;color:${color};letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;padding:0 2px;display:flex;align-items:center;gap:6px">
+        ${label} <span style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:0 6px;font-size:10px;color:var(--text3)">${tasks.length}</span>
+      </div>
+      ${tasks.map(t => renderTaskCard(t)).join('')}
+    </div>`;
+  };
+
+  const html = filtered.length === 0
+    ? `<div style="text-align:center;padding:48px;color:var(--text3)">
+        <div style="font-size:28px;margin-bottom:10px">🔍</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text2)">No tasks match your filters</div>
+        <button onclick="clearTaskFilters()" style="margin-top:12px;padding:8px 18px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px">Clear filters</button>
+       </div>`
+    : renderGroup(myTasks, 'My tasks', 'var(--blue)') +
+      renderGroup(otherTasks, 'Team tasks');
+
+  document.getElementById('taskList').innerHTML = html;
+}
+
+function renderKanbanFiltered(filtered) {
+  const statuses = [
+    { key:'pending',     label:'To Do',       color:'var(--text3)', bg:'var(--bg4)' },
+    { key:'in_progress', label:'In Progress',  color:'var(--blue)',  bg:'rgba(79,156,249,.1)' },
+    { key:'done',        label:'Done',         color:'var(--green)', bg:'rgba(34,197,94,.1)' },
+  ];
+  const byStatus = {};
+  statuses.forEach(s => byStatus[s.key] = filtered.filter(t => (t.status||'pending') === s.key));
+
+  const colsHtml = statuses.map(s => `
+    <div class="kanban-col kanban-drop-zone" id="kcol-${s.key}"
+      ondragover="event.preventDefault();this.classList.add('over')"
+      ondragleave="this.classList.remove('over')"
+      ondrop="onKanbanDrop(event,'${s.key}')">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title" style="color:${s.color}">${s.label}</span>
+        <span class="kanban-col-count" style="background:${s.bg};color:${s.color}">${byStatus[s.key].length}</span>
+      </div>
+      ${byStatus[s.key].map(t => `
+      <div class="kanban-card" draggable="true" id="kcard-${t.id}"
+        ondragstart="onKanbanDragStart(event,'${t.id}')"
+        ondragend="this.classList.remove('dragging')">
+        <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px;line-height:1.4">${t.title}</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">${t.description||''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+          <span class="task-tag tag-${t.category||'general'}">${t.category||'general'}</span>
+          <span class="task-tag pri-${t.priority||'medium'}">${t.priority||'medium'}</span>
+          <span class="freq-badge freq-${t.frequency||'once'}">${t.frequency||'once'}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:10px;color:var(--text3)">👤 ${t.assignee||'all'}</span>
+          <div style="display:flex;gap:4px">
+            <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px">💬</button>
+            <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px">✏️</button>
+          </div>
+        </div>
+        ${t.due_date?`<div style="font-size:10px;color:var(--amber);margin-top:5px">📅 ${t.due_date}${t.due_time?' '+t.due_time:''}</div>`:''}
+      </div>`).join('')}
+    </div>`).join('');
+
+  document.getElementById('taskList').innerHTML = `<div class="kanban-wrap">${colsHtml}</div>`;
 }
 
 async function loadTasks() {
@@ -2373,72 +2547,11 @@ async function loadTasks() {
 
 function renderTasks() {
   if (taskView === 'kanban') { renderKanban(); return; }
-
-  const me = currentUser?.userId || 'ashokh';
-  const myTasks    = allTasks.filter(t => t.assignee === me || t.assignee === 'all');
-  const otherTasks = allTasks.filter(t => t.assignee !== me && t.assignee !== 'all');
-
-  const renderGroup = (tasks, label) => {
-    if (!tasks.length) return '';
-    return `<div style="margin-bottom:20px">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;padding:0 2px">${label}</div>
-      ${tasks.map(t => renderTaskCard(t)).join('')}
-    </div>`;
-  };
-
-  const html = myTasks.length === 0 && otherTasks.length === 0
-    ? `<div style="text-align:center;padding:48px;color:var(--text3)">
-        <div style="font-size:32px;margin-bottom:10px">✅</div>
-        <div style="font-size:14px;font-weight:500;color:var(--text2)">No ${taskTab} tasks yet</div>
-        <div style="font-size:12px;margin-top:6px">Click "Add Task" to create one</div>
-       </div>`
-    : renderGroup(myTasks, `My tasks (${myTasks.length})`) +
-      renderGroup(otherTasks, 'Team tasks');
-
-  document.getElementById('taskList').innerHTML = html;
+  applyTaskFilters();
 }
 
 function renderKanban() {
-  const statuses = [
-    { key:'pending',     label:'To Do',       color:'var(--text3)', bg:'var(--bg4)' },
-    { key:'in_progress', label:'In Progress',  color:'var(--blue)',  bg:'rgba(79,156,249,.1)' },
-    { key:'done',        label:'Done',         color:'var(--green)', bg:'rgba(34,197,94,.1)' },
-  ];
-
-  // Group by status regardless of tab filter in kanban
-  const byStatus = {};
-  statuses.forEach(s => byStatus[s.key] = allTasks.filter(t => (t.status||'pending') === s.key));
-
-  const colsHtml = statuses.map(s => `
-    <div class="kanban-col kanban-drop-zone" id="kcol-${s.key}"
-      ondragover="event.preventDefault();this.classList.add('over')"
-      ondragleave="this.classList.remove('over')"
-      ondrop="onKanbanDrop(event,'${s.key}')">
-      <div class="kanban-col-header">
-        <span class="kanban-col-title" style="color:${s.color}">${s.label}</span>
-        <span class="kanban-col-count" style="background:${s.bg};color:${s.color}">${byStatus[s.key].length}</span>
-      </div>
-      ${byStatus[s.key].map(t => `
-      <div class="kanban-card" draggable="true" id="kcard-${t.id}"
-        ondragstart="onKanbanDragStart(event,'${t.id}')"
-        ondragend="this.classList.remove('dragging')">
-        <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px;line-height:1.4">${t.title}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-          <span class="task-tag tag-${t.category||'general'}">${t.category||'general'}</span>
-          <span class="task-tag pri-${t.priority||'medium'}">${t.priority||'medium'}</span>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:10px;color:var(--text3)">${t.assignee||'all'} · ${t.frequency}</span>
-          <div style="display:flex;gap:4px">
-            <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px" title="Comments">💬</button>
-            <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px">✏️</button>
-          </div>
-        </div>
-        ${t.due_date ? `<div style="font-size:10px;color:var(--amber);margin-top:4px">📅 ${t.due_date}${t.due_time?' '+t.due_time:''}</div>` : ''}
-      </div>`).join('')}
-    </div>`).join('');
-
-  document.getElementById('taskList').innerHTML = `<div class="kanban-wrap">${colsHtml}</div>`;
+  applyTaskFilters();
 }
 
 let dragTaskId = null;
