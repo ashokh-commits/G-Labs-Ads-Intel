@@ -561,8 +561,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
     <div style="height:1px;background:var(--border);margin:10px 8px"></div>
 
-    <!-- CLIENT GROUPS -->
-    <div class="account-list" id="accountList"></div>
+    <!-- PERFORMANCE — client list -->
+    <div style="padding:0 8px">
+      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:4px 8px 8px">Performance</div>
+      <div class="account-list" id="accountList"></div>
+    </div>
 
     <div class="sidebar-foot">
       <button class="sidebar-refresh" id="refreshBtn" onclick="refreshCurrent()">
@@ -682,45 +685,23 @@ const rmN=v=>parseFloat(v)||0;
 const intN=v=>parseInt(v)||0;
 
 // ── SIDEBAR ───────────────────────────────────────────────────────────────
-const ACCOUNT_GROUPS = [
-  { label: '🦷 Dental Clinics',  key: 'dental',  ids: ['523654495274543','429121129294808','548718067784065','296798723118523'] },
-  { label: '🦷 I-Sihat Dental',  key: 'isihat',  ids: ['854069203683598','185825224320502'] },
-  { label: '🌟 Smile Borneo',    key: 'smile',   ids: ['5841452755981834'] },
-  { label: '💪 Anytime Fitness', key: 'fitness', ids: ['835864508826292','1199916453380050'] },
-  { label: '🏥 Clinics',         key: 'clinic',  ids: ['3638836659528611','1698587930478234'] },
-  { label: '✨ Other Clients',   key: 'other',   ids: ['1027194858744741','509470387773096','4486576511589217','2236534650109223'] },
-];
-
 function buildSidebar(){
   const allowed  = currentUser?.accounts || ['*'];
   const isAdmin  = allowed.includes('*');
   const visible  = isAdmin ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id));
-  const collapsed= JSON.parse(localStorage.getItem('g6_sidebar_collapsed')||'{}');
 
-  const html = ACCOUNT_GROUPS.map(group => {
-    const groupAccs = visible.filter(a => group.ids.includes(a.id));
-    if (!groupAccs.length) return '';
-    const isCollapsed = collapsed[group.key];
-    return `<div class="acc-group ${isCollapsed?'collapsed':''}" id="grp-${group.key}">
-      <div class="acc-group-label" onclick="toggleGroup('${group.key}')">
-        <span class="acc-group-name">${group.label}</span>
-        <span class="acc-group-arrow">▾</span>
-      </div>
-      <div class="acc-group-items">
-        ${groupAccs.map(a=>`
-        <div class="acc-item" id="ai-${a.id}" onclick="selectAccount('${a.id}')">
-          <div class="acc-dot"></div>
-          <div class="acc-name">${a.name}</div>
-        </div>`).join('')}
-      </div>
-    </div>`;
-  }).join('');
+  const html = visible.map(a => `
+    <div class="acc-item" id="ai-${a.id}" onclick="selectAccount('${a.id}')">
+      <div class="acc-dot"></div>
+      <div class="acc-name">${a.name}</div>
+    </div>`).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
 
-  document.getElementById('accountList').innerHTML = html || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
+  document.getElementById('accountList').innerHTML = html;
 }
 
 function toggleGroup(key) {
-  const el = document.getElementById(`grp-${key}`);
+  const el = document.getElementById('grp-'+key);
+  if (!el) return;
   el.classList.toggle('collapsed');
   const stored = JSON.parse(localStorage.getItem('g6_sidebar_collapsed')||'{}');
   stored[key] = el.classList.contains('collapsed');
@@ -2383,6 +2364,16 @@ async function showTasks() {
           </select>
         </div>
 
+        <!-- Client filter -->
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">Client:</span>
+          <select onchange="taskSearch=this.value==='all'?'':this.value;applyTaskFilters()"
+            style="background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:6px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;cursor:pointer">
+            <option value="all">All clients</option>
+            ${[...new Set(allTasks.map(t=>t.description?.replace('Client: ','')||'').filter(Boolean))].sort().map(c=>`<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+
         <!-- Sort -->
         <div style="display:flex;align-items:center;gap:5px">
           <span style="font-size:11px;color:var(--text3);white-space:nowrap">Sort:</span>
@@ -2437,8 +2428,13 @@ function applyTaskFilters() {
   const freqOrder     = { daily:0, weekly:1, monthly:2, once:3 };
 
   let filtered = allTasks.filter(t => {
-    if (taskFilterAssignee !== 'all' && t.assignee !== taskFilterAssignee && t.assignee !== 'all') return false;
+    // Frequency tab filter (skip for 'all' tab)
+    if (taskTab && taskTab !== '' && t.frequency !== taskTab) return false;
+    // Assignee filter
+    if (taskFilterAssignee !== 'all' && t.assignee !== taskFilterAssignee) return false;
+    // Category filter
     if (taskFilterCategory !== 'all' && t.category !== taskFilterCategory) return false;
+    // Client search (from description field)
     if (taskSearch) {
       const s = taskSearch.toLowerCase();
       if (!t.title?.toLowerCase().includes(s) && !t.description?.toLowerCase().includes(s)) return false;
@@ -2534,10 +2530,8 @@ function renderKanbanFiltered(filtered) {
 
 async function loadTasks() {
   try {
-    const action = taskView === 'kanban' ? 'get_all_tasks' : 'get_tasks';
-    const params = taskView === 'kanban' ? {} : { frequency: taskTab };
     const [tasks, completions] = await Promise.all([
-      sbFetch(action, params),
+      sbFetch('get_all_tasks', {}),
       sbFetch('get_completions', { date: new Date().toISOString().split('T')[0] }),
     ]);
     allTasks = Array.isArray(tasks) ? tasks : [];
@@ -3251,14 +3245,17 @@ function renderHistData(el, rows, prevRows, from, to, fromPrev, toPrev) {
 // ── INIT ──────────────────────────────────────────────────────────────────
 document.getElementById('datePill').textContent = mStart() + ' → ' + yDay();
 
-// Restore session from localStorage if token exists and not expired
+// Restore session from localStorage if token exists
 (async function restoreSession() {
   if (!authToken || !currentUser) return;
   try {
-    const res  = await fetch('/api/auth?path=/verify', { headers: { 'Authorization': `Bearer ${authToken}` } });
+    const res  = await fetch('/api/auth/verify', {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    if (!res.ok) { doLogout(); return; }
     const data = await res.json();
-    if (!res.ok || !data.valid) { doLogout(); return; }
-    // Session valid — restore app
+    if (!data.valid) { doLogout(); return; }
+    // Session valid — restore UI
     document.getElementById('chipUser').textContent = currentUser.userId;
     const rolePip = document.getElementById('chipRole');
     rolePip.textContent = currentUser.role;

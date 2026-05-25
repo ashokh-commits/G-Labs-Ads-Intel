@@ -92,7 +92,8 @@ module.exports = async (req, res) => {
   }
 
   const ip   = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
-  const path = (req.url || '').replace('/api/auth', '').split('?')[0];
+  const rawPath = (req.url || '');
+  const path = rawPath.replace('/api/auth', '').split('?')[0] || '/';
 
   // POST /api/auth — login
   if (req.method === 'POST' && (path === '' || path === '/' || path === '/login')) {
