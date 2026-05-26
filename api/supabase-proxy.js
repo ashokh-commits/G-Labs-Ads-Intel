@@ -305,6 +305,97 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // ── AD SNAPSHOTS ───────────────────────────────────────────────────────
+
+    if (action === 'save_ad_snapshots') {
+      // Upsert an array of ad×day rows (used for today's auto-save from live data)
+      const rows = body.rows || [];
+      if (!rows.length) return res.status(400).json({ error: 'No rows provided' });
+      const CHUNK = 200;
+      let saved = 0;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const r = await sb('POST', 'ad_snapshots', chunk, '?on_conflict=account_id,ad_id,date');
+        if (r.ok) saved += chunk.length;
+        else console.error('[save_ad_snapshots] chunk error:', JSON.stringify(r.data).slice(0, 200));
+      }
+      return res.status(200).json({ ok: true, saved });
+    }
+
+    if (action === 'get_ad_summary') {
+      // Aggregate ad_snapshots for an account over a date range.
+      // Returns one object per ad with summed metrics and computed rates.
+      const accountId = req.query?.account_id || '';
+      const from      = req.query?.from || '';
+      const to        = req.query?.to   || '';
+      if (!accountId) return res.status(400).json({ error: 'account_id required' });
+      let q = `?account_id=eq.${accountId}&order=date.asc`;
+      if (from) q += `&date=gte.${from}`;
+      if (to)   q += `&date=lte.${to}`;
+      const r    = await sb('GET', 'ad_snapshots', null, q);
+      const rows = Array.isArray(r.data) ? r.data : [];
+
+      // Group by ad_id and sum all metrics
+      const byAd = {};
+      rows.forEach(row => {
+        const key = row.ad_id;
+        if (!byAd[key]) {
+          byAd[key] = {
+            ad_id: row.ad_id, ad_name: row.ad_name || '', campaign_name: row.campaign_name || '',
+            spend: 0, impressions: 0, reach: 0, clicks: 0, results: 0, conversations: 0,
+            freq_sum: 0, freq_count: 0, days: 0,
+          };
+        }
+        const a = byAd[key];
+        a.spend         += parseFloat(row.spend || 0);
+        a.impressions   += parseInt(row.impressions || 0);
+        a.reach         += parseInt(row.reach || 0);
+        a.clicks        += parseInt(row.clicks || 0);
+        a.results       += parseInt(row.results || 0);
+        a.conversations += parseInt(row.conversations || 0);
+        if (parseFloat(row.frequency || 0) > 0) {
+          a.freq_sum   += parseFloat(row.frequency);
+          a.freq_count += 1;
+        }
+        a.days += 1;
+      });
+
+      const summary = Object.values(byAd).map(a => ({
+        ad_id:         a.ad_id,
+        ad_name:       a.ad_name,
+        campaign_name: a.campaign_name,
+        spend:         parseFloat(a.spend.toFixed(2)),
+        impressions:   a.impressions,
+        reach:         a.reach,
+        clicks:        a.clicks,
+        results:       a.results,
+        conversations: a.conversations,
+        ctr:           a.impressions > 0 ? parseFloat((a.clicks / a.impressions * 100).toFixed(4)) : 0,
+        cpl:           a.results > 0 ? parseFloat((a.spend / a.results).toFixed(2))
+                         : a.conversations > 0 ? parseFloat((a.spend / a.conversations).toFixed(2)) : 0,
+        avg_frequency: a.freq_count > 0 ? parseFloat((a.freq_sum / a.freq_count).toFixed(2)) : 0,
+        days:          a.days,
+      })).sort((a, b) => b.spend - a.spend);
+
+      return res.status(200).json(summary);
+    }
+
+    if (action === 'check_ad_data') {
+      // Return distinct dates for which ad_snapshots exist for an account+range.
+      // Used by the backfill UI to show which months already have data.
+      const accountId = req.query?.account_id || '';
+      const from      = req.query?.from || '';
+      const to        = req.query?.to   || '';
+      if (!accountId) return res.status(400).json({ error: 'account_id required' });
+      let q = `?account_id=eq.${accountId}&select=date`;
+      if (from) q += `&date=gte.${from}`;
+      if (to)   q += `&date=lte.${to}`;
+      const r    = await sb('GET', 'ad_snapshots', null, q);
+      const rows = Array.isArray(r.data) ? r.data : [];
+      const dates = [...new Set(rows.map(row => row.date))].sort();
+      return res.status(200).json({ count: rows.length, dates, has_data: rows.length > 0 });
+    }
+
     return res.status(404).json({ error: `Unknown action: ${action}` });
 
   } catch(e) {

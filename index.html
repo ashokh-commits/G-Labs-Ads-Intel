@@ -165,6 +165,24 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .ftab:hover{border-color:var(--border2);color:var(--text2)}
 .ftab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 
+/* ── HISTORY PERIOD BUTTONS ── */
+.hist-period-btn{padding:6px 13px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s;white-space:nowrap}
+.hist-period-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border2)}
+.hist-period-btn.active{background:var(--blue2);border-color:rgba(79,156,249,.5);color:var(--blue)}
+
+/* ── HISTORY SUB-TABS ── */
+.hist-sub-tabs{display:flex;gap:2px;background:var(--bg2);border-radius:9px;padding:3px;width:fit-content;border:1px solid var(--border)}
+.hist-sub-tab{padding:7px 18px;border-radius:7px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
+.hist-sub-tab:hover{color:var(--text2)}
+.hist-sub-tab.active{background:var(--bg3);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+/* ── BACKFILL MONTH BUTTONS ── */
+.bf-month-btn{padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--bg4);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+.bf-month-btn:hover{border-color:var(--blue);color:var(--blue)}
+.bf-month-btn.done{border-color:rgba(34,197,94,.4);background:var(--green2);color:var(--green);cursor:default}
+.bf-month-btn.loading{opacity:.6;cursor:not-allowed}
+.bf-month-btn.current{border-color:rgba(79,156,249,.4);background:var(--blue2);color:var(--blue)}
+
 /* ── MOBILE ── */
 @media(max-width:768px){
   .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:100;box-shadow:4px 0 32px rgba(0,0,0,.6);width:260px}
@@ -3157,15 +3175,13 @@ async function saveCurrentSnapshot() {
   const ads = cache[activeId];
   if (!ads || !activeId) { alert('Load an account first'); return; }
   const acc = ACCOUNTS.find(a => a.id === activeId);
+  // Ads are already mapped to flat objects — use flat fields directly
   let spend=0, impressions=0, clicks=0, leads=0;
   ads.forEach(ad => {
-    const ins = ad.insights?.data?.[0] || {};
-    spend       += parseFloat(ins.spend||0);
-    impressions += parseInt(ins.impressions||0);
-    clicks      += parseInt(ins.link_clicks||ins.clicks||0);
-    const acts   = ins.actions || [];
-    const conv   = acts.find(a => a.action_type?.includes('messaging_conversation'));
-    leads       += parseInt(conv?.value||0);
+    spend       += rmN(ad.spend);
+    impressions += intN(ad.impr);
+    clicks      += intN(ad.clicks);
+    leads       += intN(ad.convs);
   });
   const today = new Date().toISOString().split('T')[0];
   try {
@@ -3182,19 +3198,17 @@ async function saveCurrentSnapshot() {
   } catch(e) { alert('Failed: '+e.message); }
 }
 
-// Auto-save snapshot when account loads (if admin)
+// Auto-save account-level snapshot when account loads (if admin)
 async function autoSaveSnapshot(accountId, ads) {
   if (currentUser?.role !== 'admin') return;
   const acc = ACCOUNTS.find(a => a.id === accountId);
+  // Ads are already mapped to flat objects — use flat fields directly
   let spend=0, impressions=0, clicks=0, leads=0;
   ads.forEach(ad => {
-    const ins = ad.insights?.data?.[0] || {};
-    spend       += parseFloat(ins.spend||0);
-    impressions += parseInt(ins.impressions||0);
-    clicks      += parseInt(ins.link_clicks||ins.clicks||0);
-    const acts   = ins.actions || [];
-    const conv   = acts.find(a => a.action_type?.includes('messaging_conversation'));
-    leads       += parseInt(conv?.value||0);
+    spend       += rmN(ad.spend);
+    impressions += intN(ad.impr);
+    clicks      += intN(ad.clicks);
+    leads       += intN(ad.convs);
   });
   const today = new Date().toISOString().split('T')[0];
   try {
@@ -3204,8 +3218,40 @@ async function autoSaveSnapshot(accountId, ads) {
       cpl: leads>0?(spend/leads).toFixed(2):0,
       ctr: impressions>0?(clicks/impressions*100).toFixed(4):0,
     }]});
-    console.log('[Snapshot] Auto-saved:', acc?.name, today);
+    console.log('[Snapshot] Account snapshot auto-saved:', acc?.name, today);
+    // Also save per-ad snapshot for today (populates ad_snapshots table)
+    autoSaveAdSnapshot(accountId, ads).catch(e => console.warn('[AdSnapshot]', e.message));
   } catch(e) { console.warn('[Snapshot] Auto-save failed:', e.message); }
+}
+
+// Auto-save today's ad-level data to ad_snapshots table
+async function autoSaveAdSnapshot(accountId, ads) {
+  if (currentUser?.role !== 'admin') return;
+  const acc = ACCOUNTS.find(a => a.id === accountId);
+  const today = new Date().toISOString().split('T')[0];
+  const rows = ads.map(ad => ({
+    account_id:    accountId,
+    ad_id:         ad.id,
+    ad_name:       ad.name || '',
+    campaign_name: ad.camp || '',
+    date:          today,
+    spend:         rmN(ad.spend).toFixed(2),
+    impressions:   intN(ad.impr),
+    reach:         intN(ad.reach),
+    clicks:        intN(ad.clicks),
+    ctr:           rmN(ad.ctr).toFixed(4),
+    cpm:           rmN(ad.cpm).toFixed(2),
+    cpc:           rmN(ad.cpc).toFixed(2),
+    frequency:     rmN(ad.freq).toFixed(2),
+    results:       intN(ad.results),
+    conversations: intN(ad.convs),
+    cpl:           rmN(ad.cpr).toFixed(2),
+  }));
+  if (!rows.length) return;
+  try {
+    await sbFetch('save_ad_snapshots', {}, { rows });
+    console.log('[AdSnapshot] Saved', rows.length, 'ad rows for', acc?.name, today);
+  } catch(e) { console.warn('[AdSnapshot] Failed:', e.message); }
 }
 
 // ── TASK DASHBOARD (Admin only) ───────────────────────────────────────────
@@ -3449,6 +3495,9 @@ async function renderTaskDashboard() {
 
 // ── HISTORY TAB (inside account) ──────────────────────────────────────────
 let histPeriodAcct = 'this_month';
+let histViewMode   = 'account';   // 'account' | 'ads'
+let histAdPeriod   = 'this_month'; // period for ad-level view
+let histBfExpanded = false;        // backfill panel open/closed
 
 async function renderHistoryTab() {
   const acc = ACCOUNTS.find(a => a.id === activeId);
@@ -3456,28 +3505,59 @@ async function renderHistoryTab() {
 
   c.innerHTML = `
     <div class="tab-section active" style="padding:20px 24px 60px">
-      <div style="margin-bottom:16px">
-        <div class="section-title">Performance History</div>
-        <div class="section-sub">${acc?.name||''} · Historical Meta Ads data</div>
-      </div>
-
-      <!-- Period selector -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
-        <div style="display:flex;gap:4px;flex-wrap:wrap">
-          ${['this_month','last_month','last_7','last_30','compare'].map(p=>`
-          <button class="hist-period-btn ${histPeriodAcct===p?'active':''}" onclick="setHistPeriod('${p}',this)">
-            ${{this_month:'This month',last_month:'Last month',last_7:'Last 7 days',last_30:'Last 30 days',compare:'Compare periods'}[p]}
-          </button>`).join('')}
+      <div style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div class="section-title">Performance History</div>
+          <div class="section-sub">${acc?.name||''} · Historical Meta Ads data</div>
         </div>
-        <button onclick="saveCurrentSnapshot()" style="margin-left:auto;padding:7px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px">
-          💾 Save today's snapshot
+        <button onclick="saveCurrentSnapshot()" style="padding:7px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px;white-space:nowrap">
+          💾 Save snapshot
         </button>
       </div>
 
-      <div id="histAcctContent"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+      <!-- Sub-tab switcher -->
+      <div class="hist-sub-tabs" style="margin-bottom:18px">
+        <button class="hist-sub-tab ${histViewMode==='account'?'active':''}" onclick="setHistView('account')">
+          <i class="ti ti-chart-line" style="font-size:13px;vertical-align:-2px"></i> Account Summary
+        </button>
+        <button class="hist-sub-tab ${histViewMode==='ads'?'active':''}" onclick="setHistView('ads')">
+          <i class="ti ti-table" style="font-size:13px;vertical-align:-2px"></i> Ad Intelligence
+        </button>
+      </div>
+
+      <!-- Content area -->
+      <div id="histMainContent"></div>
     </div>`;
 
-  await loadHistAcctData();
+  if (histViewMode === 'account') renderHistAccountView();
+  else renderHistAdsView();
+}
+
+function setHistView(mode) {
+  histViewMode = mode;
+  document.querySelectorAll('.hist-sub-tab').forEach((b,i) => {
+    b.classList.toggle('active', (i===0&&mode==='account')||(i===1&&mode==='ads'));
+  });
+  const el = document.getElementById('histMainContent');
+  if (!el) return;
+  if (mode === 'account') renderHistAccountView();
+  else renderHistAdsView();
+}
+
+// ── Account Summary view (existing flow, refactored into sub-tab) ─────────
+
+function renderHistAccountView() {
+  const el = document.getElementById('histMainContent');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${['this_month','last_month','last_7','last_30','compare'].map(p=>`
+      <button class="hist-period-btn ${histPeriodAcct===p?'active':''}" onclick="setHistPeriod('${p}',this)">
+        ${{this_month:'This month',last_month:'Last month',last_7:'Last 7 days',last_30:'Last 30 days',compare:'Compare periods'}[p]}
+      </button>`).join('')}
+    </div>
+    <div id="histAcctContent"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>`;
+  loadHistAcctData();
 }
 
 function setHistPeriod(p, btn) {
@@ -3658,6 +3738,314 @@ function renderHistData(el, rows, prevRows, from, to, fromPrev, toPrev) {
             </tr>`).join('')}
           </tbody>
         </table>
+      </div>
+    </div>`;
+}
+
+// ── AD INTELLIGENCE HISTORY VIEW ─────────────────────────────────────────
+
+function renderHistAdsView() {
+  const el = document.getElementById('histMainContent');
+  if (!el) return;
+
+  // Generate month list from Jan of current year to current month
+  const now = new Date();
+  const months = [];
+  const startYear = now.getFullYear();
+  const startMonth = 0; // January
+  for (let m = startMonth; m <= now.getMonth(); m++) {
+    const d = new Date(startYear, m, 1);
+    months.push({
+      label: d.toLocaleString('en-MY', { month: 'short', year: '2-digit' }),
+      since: `${startYear}-${String(m+1).padStart(2,'0')}-01`,
+      until: new Date(startYear, m+1, 0).toISOString().split('T')[0],
+      key:   `${startYear}-${String(m+1).padStart(2,'0')}`,
+    });
+  }
+
+  const periodLabels = {
+    this_month:   'This month',
+    last_month:   'Last month',
+    last_3months: 'Last 3 months',
+    custom:       'Custom range',
+  };
+
+  // Store months in a global so onclick can reference it safely (avoids JSON quote escaping in HTML attrs)
+  window._bfMonths = months;
+
+  el.innerHTML = `
+    <!-- Period selector -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      ${Object.entries(periodLabels).map(([p,l])=>`
+      <button class="hist-period-btn ${histAdPeriod===p?'active':''}" onclick="setHistAdPeriod('${p}',this)">${l}</button>`).join('')}
+    </div>
+
+    ${histAdPeriod === 'custom' ? `
+    <div class="s-card" style="margin-bottom:14px">
+      <div class="s-card-title">Custom date range</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:5px">From</div>
+          <input type="date" id="adHistFrom" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none"></div>
+        <div><div style="font-size:11px;color:var(--text3);margin-bottom:5px">To</div>
+          <input type="date" id="adHistTo" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none"></div>
+        <button onclick="loadAdHistoryCustom()" style="padding:9px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Load →</button>
+      </div>
+    </div>` : ''}
+
+    <!-- Backfill panel -->
+    <div class="s-card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleBackfillPanel()">
+        <div class="s-card-title" style="margin-bottom:0">
+          <i class="ti ti-database-import"></i> Backfill Historical Data
+          <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px">— pull Jan → now from Meta API into database</span>
+        </div>
+        <i class="ti ${histBfExpanded?'ti-chevron-up':'ti-chevron-down'}" style="color:var(--text3);font-size:16px" id="bfChevron"></i>
+      </div>
+      <div id="bfPanel" style="display:${histBfExpanded?'block':'none'};margin-top:14px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Click a month to pull and save all ad-level data from Meta. Green = already in database. Each fetch takes ~5–15 seconds.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="bfMonths">
+          ${months.map(m=>`
+          <button class="bf-month-btn" id="bf-${m.key}" onclick="runBackfillMonth('${m.since}','${m.until}','${m.key}',this)">
+            <span id="bf-icon-${m.key}">📥</span> ${m.label}
+          </button>`).join('')}
+        </div>
+        <div id="bfStatus" style="font-size:12px;color:var(--text3);margin-top:10px"></div>
+        <button onclick="runBackfillAll(window._bfMonths)" style="margin-top:12px;padding:8px 16px;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-player-play"></i> Backfill all months
+        </button>
+      </div>
+    </div>
+
+    <!-- Ad data table -->
+    <div id="adHistContent"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>`;
+
+  // Check backfill status for each month and load ad data
+  checkBackfillStatus(months).catch(()=>{});
+  loadAdHistory().catch(()=>{});
+}
+
+function setHistAdPeriod(p, btn) {
+  histAdPeriod = p;
+  renderHistAdsView();
+}
+
+function toggleBackfillPanel() {
+  histBfExpanded = !histBfExpanded;
+  const panel   = document.getElementById('bfPanel');
+  const chevron = document.getElementById('bfChevron');
+  if (panel)   panel.style.display   = histBfExpanded ? 'block' : 'none';
+  if (chevron) chevron.className = `ti ${histBfExpanded ? 'ti-chevron-up' : 'ti-chevron-down'}`;
+}
+
+// Check which months already have data and update button states
+async function checkBackfillStatus(months) {
+  for (const m of months) {
+    try {
+      const data = await sbFetch('check_ad_data', { account_id: activeId, from: m.since, to: m.until });
+      const btn  = document.getElementById(`bf-${m.key}`);
+      const icon = document.getElementById(`bf-icon-${m.key}`);
+      if (!btn) continue;
+      if (data?.has_data) {
+        btn.classList.add('done');
+        if (icon) icon.textContent = '✓';
+        btn.title = `${data.count} rows · ${data.dates?.length || 0} days`;
+      }
+    } catch { /* ignore individual failures */ }
+  }
+}
+
+// Run backfill for a single month
+async function runBackfillMonth(since, until, key, btn) {
+  if (btn.classList.contains('done') || btn.classList.contains('loading')) return;
+  btn.classList.add('loading');
+  btn.disabled = true;
+  const icon   = document.getElementById(`bf-icon-${key}`);
+  const status = document.getElementById('bfStatus');
+  if (icon)   icon.textContent = '⏳';
+  if (status) status.textContent = `Fetching ${since} → ${until}…`;
+
+  try {
+    const res = await authedFetch('/api/meta-backfill', {
+      method: 'POST',
+      body:   JSON.stringify({ accountId: activeId, since, until }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Backfill failed');
+
+    btn.classList.remove('loading');
+    btn.classList.add('done');
+    btn.disabled = false;
+    if (icon)   icon.textContent = '✓';
+    if (status) status.textContent = `✅ Saved ${data.saved} rows (${data.records} ad×day records) for ${since.slice(0,7)}`;
+    // Refresh the ad data table
+    loadAdHistory().catch(()=>{});
+  } catch(e) {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    if (icon)   icon.textContent = '⚠️';
+    if (status) status.textContent = `❌ ${e.message}`;
+  }
+}
+
+// Run backfill for all months sequentially
+async function runBackfillAll(months) {
+  const status = document.getElementById('bfStatus');
+  for (const m of months) {
+    const btn = document.getElementById(`bf-${m.key}`);
+    if (!btn || btn.classList.contains('done')) continue;
+    if (status) status.textContent = `Backfilling ${m.label}…`;
+    await runBackfillMonth(m.since, m.until, m.key, btn);
+    await new Promise(r => setTimeout(r, 800)); // brief pause between months
+  }
+  if (status) status.textContent += ' — All done!';
+}
+
+// Calculate from/to dates for the selected ad period
+function getAdHistDates() {
+  const now = new Date();
+  let from, to = now.toISOString().split('T')[0];
+  if (histAdPeriod === 'this_month') {
+    from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  } else if (histAdPeriod === 'last_month') {
+    const lm = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    from = lm.toISOString().split('T')[0];
+    to   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+  } else if (histAdPeriod === 'last_3months') {
+    const d = new Date(now.getFullYear(), now.getMonth()-2, 1);
+    from = d.toISOString().split('T')[0];
+  } else {
+    // custom — handled separately
+    from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+  }
+  return { from, to };
+}
+
+async function loadAdHistoryCustom() {
+  const from = document.getElementById('adHistFrom')?.value;
+  const to   = document.getElementById('adHistTo')?.value;
+  if (!from || !to) { alert('Please select both dates'); return; }
+  const el = document.getElementById('adHistContent');
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  try {
+    const ads = await sbFetch('get_ad_summary', { account_id: activeId, from, to });
+    renderAdHistory(el, ads, from, to);
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:20px">${e.message}</div>`;
+  }
+}
+
+async function loadAdHistory() {
+  if (histAdPeriod === 'custom') return; // custom uses loadAdHistoryCustom()
+  const el = document.getElementById('adHistContent');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  const { from, to } = getAdHistDates();
+  try {
+    const ads = await sbFetch('get_ad_summary', { account_id: activeId, from, to });
+    renderAdHistory(el, ads, from, to);
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:20px">${e.message}</div>`;
+  }
+}
+
+function renderAdHistory(el, ads, from, to) {
+  if (!Array.isArray(ads) || ads.length === 0) {
+    const month = from?.slice(0,7) || '';
+    el.innerHTML = `
+      <div class="s-card" style="text-align:center;padding:40px 24px">
+        <div style="font-size:36px;margin-bottom:12px">📭</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:8px">No ad data for this period</div>
+        <div style="font-size:13px;color:var(--text3);line-height:1.7">
+          Click <strong style="color:var(--text2)">Backfill Historical Data</strong> above and press the
+          <strong style="color:var(--text2)">${month}</strong> button to download data from Meta API into the database.
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Summary KPIs
+  const totSpend  = ads.reduce((s,a)=>s+a.spend,0);
+  const totImpr   = ads.reduce((s,a)=>s+a.impressions,0);
+  const totClicks = ads.reduce((s,a)=>s+a.clicks,0);
+  const totRes    = ads.reduce((s,a)=>s+a.results,0);
+  const totConvs  = ads.reduce((s,a)=>s+a.conversations,0);
+  const avgCtr    = totImpr > 0 ? (totClicks/totImpr*100) : 0;
+  const avgCpl    = totRes  > 0 ? (totSpend/totRes)       : (totConvs > 0 ? totSpend/totConvs : 0);
+  const ctrT = parseFloat(document.getElementById('ctrT')?.value)||0.5;
+  const cplT = parseFloat(document.getElementById('cplT')?.value)||15;
+
+  el.innerHTML = `
+    <!-- Summary KPIs -->
+    <div class="sales-grid" style="margin-bottom:16px">
+      <div class="sales-kpi" style="--kpi-color:var(--red)">
+        <div class="sales-kpi-label">Total Spend</div>
+        <div class="sales-kpi-value">RM ${totSpend.toLocaleString('en-MY',{minimumFractionDigits:2})}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px">${ads.length} ads · ${from} → ${to}</div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--blue)">
+        <div class="sales-kpi-label">Impressions</div>
+        <div class="sales-kpi-value">${totImpr.toLocaleString()}</div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--purple)">
+        <div class="sales-kpi-label">Clicks</div>
+        <div class="sales-kpi-value">${totClicks.toLocaleString()}</div>
+        <div style="font-size:10px;color:${avgCtr>=ctrT?'var(--green)':'var(--amber)'};margin-top:3px">CTR ${avgCtr.toFixed(2)}%</div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--green)">
+        <div class="sales-kpi-label">Results</div>
+        <div class="sales-kpi-value">${(totRes||totConvs).toLocaleString()}</div>
+      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--amber)">
+        <div class="sales-kpi-label">Avg CPL</div>
+        <div class="sales-kpi-value" style="color:${avgCpl>0&&avgCpl<=cplT?'var(--green)':avgCpl>cplT?'var(--red)':'var(--text)'}">
+          ${avgCpl > 0 ? 'RM '+avgCpl.toFixed(2) : '—'}
+        </div>
+      </div>
+    </div>
+
+    <!-- Ad performance table -->
+    <div class="s-card">
+      <div class="s-card-title"><i class="ti ti-table"></i> Per-ad breakdown · ${ads.length} ads · ${from} → ${to}</div>
+      <div style="overflow-x:auto">
+        <table class="ad-table">
+          <thead>
+            <tr>
+              <th style="min-width:160px">Ad name</th>
+              <th style="min-width:120px">Campaign</th>
+              <th>Spend</th>
+              <th>Impr</th>
+              <th>Clicks</th>
+              <th>CTR</th>
+              <th>Results</th>
+              <th>CPL</th>
+              <th>Avg Freq</th>
+              <th>Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ads.map(a => {
+              const cplColor = a.cpl>0&&a.cpl<=cplT?'var(--green)':a.cpl>cplT?'var(--red)':'var(--text3)';
+              const ctrColor = a.ctr>=ctrT?'var(--green)':a.ctr>0?'var(--amber)':'var(--text3)';
+              const freqT    = parseFloat(document.getElementById('freqT')?.value)||3;
+              const freqColor= a.avg_frequency>freqT?'var(--red)':a.avg_frequency>0?'var(--text2)':'var(--text3)';
+              return `<tr>
+                <td style="color:var(--text);font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.ad_name}">${a.ad_name||'—'}</td>
+                <td style="color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.campaign_name}">${a.campaign_name||'—'}</td>
+                <td style="color:var(--red);font-weight:600">RM ${a.spend.toFixed(2)}</td>
+                <td>${a.impressions.toLocaleString()}</td>
+                <td>${a.clicks.toLocaleString()}</td>
+                <td style="color:${ctrColor}">${a.ctr>0?a.ctr.toFixed(2)+'%':'—'}</td>
+                <td style="color:var(--green);font-weight:600">${a.results||a.conversations||0}</td>
+                <td style="color:${cplColor};font-weight:600">${a.cpl>0?'RM '+a.cpl.toFixed(2):'—'}</td>
+                <td style="color:${freqColor}">${a.avg_frequency>0?a.avg_frequency.toFixed(1)+'×':'—'}</td>
+                <td style="color:var(--text3)">${a.days}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+        Data source: ad_snapshots table · backfilled from Meta Ads API · sorted by spend desc
       </div>
     </div>`;
 }
