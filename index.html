@@ -699,6 +699,7 @@ const ACCOUNTS=[
 
 let activeId=null, cache={}, curFilter='all', curTab='overview';
 let spendChart=null;
+let sparkCharts=[];
 
 // ── DATES ─────────────────────────────────────────────────────────────────
 const fmtD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -845,18 +846,22 @@ function showLoading(){
 }
 
 // ── ALERTS ────────────────────────────────────────────────────────────────
+// Only active ads can trigger threshold alerts — paused ads are silent.
 function chk(ad){
   const cplT=parseFloat(document.getElementById('cplT').value)||15;
   const ctrT=parseFloat(document.getElementById('ctrT').value)||0.5;
   const freqT=parseFloat(document.getElementById('freqT').value)||3;
   const al=[],wa=[];
   const st=(ad.es||ad.status||'').toLowerCase();
+  const isActive=st==='active';
   const spend=rmN(ad.spend),cpr=rmN(ad.cpr),ctr=rmN(ad.ctr),freq=rmN(ad.freq),impr=intN(ad.impr);
+  // Delivery-state issues apply to all non-standard statuses
   if(st!=='active'&&st!=='paused'&&st)al.push(`Delivery issue: ${ad.es}`);
-  if(st==='active'&&spend===0&&impr===0)al.push('Active but zero impressions — not delivering');
-  if(cpr>0&&cpr>cplT)al.push(`CPL ${rm(cpr)} exceeds RM ${cplT} threshold`);
-  if(impr>500&&ctr>0&&ctr<ctrT)wa.push(`CTR ${pct(ctr)} below ${ctrT}% threshold`);
-  if(freq>freqT)wa.push(`Frequency ${parseFloat(freq).toFixed(2)}× — fatigue risk`);
+  // Threshold alerts only fire for active ads
+  if(isActive&&spend===0&&impr===0)al.push('Active but zero impressions — not delivering');
+  if(isActive&&cpr>0&&cpr>cplT)al.push(`CPL ${rm(cpr)} exceeds RM ${cplT} threshold`);
+  if(isActive&&impr>500&&ctr>0&&ctr<ctrT)wa.push(`CTR ${pct(ctr)} below ${ctrT}% threshold`);
+  if(isActive&&freq>freqT)wa.push(`Frequency ${parseFloat(freq).toFixed(2)}× — fatigue risk`);
   return{al,wa};
 }
 
@@ -899,56 +904,76 @@ function renderAll(ads){
 
 // ── OVERVIEW TAB ──────────────────────────────────────────────────────────
 function renderOverview(ads){
+  // Destroy stale sparkline chart instances before re-rendering
+  sparkCharts.forEach(c=>{try{c.destroy();}catch{}});sparkCharts=[];
+  const freqT=parseFloat(document.getElementById('freqT').value)||3;
+
+  // ── Active-only subset — health metrics must not be diluted by paused ads ─
+  const activeAds=ads.filter(a=>(a.es||a.status||'').toLowerCase()==='active');
+
   const totalSpend=ads.reduce((s,a)=>s+rmN(a.spend),0);
   const totalImpr=ads.reduce((s,a)=>s+intN(a.impr),0);
   const totalReach=ads.reduce((s,a)=>s+intN(a.reach),0);
   const totalResults=ads.reduce((s,a)=>s+intN(a.results),0);
-  const active=ads.filter(a=>(a.es||'').toLowerCase()==='active').length;
-  const alerts=ads.filter(a=>chk(a).al.length>0).length;
-  const warns=ads.filter(a=>chk(a).wa.length>0).length;
-  const ctrAds=ads.filter(a=>rmN(a.ctr)>0);
+  const totalClicks=ads.reduce((s,a)=>s+intN(a.clicks),0);
+  const cvr=totalClicks>0&&totalResults>0?((totalResults/totalClicks)*100):0;
+
+  const active=activeAds.length;
+  // Alerts/warns already scoped to active inside chk(); keep filter on activeAds for clarity
+  const alerts=activeAds.filter(a=>chk(a).al.length>0).length;
+  const warns=activeAds.filter(a=>chk(a).wa.length>0).length;
+
+  // CTR and CPL averages from active ads only
+  const ctrAds=activeAds.filter(a=>rmN(a.ctr)>0);
   const avgCtr=ctrAds.length?ctrAds.reduce((s,a)=>s+rmN(a.ctr),0)/ctrAds.length:0;
-  const cprAds=ads.filter(a=>rmN(a.cpr)>0);
+  const cprAds=activeAds.filter(a=>rmN(a.cpr)>0);
   const avgCpr=cprAds.length?cprAds.reduce((s,a)=>s+rmN(a.cpr),0)/cprAds.length:0;
 
-  // Health score
-  const avgScore=ads.length?ads.reduce((s,a)=>s+scoreAd(a).score,0)/ads.length:0;
+  // Health score — active ads only
+  const avgScore=activeAds.length?activeAds.reduce((s,a)=>s+scoreAd(a).score,0)/activeAds.length:0;
   const healthColor=avgScore>=70?'#22c55e':avgScore>=45?'#f59e0b':'#ef4444';
   const ctrScore=Math.min(100,avgCtr*50);
   const ctrColor=avgCtr>=1?'#22c55e':avgCtr>=0.5?'#f59e0b':'#ef4444';
   const alertScore=Math.max(0,100-alerts*20-warns*10);
   const alertColor=alertScore>=80?'#22c55e':alertScore>=50?'#f59e0b':'#ef4444';
 
-  // Insights
+  // Insights — all metrics are active-ads-only, copy reflects that
   const insights=[];
   if(active===0)insights.push({type:'bad',title:'No active ads running',body:'All ads are paused or inactive this month. No spend, no reach.',tab:'health'});
-  else if(alerts>0)insights.push({type:'bad',title:`${alerts} ad${alerts>1?'s':''} have critical issues — click to view`,body:'CPL over threshold, delivery issues, or zero-impression active ads detected. Tap to see full breakdown.',tab:'health'});
-  if(avgCtr>=1)insights.push({type:'good',title:'Strong CTR performance',body:`Average CTR of ${avgCtr.toFixed(2)}% is above 1% benchmark — creative is resonating with the audience.`,tab:'ads'});
-  else if(avgCtr>0&&avgCtr<0.5)insights.push({type:'warn',title:'CTR below benchmark — click to review ads',body:`Average CTR of ${avgCtr.toFixed(2)}% is below the 0.5% threshold. Creative refresh or audience refinement recommended.`,tab:'ads'});
-  if(warns>0)insights.push({type:'warn',title:`${warns} ad${warns>1?'s':''} showing warning signs — click to review`,body:'Frequency or CTR issues detected — review before they escalate to delivery problems.',tab:'health'});
-  if(avgCpr>0&&avgCpr<=15)insights.push({type:'good',title:'CPL within target range',body:`Average CPL of ${rm(avgCpr)} is within the RM 15 threshold. Campaigns are cost-efficient.`,tab:'ads'});
+  else if(alerts>0)insights.push({type:'bad',title:`${alerts} active ad${alerts>1?'s':''} have critical issues — click to view`,body:'CPL over threshold, delivery issues, or zero-impression active ads detected. Tap to see full breakdown.',tab:'health'});
+  if(avgCtr>=1)insights.push({type:'good',title:'Strong CTR performance',body:`Average CTR of ${avgCtr.toFixed(2)}% across active ads is above 1% benchmark — creative is resonating with the audience.`,tab:'ads'});
+  else if(avgCtr>0&&avgCtr<0.5)insights.push({type:'warn',title:'CTR below benchmark — click to review ads',body:`Average CTR of ${avgCtr.toFixed(2)}% across active ads is below the 0.5% threshold. Creative refresh or audience refinement recommended.`,tab:'ads'});
+  if(warns>0)insights.push({type:'warn',title:`${warns} active ad${warns>1?'s':''} showing warning signs — click to review`,body:'Frequency or CTR issues on active ads — review before they escalate to delivery problems.',tab:'health'});
+  if(avgCpr>0&&avgCpr<=15)insights.push({type:'good',title:'CPL within target range',body:`Average CPL of ${rm(avgCpr)} across active ads is within the RM 15 threshold. Campaigns are cost-efficient.`,tab:'ads'});
   else if(avgCpr>15)insights.push({type:'bad',title:'CPL above target — click to identify offending ads',body:`Average CPL of ${rm(avgCpr)} exceeds RM 15 threshold. Review targeting and ad relevance.`,tab:'ads'});
+  if(cvr>0)insights.push({type:'info',title:`Conversion rate: ${cvr.toFixed(1)}% (clicks → results)`,body:`${totalResults.toLocaleString()} results from ${totalClicks.toLocaleString()} clicks this month. ${cvr>=5?'Solid CVR — audience intent is high.':cvr>=2?'Moderate CVR — consider improving the landing page or offer clarity.':'Low CVR — review landing page quality and CTA alignment.'}`,tab:null});
   if(!insights.length)insights.push({type:'info',title:'Data loaded successfully',body:`${ads.length} ads with activity found for ${mLabel()}. Use the tabs above to explore details.`,tab:null});
 
-  // By campaign
+  // By campaign — track active status + max frequency for bar color and fatigue flag
   const byCamp={};
-  ads.forEach(ad=>{const k=ad.camp||'Uncategorized';if(!byCamp[k])byCamp[k]={spend:0,impr:0,reach:0,count:0};byCamp[k].spend+=rmN(ad.spend);byCamp[k].impr+=intN(ad.impr);byCamp[k].reach+=intN(ad.reach);byCamp[k].count++;});
+  ads.forEach(ad=>{
+    const k=ad.camp||'Uncategorized';
+    const isAd=(ad.es||ad.status||'').toLowerCase()==='active';
+    if(!byCamp[k])byCamp[k]={spend:0,impr:0,reach:0,count:0,hasActive:false,maxFreq:0};
+    byCamp[k].spend+=rmN(ad.spend);byCamp[k].impr+=intN(ad.impr);byCamp[k].reach+=intN(ad.reach);byCamp[k].count++;
+    if(isAd){byCamp[k].hasActive=true;byCamp[k].maxFreq=Math.max(byCamp[k].maxFreq,rmN(ad.freq));}
+  });
   const camps=Object.entries(byCamp).sort((a,b)=>b[1].spend-a[1].spend);
 
   document.getElementById('content').innerHTML=`
     <div class="tab-section active" id="tab-overview">
       <div class="section-title">Performance Overview</div>
-      <div class="section-sub">${mLabel()} · ${ads.length} ads with activity · Current month only</div>
+      <div class="section-sub">${mLabel()} · ${ads.length} ads with activity · <span style="color:var(--green);font-weight:500">${active} active</span> · health metrics scoped to active ads only</div>
 
       <div class="gauge-row">
         <div class="gauge-card">
-          <div class="gauge-label">Account Health Score</div>
+          <div class="gauge-label">Account Health Score <span style="font-size:9px;color:var(--text3)">(active ads only)</span></div>
           <div class="gauge-num" style="color:${healthColor}">${Math.round(avgScore)}<span style="font-size:16px;color:var(--text3)">/100</span></div>
           <div class="gauge-sub">${avgScore>=70?'Performing well':avgScore>=45?'Needs improvement':'Critical attention needed'}</div>
           <div class="gauge-bar"><div class="gauge-fill" style="width:${avgScore}%;background:${healthColor}"></div></div>
         </div>
         <div class="gauge-card">
-          <div class="gauge-label">CTR Performance</div>
+          <div class="gauge-label">CTR Performance <span style="font-size:9px;color:var(--text3)">(active ads only)</span></div>
           <div class="gauge-num" style="color:${ctrColor}">${Math.round(ctrScore)}<span style="font-size:16px;color:var(--text3)">/100</span></div>
           <div class="gauge-sub">Avg CTR ${avgCtr>0?avgCtr.toFixed(2)+'%':'—'} across active ads</div>
           <div class="gauge-bar"><div class="gauge-fill" style="width:${ctrScore}%;background:${ctrColor}"></div></div>
@@ -956,7 +981,7 @@ function renderOverview(ads){
         <div class="gauge-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(79,156,249,.3)'" onmouseleave="this.style.borderColor='var(--border)'">
           <div class="gauge-label">Alert Status <span style="font-size:9px;color:var(--text3)">↗</span></div>
           <div class="gauge-num" style="color:${alertColor}">${alertScore}<span style="font-size:16px;color:var(--text3)">/100</span></div>
-          <div class="gauge-sub">${alerts} alert${alerts!==1?'s':''} · ${warns} warning${warns!==1?'s':''} detected</div>
+          <div class="gauge-sub">${alerts} alert${alerts!==1?'s':''} · ${warns} warning${warns!==1?'s':''} on active ads</div>
           <div class="gauge-bar"><div class="gauge-fill" style="width:${alertScore}%;background:${alertColor}"></div></div>
         </div>
       </div>
@@ -966,6 +991,7 @@ function renderOverview(ads){
           <div class="kpi-label">Total spend</div>
           <div class="kpi-value">${rm(totalSpend)}</div>
           <div class="kpi-hint">${mLabel()}</div>
+          <div style="height:38px;margin-top:10px"><canvas id="spendSpark" style="display:block;width:100%;height:38px"></canvas></div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Active ads</div>
@@ -983,24 +1009,31 @@ function renderOverview(ads){
           <div class="kpi-hint">Convs · clicks · leads</div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Avg CTR</div>
+          <div class="kpi-label">Avg CTR <span style="font-size:9px;color:var(--text3)">(active)</span></div>
           <div class="kpi-value">${avgCtr>0?avgCtr.toFixed(2)+'%':'—'}</div>
           ${avgCtr>=1?'<div class="kpi-good"><i class="ti ti-arrow-up"></i> Above benchmark</div>':avgCtr>0&&avgCtr<0.5?'<div class="kpi-warn"><i class="ti ti-alert-triangle"></i> Below 0.5%</div>':'<div class="kpi-hint">—</div>'}
+          <div style="height:38px;margin-top:10px"><canvas id="ctrSpark" style="display:block;width:100%;height:38px"></canvas></div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-label">Avg CPL / CPR</div>
+          <div class="kpi-label">Avg CPL / CPR <span style="font-size:9px;color:var(--text3)">(active)</span></div>
           <div class="kpi-value">${avgCpr>0?rm(avgCpr):'—'}</div>
           ${avgCpr>0&&avgCpr<=15?'<div class="kpi-good"><i class="ti ti-check"></i> Within target</div>':avgCpr>15?'<div class="kpi-alert"><i class="ti ti-alert-circle"></i> Above RM 15</div>':'<div class="kpi-hint">—</div>'}
+          <div style="height:38px;margin-top:10px"><canvas id="cplSpark" style="display:block;width:100%;height:38px"></canvas></div>
         </div>
         <div class="kpi-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(79,156,249,.4)'" onmouseleave="this.style.borderColor=''">
-          <div class="kpi-label">Issues <span style="font-size:9px;color:var(--text3)">↗ click to view</span></div>
+          <div class="kpi-label">Issues <span style="font-size:9px;color:var(--text3)">↗ active only</span></div>
           <div class="kpi-value">${alerts+warns}</div>
           ${alerts>0?`<div class="kpi-alert"><i class="ti ti-alert-circle"></i> ${alerts} alert${alerts>1?'s':''}</div>`:warns>0?`<div class="kpi-warn"><i class="ti ti-alert-triangle"></i> ${warns} warning${warns>1?'s':''}</div>`:'<div class="kpi-good"><i class="ti ti-check"></i> All clear</div>'}
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">CVR <span style="font-size:9px;color:var(--text3)">(clicks → results)</span></div>
+          <div class="kpi-value" style="color:${cvr>=5?'var(--green)':cvr>=2?'var(--amber)':'var(--text)'}">${cvr>0?cvr.toFixed(1)+'%':'—'}</div>
+          ${cvr>=5?'<div class="kpi-good"><i class="ti ti-arrow-up"></i> Strong conversion</div>':cvr>=2?'<div class="kpi-warn"><i class="ti ti-minus"></i> Moderate</div>':cvr>0?'<div class="kpi-alert"><i class="ti ti-arrow-down"></i> Low CVR</div>':'<div class="kpi-hint">Insufficient data</div>'}
         </div>
       </div>
 
       ${camps.length?`<div class="s-card">
-        <div class="s-card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Spend by campaign</div>
+        <div class="s-card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Spend by campaign <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:6px">· grey = all paused · ⚠️ = frequency fatigue</span></div>
         <div class="chart-wrap"><canvas id="spendChart" role="img" aria-label="Bar chart of spend by campaign">${camps.map(([k,v])=>k+': '+rm(v.spend)).join(', ')}</canvas></div>
       </div>`:''}
 
@@ -1015,7 +1048,8 @@ function renderOverview(ads){
       </div>`).join('')}
     </div>`;
 
-  // Draw chart
+  // Draw spend chart — active bars are blue, all-paused bars are muted grey,
+  // fatigue campaigns get ⚠️ in the x-axis label and a tooltip annotation
   if(camps.length){
     const ctx=document.getElementById('spendChart');
     if(ctx){
@@ -1023,19 +1057,33 @@ function renderOverview(ads){
       spendChart=new Chart(ctx,{
         type:'bar',
         data:{
-          labels:camps.map(([k])=>k.length>28?k.slice(0,28)+'…':k),
+          labels:camps.map(([k,v])=>{
+            const base=k.length>24?k.slice(0,24)+'…':k;
+            return v.hasActive&&v.maxFreq>freqT?[base,'⚠️ Freq '+v.maxFreq.toFixed(1)+'×']:base;
+          }),
           datasets:[{
             label:'Spend (RM)',
             data:camps.map(([,v])=>parseFloat(v.spend.toFixed(2))),
-            backgroundColor:'rgba(79,156,249,.7)',
-            borderColor:'#4f9cf9',
+            backgroundColor:camps.map(([,v])=>v.hasActive?'rgba(79,156,249,.7)':'rgba(100,110,135,.28)'),
+            borderColor:camps.map(([,v])=>v.hasActive?'#4f9cf9':'rgba(100,110,135,.5)'),
             borderWidth:1,
             borderRadius:4,
           }]
         },
         options:{
           responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'RM '+c.raw.toLocaleString('en-MY',{minimumFractionDigits:2})}}},
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{
+              label:c=>'RM '+c.raw.toLocaleString('en-MY',{minimumFractionDigits:2}),
+              afterLabel:c=>{
+                const d=camps[c.dataIndex]?.[1];
+                if(d?.hasActive&&d.maxFreq>freqT)return`⚠️ Frequency ${d.maxFreq.toFixed(1)}× — fatigue risk`;
+                if(!d?.hasActive)return'Paused — historical spend only';
+                return'';
+              }
+            }}
+          },
           scales:{
             x:{ticks:{color:'#5a6080',font:{size:10}},grid:{display:false}},
             y:{ticks:{color:'#5a6080',font:{size:10},callback:v=>'RM '+v},grid:{color:'rgba(42,47,66,.6)'}}
@@ -1044,6 +1092,9 @@ function renderOverview(ads){
       });
     }
   }
+
+  // Load 7-day sparklines from Supabase history (admin only, silent on failure)
+  loadSparklines(activeId).catch(()=>{});
 }
 
 // ── AD INTELLIGENCE TAB ───────────────────────────────────────────────────
@@ -1211,6 +1262,53 @@ function renderHealth(ads){
         ${okAds.map(a=>mkCard(a,'ok')).join('')}
       </div>`:''}
     </div>`;
+}
+
+// ── SPARKLINES ────────────────────────────────────────────────────────────
+// Renders a minimal 7-day line chart inside a KPI card canvas.
+// Tracks instances in sparkCharts[] so they are destroyed on next render.
+function drawSparkline(id,data,color){
+  const canvas=document.getElementById(id);
+  if(!canvas||!data||data.length<2)return;
+  const chart=new Chart(canvas,{
+    type:'line',
+    data:{
+      labels:Array.from({length:data.length},(_,i)=>i),
+      datasets:[{
+        data,
+        borderColor:color,
+        borderWidth:1.5,
+        pointRadius:0,
+        pointHoverRadius:3,
+        tension:0.4,
+        fill:false,
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      scales:{x:{display:false},y:{display:false}},
+      animation:{duration:300},
+    }
+  });
+  sparkCharts.push(chart);
+}
+
+// Fetches last 7 days of account snapshots from Supabase and draws sparklines.
+// Requires admin role — client users see the canvas placeholder only.
+async function loadSparklines(accountId){
+  if(currentUser?.role!=='admin')return;
+  try{
+    const d7=new Date();d7.setDate(d7.getDate()-6);
+    const from=fmtD(d7);
+    const to=yDay();
+    const rows=await sbFetch('get_meta_history',{account_id:accountId,from,to});
+    if(!Array.isArray(rows)||rows.length<2)return;
+    drawSparkline('spendSpark',rows.map(r=>parseFloat(r.spend)||0),'#4f9cf9');
+    drawSparkline('ctrSpark',  rows.map(r=>parseFloat(r.ctr)||0), '#22c55e');
+    drawSparkline('cplSpark',  rows.map(r=>parseFloat(r.cpl)||0), '#f59e0b');
+  }catch{}
 }
 
 // ── JUMP TO TAB ───────────────────────────────────────────────────────────
