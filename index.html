@@ -583,10 +583,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
     <div style="height:1px;background:var(--border);margin:10px 8px"></div>
 
-    <!-- PERFORMANCE — client list -->
+    <!-- PERFORMANCE — collapsible client list -->
     <div style="padding:0 8px">
-      <div style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:4px 8px 8px">Performance</div>
-      <div class="account-list" id="accountList"></div>
+      <div onclick="togglePerfSection()"
+        style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:6px 8px 6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-radius:6px;transition:background .15s"
+        onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='none'">
+        <span>Performance</span>
+        <span id="perfArrow" style="font-size:10px;transition:transform .2s">▾</span>
+      </div>
+      <div id="perfClientList" style="display:none">
+        <div class="account-list" id="accountList"></div>
+      </div>
     </div>
 
     <div class="sidebar-foot">
@@ -719,6 +726,23 @@ function buildSidebar(){
     </div>`).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
 
   document.getElementById('accountList').innerHTML = html;
+
+  // Restore perf section state
+  const perfOpen = localStorage.getItem('g6_perf_open') !== '0';
+  const perfList = document.getElementById('perfClientList');
+  const perfArrow = document.getElementById('perfArrow');
+  if (perfList) perfList.style.display = perfOpen ? 'block' : 'none';
+  if (perfArrow) perfArrow.style.transform = perfOpen ? 'rotate(0deg)' : 'rotate(-90deg)';
+}
+
+function togglePerfSection() {
+  const list  = document.getElementById('perfClientList');
+  const arrow = document.getElementById('perfArrow');
+  if (!list) return;
+  const open  = list.style.display === 'none';
+  list.style.display    = open ? 'block' : 'none';
+  if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(-90deg)';
+  localStorage.setItem('g6_perf_open', open ? '1' : '0');
 }
 
 function toggleGroup(key) {
@@ -2655,7 +2679,17 @@ function renderTaskCard(t) {
 async function toggleTask(id, isDone) {
   if (isDone === 'true') return;
   try {
+    const task = allTasks.find(t => t.id === id);
     await sbFetch('complete_task', {}, { task_id: id });
+    // Award points
+    if (task?.assignee && task.assignee !== 'all') {
+      await sbFetch('award_points', {}, {
+        assignee:   task.assignee,
+        task_id:    id,
+        task_title: task.title,
+        frequency:  task.frequency || 'daily',
+      }).catch(()=>{});
+    }
     await loadTasks();
   } catch(e) { alert('Failed: '+e.message); }
 }
@@ -3077,215 +3111,240 @@ async function autoSaveSnapshot(accountId, ads) {
 }
 
 // ── TASK DASHBOARD (Admin only) ───────────────────────────────────────────
-function renderTaskDashboard() {
+async function renderTaskDashboard() {
+  document.getElementById('taskList').innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+
+  // Load points data
+  let pointsData = [];
+  try { pointsData = await sbFetch('get_points', {}); } catch(e) {}
+
   const today    = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
 
+  // Daily tasks specifically
+  const dailyTasks   = allTasks.filter(t => t.frequency === 'daily');
+  const dailyDone    = dailyTasks.filter(t => todayDone.has(t.id) || t.status === 'done').length;
+  const dailyPending = dailyTasks.length - dailyDone;
+  const dailyPct     = dailyTasks.length > 0 ? Math.round((dailyDone/dailyTasks.length)*100) : 0;
+
   const total     = allTasks.length;
-  const pending   = allTasks.filter(t => (t.status||'pending') === 'pending').length;
-  const inProg    = allTasks.filter(t => t.status === 'in_progress').length;
   const done      = allTasks.filter(t => t.status === 'done' || todayDone.has(t.id)).length;
-  const overdue   = allTasks.filter(t => t.due_date && new Date(t.due_date) < today && t.status !== 'done' && !todayDone.has(t.id)).length;
-  const dueSoon   = allTasks.filter(t => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= tomorrow && t.status !== 'done').length;
+  const inProg    = allTasks.filter(t => t.status === 'in_progress').length;
+  const pending   = allTasks.filter(t => (t.status||'pending') === 'pending' && !todayDone.has(t.id)).length;
+  // Overdue: daily tasks not completed by end of previous day, OR tasks with explicit due_date passed
+  const overdue   = allTasks.filter(t => {
+    if (todayDone.has(t.id) || t.status === 'done') return false;
+    if (t.due_date && new Date(t.due_date) < today) return true;
+    return false;
+  }).length;
   const completionPct = total > 0 ? Math.round((done/total)*100) : 0;
+
+  // Due today = tasks with due_date = today OR daily tasks not yet done (they're always due today)
+  const dueTodayList = allTasks.filter(t => {
+    if (todayDone.has(t.id) || t.status === 'done') return false;
+    if (t.due_date) {
+      const d = new Date(t.due_date); d.setHours(0,0,0,0);
+      return d.getTime() === today.getTime();
+    }
+    // Daily tasks are always due today if not completed
+    return t.frequency === 'daily';
+  }).slice(0, 10);
+
+  const overdueList = allTasks.filter(t =>
+    t.due_date && new Date(t.due_date) < today && t.status !== 'done' && !todayDone.has(t.id)
+  ).sort((a,b) => new Date(a.due_date)-new Date(b.due_date)).slice(0,5);
 
   // By assignee
   const byAssignee = {};
   allTasks.forEach(t => {
     const a = t.assignee || 'Unassigned';
-    if (!byAssignee[a]) byAssignee[a] = { total:0, done:0, overdue:0 };
+    if (!byAssignee[a]) byAssignee[a] = { total:0, done:0, overdue:0, daily:0, dailyDone:0 };
     byAssignee[a].total++;
     if (t.status === 'done' || todayDone.has(t.id)) byAssignee[a].done++;
     if (t.due_date && new Date(t.due_date) < today && t.status !== 'done') byAssignee[a].overdue++;
+    if (t.frequency === 'daily') {
+      byAssignee[a].daily++;
+      if (todayDone.has(t.id) || t.status === 'done') byAssignee[a].dailyDone++;
+    }
   });
 
   // By category
   const byCat = {};
   allTasks.forEach(t => {
-    const c = t.category || 'general';
-    if (!byCat[c]) byCat[c] = { total:0, done:0 };
+    const c = t.category||'general';
+    if (!byCat[c]) byCat[c] = {total:0,done:0};
     byCat[c].total++;
-    if (t.status === 'done' || todayDone.has(t.id)) byCat[c].done++;
+    if (t.status==='done'||todayDone.has(t.id)) byCat[c].done++;
   });
 
-  // By client (from description)
+  // By client
   const byClient = {};
   allTasks.forEach(t => {
-    const c = t.description?.replace('Client: ','').split(' | ')[0] || 'Other';
-    if (!byClient[c]) byClient[c] = { total:0, done:0 };
+    const c = t.description?.replace('Client: ','').split(' | ')[0]||'Other';
+    if (!byClient[c]) byClient[c] = {total:0,done:0};
     byClient[c].total++;
-    if (t.status === 'done' || todayDone.has(t.id)) byClient[c].done++;
+    if (t.status==='done'||todayDone.has(t.id)) byClient[c].done++;
   });
 
-  // By frequency
-  const byFreq = {};
-  allTasks.forEach(t => {
-    const f = t.frequency || 'once';
-    if (!byFreq[f]) byFreq[f] = { total:0, done:0 };
-    byFreq[f].total++;
-    if (t.status === 'done' || todayDone.has(t.id)) byFreq[f].done++;
-  });
-
-  // Top overdue tasks
-  const overdueList = allTasks
-    .filter(t => t.due_date && new Date(t.due_date) < today && t.status !== 'done' && !todayDone.has(t.id))
-    .sort((a,b) => new Date(a.due_date) - new Date(b.due_date))
-    .slice(0, 5);
-
-  // Due today
-  const dueTodayList = allTasks
-    .filter(t => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= tomorrow && t.status !== 'done')
-    .slice(0, 5);
-
-  const maxClient = Math.max(...Object.values(byClient).map(v=>v.total), 1);
-  const maxAssignee = Math.max(...Object.values(byAssignee).map(v=>v.total), 1);
   const avatarColor = { ashokh:'#2563eb', diva:'#7c3aed', anisa:'#059669', all:'#4f9cf9' };
   const catIcon = { ads:'📊', content:'✍️', design:'🎨', report:'📋', general:'📌' };
+  const pointsMap = {};
+  (Array.isArray(pointsData)?pointsData:[]).forEach(p => { pointsMap[p.assignee] = p.total_points; });
 
   document.getElementById('taskList').innerHTML = `
-    <!-- KPI STRIP -->
-    <div class="tdash-grid">
+    <!-- TOP ROW KPIs -->
+    <div class="tdash-grid" style="margin-bottom:12px">
       <div class="tdash-kpi" style="--kc:var(--blue)">
         <div class="tdash-kpi-lbl">Total tasks</div>
         <div class="tdash-kpi-val">${total}</div>
-        <div class="tdash-kpi-sub">Across all assignees</div>
-      </div>
-      <div class="tdash-kpi" style="--kc:var(--amber)">
-        <div class="tdash-kpi-lbl">Pending</div>
-        <div class="tdash-kpi-val" style="color:var(--amber)">${pending}</div>
-        <div class="tdash-kpi-sub">${inProg} in progress</div>
+        <div class="tdash-kpi-sub">${pending} pending · ${inProg} in progress</div>
       </div>
       <div class="tdash-kpi" style="--kc:var(--green)">
-        <div class="tdash-kpi-lbl">Completed today</div>
-        <div class="tdash-kpi-val" style="color:var(--green)">${done}</div>
-        <div class="tdash-kpi-sub">${completionPct}% completion rate</div>
+        <div class="tdash-kpi-lbl">Daily tasks today</div>
+        <div class="tdash-kpi-val" style="color:${dailyPct>=80?'var(--green)':dailyPct>=50?'var(--amber)':'var(--red)'}">${dailyDone}/${dailyTasks.length}</div>
+        <div style="height:4px;background:var(--bg4);border-radius:2px;margin:6px 0">
+          <div style="height:4px;width:${dailyPct}%;background:${dailyPct>=80?'var(--green)':dailyPct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .6s"></div>
+        </div>
+        <div class="tdash-kpi-sub">${dailyPct}% complete · ${dailyPending} remaining</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--amber)">
+        <div class="tdash-kpi-lbl">Overall completion</div>
+        <div class="tdash-kpi-val" style="color:var(--amber)">${completionPct}%</div>
+        <div style="height:4px;background:var(--bg4);border-radius:2px;margin:6px 0">
+          <div style="height:4px;width:${completionPct}%;background:var(--amber);border-radius:2px;transition:width .6s"></div>
+        </div>
+        <div class="tdash-kpi-sub">${done} of ${total} tasks done</div>
       </div>
       <div class="tdash-kpi" style="--kc:var(--red)">
         <div class="tdash-kpi-lbl">Overdue</div>
         <div class="tdash-kpi-val" style="color:${overdue>0?'var(--red)':'var(--green)'}">${overdue}</div>
-        <div class="tdash-kpi-sub">${dueSoon} due today</div>
+        <div class="tdash-kpi-sub">${overdue>0?'🚩 Needs attention':'✅ All on track'}</div>
       </div>
     </div>
 
-    <!-- COMPLETION RING + FREQUENCY BREAKDOWN -->
-    <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;margin-bottom:16px">
-      <div class="tdash-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-        <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Completion</div>
-        <div class="completion-ring" style="width:100px;height:100px">
-          <svg width="100" height="100" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bg4)" stroke-width="10"/>
-            <circle cx="50" cy="50" r="40" fill="none" stroke="${completionPct>=70?'var(--green)':completionPct>=40?'var(--amber)':'var(--red)'}" stroke-width="10"
-              stroke-dasharray="${(completionPct/100)*251.2} 251.2" stroke-linecap="round"/>
-          </svg>
-          <div class="completion-ring-label">
-            <div style="font-size:22px;font-weight:700;color:var(--text)">${completionPct}%</div>
-            <div style="font-size:9px;color:var(--text3)">done</div>
-          </div>
+    <!-- POINTS LEADERBOARD + ASSIGNEE BREAKDOWN -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <!-- POINTS LEADERBOARD -->
+      <div class="tdash-card">
+        <div class="tdash-card-title">🏆 Points leaderboard
+          <button onclick="if(confirm('Reset all points to 100?'))sbFetch('reset_points',{}).then(()=>renderTaskDashboard())"
+            style="margin-left:auto;background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;font-family:inherit;font-size:10px;padding:2px 8px">Reset</button>
         </div>
-        <div style="margin-top:12px;font-size:11px;color:var(--text3)">${done} of ${total} tasks</div>
-      </div>
-      <div class="tdash-card">
-        <div class="tdash-card-title">📅 By frequency</div>
-        ${Object.entries(byFreq).sort((a,b)=>b[1].total-a[1].total).map(([freq,data])=>{
-          const pct = Math.round(data.done/data.total*100)||0;
-          const colors = {daily:'var(--green)',weekly:'var(--blue)',monthly:'var(--amber)',once:'var(--text3)'};
-          return `<div class="tdash-bar-row">
-            <div class="tdash-bar-label" style="text-transform:capitalize">${freq}</div>
-            <div class="tdash-bar-bg"><div class="tdash-bar-fill" style="width:${data.total/total*100}%;background:${colors[freq]||'var(--blue)'}"></div></div>
-            <div class="tdash-bar-val">${data.total}</div>
-            <div style="font-size:10px;color:var(--text3);width:36px;text-align:right;flex-shrink:0">${pct}% ✓</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <!-- BY ASSIGNEE + BY CATEGORY -->
-    <div class="tdash-section">
-      <div class="tdash-card">
-        <div class="tdash-card-title">👤 By assignee</div>
-        ${Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total).map(([name,data])=>{
-          const pct = Math.round(data.done/data.total*100)||0;
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Start 100pts · Daily miss -3 · Weekly -5 · Monthly -10 · Complete +2/4/8</div>
+        ${['ashokh','diva','anisa'].map((name,i) => {
+          const pts     = pointsMap[name] ?? 100;
+          const pct     = Math.min(100, pts);
+          const rank    = ['🥇','🥈','🥉'][i];
+          const bar     = pts >= 80 ? 'var(--green)' : pts >= 50 ? 'var(--amber)' : 'var(--red)';
+          const data    = byAssignee[name] || { daily:0, dailyDone:0, total:0, done:0 };
           return `<div style="margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
               <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor[name]||'var(--blue)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${name[0]?.toUpperCase()}</div>
+                <span style="font-size:18px">${rank}</span>
+                <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor[name]||'var(--blue)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${name[0].toUpperCase()}</div>
                 <div>
-                  <div style="font-size:13px;font-weight:500;color:var(--text);text-transform:capitalize">${name}</div>
-                  <div style="font-size:10px;color:var(--text3)">${data.total} tasks · ${data.done} done${data.overdue>0?` · <span style="color:var(--red)">${data.overdue} overdue</span>`:''}</div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);text-transform:capitalize">${name}</div>
+                  <div style="font-size:10px;color:var(--text3)">${data.dailyDone}/${data.daily} daily · ${data.done}/${data.total} total</div>
                 </div>
               </div>
-              <div style="font-size:16px;font-weight:700;color:${pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'}">${pct}%</div>
+              <div style="text-align:right">
+                <div style="font-size:20px;font-weight:700;color:${bar}">${pts}</div>
+                <div style="font-size:9px;color:var(--text3)">points</div>
+              </div>
+            </div>
+            <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden">
+              <div style="height:8px;width:${pct}%;background:${bar};border-radius:4px;transition:width .8s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- ASSIGNEE TASK BREAKDOWN -->
+      <div class="tdash-card">
+        <div class="tdash-card-title">👤 Team progress</div>
+        ${Object.entries(byAssignee).filter(([k])=>k!=='all').sort((a,b)=>b[1].total-a[1].total).map(([name,data])=>{
+          const pct = Math.round(data.done/data.total*100)||0;
+          return `<div style="margin-bottom:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:26px;height:26px;border-radius:50%;background:${avatarColor[name]||'var(--blue)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">${name[0]?.toUpperCase()}</div>
+                <div>
+                  <div style="font-size:12px;font-weight:500;color:var(--text);text-transform:capitalize">${name}</div>
+                  <div style="font-size:10px;color:var(--text3)">${data.done}/${data.total} done${data.overdue>0?` · <span style="color:var(--red)">${data.overdue} overdue</span>`:''}</div>
+                </div>
+              </div>
+              <div style="font-size:15px;font-weight:700;color:${pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'}">${pct}%</div>
             </div>
             <div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
               <div style="height:5px;width:${pct}%;background:${avatarColor[name]||'var(--blue)'};border-radius:3px;transition:width .6s"></div>
             </div>
           </div>`;
         }).join('')}
-      </div>
 
-      <div class="tdash-card">
-        <div class="tdash-card-title">📂 By category</div>
-        ${Object.entries(byCat).sort((a,b)=>b[1].total-a[1].total).map(([cat,data])=>{
-          const pct = Math.round(data.done/data.total*100)||0;
-          const catColors = {ads:'var(--blue)',content:'var(--purple)',design:'var(--green)',report:'var(--amber)',general:'var(--text3)'};
-          return `<div class="tdash-bar-row">
-            <div class="tdash-bar-label">${catIcon[cat]||'📌'} ${cat}</div>
-            <div class="tdash-bar-bg"><div class="tdash-bar-fill" style="width:${data.total/total*100}%;background:${catColors[cat]||'var(--blue)'}"></div></div>
-            <div class="tdash-bar-val">${data.total}</div>
-            <div style="font-size:10px;color:var(--text3);width:36px;text-align:right;flex-shrink:0">${pct}%✓</div>
-          </div>`;
-        }).join('')}
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="tdash-card-title" style="margin-bottom:8px">📂 By category</div>
+          ${Object.entries(byCat).sort((a,b)=>b[1].total-a[1].total).map(([cat,data])=>{
+            return `<div class="tdash-bar-row">
+              <div class="tdash-bar-label">${catIcon[cat]||'📌'} ${cat}</div>
+              <div class="tdash-bar-bg"><div class="tdash-bar-fill" style="width:${data.total/total*100}%;background:var(--blue)"></div></div>
+              <div class="tdash-bar-val">${data.total}</div>
+            </div>`;
+          }).join('')}
+        </div>
       </div>
     </div>
 
-    <!-- BY CLIENT -->
-    <div class="tdash-card" style="margin-bottom:16px">
-      <div class="tdash-card-title">🏢 By client</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
-        ${Object.entries(byClient).sort((a,b)=>b[1].total-a[1].total).map(([client,data])=>{
-          const pct = Math.round(data.done/data.total*100)||0;
-          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
-            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${client}">${client}</div>
-            <div style="font-size:18px;font-weight:700;color:var(--blue);margin-bottom:4px">${data.total}</div>
-            <div style="height:4px;background:var(--bg2);border-radius:2px;overflow:hidden;margin-bottom:4px">
-              <div style="height:4px;width:${pct}%;background:${pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'};border-radius:2px"></div>
+    <!-- DUE TODAY + OVERDUE -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="tdash-card">
+        <div class="tdash-card-title" style="color:var(--amber)">⚡ Due today — ${dueTodayList.length} tasks</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Daily tasks + tasks with today's due date</div>
+        ${dueTodayList.length === 0
+          ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--green)">✅ All caught up!</div>'
+          : dueTodayList.map(t=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div class="task-check ${todayDone.has(t.id)?'checked':''}" onclick="toggleTask('${t.id}','${todayDone.has(t.id)}')" style="width:18px;height:18px;min-width:18px">
+              ${todayDone.has(t.id)?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
             </div>
-            <div style="font-size:10px;color:var(--text3)">${pct}% complete</div>
-          </div>`;
-        }).join('')}
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--text3)">${t.assignee} · <span class="freq-badge freq-${t.frequency}">${t.frequency}</span></div>
+            </div>
+          </div>`).join('')}
       </div>
-    </div>
 
-    <!-- OVERDUE + DUE TODAY -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="tdash-card">
-        <div class="tdash-card-title" style="color:var(--red)">🚩 Overdue tasks (${overdueList.length})</div>
+        <div class="tdash-card-title" style="color:var(--red)">🚩 Overdue — ${overdueList.length} tasks</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Tasks past due date — points deducted automatically</div>
         ${overdueList.length === 0
           ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--green)">✅ No overdue tasks</div>'
-          : overdueList.map(t => `
-          <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-            <div style="width:3px;height:36px;background:var(--red);border-radius:2px;flex-shrink:0"></div>
+          : overdueList.map(t=>`
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div style="width:3px;height:34px;background:var(--red);border-radius:2px;flex-shrink:0"></div>
             <div style="flex:1;min-width:0">
               <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
-              <div style="font-size:10px;color:var(--red);margin-top:2px">Due ${t.due_date} · ${t.assignee}</div>
+              <div style="font-size:10px;color:var(--red)">Due ${t.due_date} · ${t.assignee}</div>
             </div>
             <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">✏️</button>
           </div>`).join('')}
       </div>
+    </div>
 
-      <div class="tdash-card">
-        <div class="tdash-card-title" style="color:var(--amber)">⚡ Due today (${dueTodayList.length})</div>
-        ${dueTodayList.length === 0
-          ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3)">No tasks due today</div>'
-          : dueTodayList.map(t => `
-          <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-            <div style="width:3px;height:36px;background:var(--amber);border-radius:2px;flex-shrink:0"></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
-              <div style="font-size:10px;color:var(--amber);margin-top:2px">Due today · ${t.assignee}</div>
+    <!-- BY CLIENT -->
+    <div class="tdash-card">
+      <div class="tdash-card-title">🏢 By client</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">
+        ${Object.entries(byClient).sort((a,b)=>b[1].total-a[1].total).map(([client,data])=>{
+          const pct = Math.round(data.done/data.total*100)||0;
+          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+            <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${client}">${client}</div>
+            <div style="font-size:18px;font-weight:700;color:var(--blue)">${data.total}</div>
+            <div style="height:4px;background:var(--bg2);border-radius:2px;overflow:hidden;margin:4px 0">
+              <div style="height:4px;width:${pct}%;background:${pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'};border-radius:2px"></div>
             </div>
-            <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">💬</button>
-          </div>`).join('')}
+            <div style="font-size:10px;color:var(--text3)">${pct}% done</div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
 }

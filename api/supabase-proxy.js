@@ -233,6 +233,78 @@ module.exports = async (req, res) => {
       });
     }
 
+    // ── POINTS SYSTEM ──────────────────────────────────────────────────────
+    if (action === 'get_points') {
+      const r = await sb('GET', 'assignee_points', null, '?order=total_points.desc');
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'get_points_log') {
+      const assignee = req.query?.assignee || '';
+      const from     = req.query?.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+      let q = `?date=gte.${from}&order=created_at.desc`;
+      if (assignee) q += `&assignee=eq.${assignee}`;
+      const r = await sb('GET', 'task_points', null, q);
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'deduct_points') {
+      // Deduct points for missed task
+      const { assignee, task_id, task_title, frequency } = body;
+      const deductMap = { daily: -3, weekly: -5, monthly: -10, once: -5 };
+      const pts = deductMap[frequency] || -3;
+
+      // Log the deduction
+      await sb('POST', 'task_points', {
+        assignee, task_id, task_title,
+        points: pts,
+        reason: `missed_${frequency}`,
+        date:   new Date().toISOString().split('T')[0],
+      }, '');
+
+      // Update total
+      const cur = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
+      const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
+      await sb('PATCH', 'assignee_points', {
+        total_points: Math.max(0, curPts + pts),
+        updated_at:   new Date().toISOString(),
+      }, `?assignee=eq.${assignee}`);
+
+      return res.status(200).json({ ok: true, points: pts });
+    }
+
+    if (action === 'award_points') {
+      // Award points for completing a task
+      const { assignee, task_id, task_title, frequency } = body;
+      const awardMap = { daily: 2, weekly: 4, monthly: 8, once: 3 };
+      const pts = awardMap[frequency] || 2;
+
+      await sb('POST', 'task_points', {
+        assignee, task_id, task_title,
+        points: pts,
+        reason: `completed_${frequency}`,
+        date:   new Date().toISOString().split('T')[0],
+      }, '');
+
+      const cur = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
+      const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
+      await sb('PATCH', 'assignee_points', {
+        total_points: curPts + pts,
+        updated_at:   new Date().toISOString(),
+      }, `?assignee=eq.${assignee}`);
+
+      return res.status(200).json({ ok: true, points: pts });
+    }
+
+    if (action === 'reset_points') {
+      // Admin only — reset all points to 100
+      if (user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+      for (const a of ['ashokh','diva','anisa']) {
+        await sb('PATCH', 'assignee_points', { total_points: 100, updated_at: new Date().toISOString() }, `?assignee=eq.${a}`);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(404).json({ error: `Unknown action: ${action}` });
 
   } catch(e) {
