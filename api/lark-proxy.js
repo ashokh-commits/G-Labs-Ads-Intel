@@ -81,16 +81,20 @@ function extractDate(val) {
 }
 
 async function fetchTableRecords(larkToken, tableId, appToken, larkBase, client) {
-  const base     = larkBase || LARK_BASE;
-  const records  = [];
-  let pageToken  = null;
-  const MAX_PAGES = 6;
+  const base      = larkBase || LARK_BASE;
+  const records   = [];
+  let pageToken   = null;
+  const MAX_PAGES = 20; // handles up to 10,000 records
   let pageCount   = 0;
+
+  // Current month boundaries in milliseconds (Lark stores dates as ms timestamps)
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   monthStart.setHours(0,0,0,0);
   const todayEnd   = new Date(now);
   todayEnd.setHours(23,59,59,999);
+  const monthStartMs = monthStart.getTime();
+  const todayEndMs   = todayEnd.getTime();
 
   do {
     const url = `${base}/bitable/v1/apps/${appToken}/tables/${tableId}/records?page_size=500${pageToken ? `&page_token=${pageToken}` : ''}`;
@@ -99,14 +103,35 @@ async function fetchTableRecords(larkToken, tableId, appToken, larkBase, client)
     let data;
     try { data = JSON.parse(text); } catch { throw new Error(`Lark records invalid JSON: ${text.slice(0,100)}`); }
     if (data.code !== 0) throw new Error(`Lark records failed (${data.code}): ${data.msg}`);
-    if (pageCount === 0) console.log(`[Lark] ${client} ${tableId}: ${(data.data?.items||[]).length} items, fields:`, Object.keys(data.data?.items?.[0]?.fields || {}));
+    if (pageCount === 0) console.log(`[Lark] ${client} ${tableId}: total=${data.data?.total}, fields:`, Object.keys(data.data?.items?.[0]?.fields || {}));
     pageCount++;
 
     (data.data?.items || []).forEach(item => {
       const f = item.fields || {};
-      const dateRaw  = f['Date'] || f['date'] || null;
-      const leadDate = dateRaw ? new Date(typeof dateRaw === 'number' ? dateRaw : dateRaw) : null;
-      if (leadDate && (leadDate < monthStart || leadDate > todayEnd)) return;
+
+      // Parse date — Lark returns ms timestamp as number
+      const dateRaw = f['Date'] || f['date'] || null;
+      let leadDateMs = null;
+      if (dateRaw !== null && dateRaw !== undefined) {
+        if (typeof dateRaw === 'number') {
+          leadDateMs = dateRaw;
+        } else if (typeof dateRaw === 'string') {
+          // Try parse string date
+          const parsed = Date.parse(dateRaw);
+          if (!isNaN(parsed)) leadDateMs = parsed;
+        } else if (Array.isArray(dateRaw) && dateRaw[0]) {
+          // Some Lark fields return array
+          leadDateMs = typeof dateRaw[0] === 'number' ? dateRaw[0] : Date.parse(dateRaw[0]);
+        }
+      }
+
+      // Filter by current month — skip if date exists but outside range
+      if (leadDateMs !== null) {
+        if (leadDateMs < monthStartMs || leadDateMs > todayEndMs) return;
+      }
+      // If no date at all — include (no date = new/untracked record)
+
+      const leadDateStr = leadDateMs ? new Date(leadDateMs).toISOString().split('T')[0] : null;
 
       if (client === 'af') {
         const progress = extractText(f['Progress'] || '');
@@ -114,7 +139,7 @@ async function fetchTableRecords(larkToken, tableId, appToken, larkBase, client)
         const handler  = extractText(f['Handled By'] || f['handled by'] || '');
         const call     = extractText(f['Call'] || '');
         const closing  = extractDate(f['Closing Date'] || null);
-        records.push({ id: item.record_id, name: '', platform, treatment: call, progress, appointment: closing, handler, date: leadDate ? leadDate.toISOString().split('T')[0] : null, group: getGroup(progress), createdAt: item.created_time || null });
+        records.push({ id: item.record_id, name: '', platform, treatment: call, progress, appointment: closing, handler, date: leadDateStr, group: getGroup(progress), createdAt: item.created_time || null });
         return;
       }
 
@@ -125,11 +150,13 @@ async function fetchTableRecords(larkToken, tableId, appToken, larkBase, client)
       const handler   = extractText(f['Handled By'] || f['Handler'] || '');
       const appointment = extractDate(f['Appointment Date'] || null);
       if (!name && !progress && !platform) return;
-      records.push({ id: item.record_id, name, platform, treatment, progress, appointment, handler, date: leadDate ? leadDate.toISOString().split('T')[0] : null, group: getGroup(progress), createdAt: item.created_time || null });
+      records.push({ id: item.record_id, name, platform, treatment, progress, appointment, handler, date: leadDateStr, group: getGroup(progress), createdAt: item.created_time || null });
     });
 
     pageToken = (data.data?.has_more && pageCount < MAX_PAGES) ? data.data.page_token : null;
   } while (pageToken);
+
+  console.log(`[Lark] ${client} ${tableId}: fetched ${records.length} records this month (${pageCount} pages)`);
   return records;
 }
 
