@@ -394,9 +394,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .acc-group.collapsed .acc-group-items{display:none}
 .acc-group-items{padding:0 4px}
 .nav-active{background:var(--bg3)!important;color:var(--text)!important}
-/* History tab */
-.hist-period-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
-.hist-period-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+/* ── TASK DASHBOARD ── */
+.tdash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.tdash-kpi{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.tdash-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--blue))}
+.tdash-kpi-val{font-size:28px;font-weight:700;color:var(--text);line-height:1;margin:8px 0 4px;font-variant-numeric:tabular-nums}
+.tdash-kpi-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.tdash-kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.tdash-section{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.tdash-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px}
+.tdash-card-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.tdash-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.tdash-bar-label{font-size:12px;color:var(--text2);width:80px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tdash-bar-bg{flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.tdash-bar-fill{height:6px;border-radius:3px;transition:width .6s ease}
+.tdash-bar-val{font-size:11px;font-weight:600;color:var(--text);width:28px;text-align:right;flex-shrink:0}
+/* Overdue flags */
+.task-card.overdue{border-left:3px solid var(--red)!important;border-color:rgba(239,68,68,.3)}
+.task-card.due-soon{border-left:3px solid var(--amber)!important;border-color:rgba(245,158,11,.3)}
+.overdue-flag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#fff;background:var(--red);border-radius:4px;padding:1px 6px;animation:pulse-flag 1.5s infinite}
+.due-soon-flag{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#000;background:var(--amber);border-radius:4px;padding:1px 6px}
+@keyframes pulse-flag{0%,100%{opacity:1}50%{opacity:.6}}
+.completion-ring{position:relative;width:80px;height:80px}
+.completion-ring svg{transform:rotate(-90deg)}
+.completion-ring-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+@media(max-width:768px){.tdash-grid{grid-template-columns:repeat(2,1fr)}.tdash-section{grid-template-columns:1fr}}
+</style>
 /* ── KANBAN ── */
 .kanban-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
 .kanban-col{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px;min-height:200px}
@@ -2309,6 +2332,9 @@ async function showTasks() {
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Task Manager';
   document.getElementById('headerMeta').style.display = 'none';
+  const isAdmin = currentUser?.role === 'admin' && currentUser?.userId === 'ashokh';
+  // Default to dashboard view for ashokh
+  if (isAdmin && taskView === 'list' && allTasks.length > 0) taskView = 'dashboard';
 
   document.getElementById('content').innerHTML = `
     <div class="tab-section active" style="padding:18px 22px 60px">
@@ -2418,6 +2444,11 @@ async function showTasks() {
 
 function switchView(view, btn) {
   taskView = view;
+  showTasks();
+}
+
+function clearTaskFilters() {
+  taskSearch = ''; taskFilterAssignee = 'all'; taskFilterCategory = 'all'; taskSort = 'priority';
   showTasks();
 }
 
@@ -2550,7 +2581,8 @@ async function loadTasks() {
 }
 
 function renderTasks() {
-  if (taskView === 'kanban') { renderKanban(); return; }
+  if (taskView === 'kanban')    { renderKanban(); return; }
+  if (taskView === 'dashboard') { renderTaskDashboard(); return; }
   applyTaskFilters();
 }
 
@@ -2580,15 +2612,30 @@ function renderTaskCard(t) {
   const tagCls  = `tag-${t.category||'general'}`;
   const priCls  = `pri-${t.priority||'medium'}`;
   const freqCls = `freq-${t.frequency||'once'}`;
-  const overdue = t.due_date && new Date(t.due_date) < new Date() && !done;
-  return `<div class="task-card ${done?'done':''}">
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const tomorrow= new Date(today); tomorrow.setDate(today.getDate()+1);
+  const dueDate = t.due_date ? new Date(t.due_date) : null;
+  const overdue = dueDate && dueDate < today && !done;
+  const dueSoon = dueDate && dueDate >= today && dueDate <= tomorrow && !done;
+
+  const dueFlag = overdue
+    ? `<span class="overdue-flag">🚩 Overdue · ${t.due_date}</span>`
+    : dueSoon
+    ? `<span class="due-soon-flag">⚡ Due today · ${t.due_date}</span>`
+    : dueDate && !done
+    ? `<span style="font-size:10px;color:var(--text3)">📅 ${t.due_date}${t.due_time?' '+t.due_time:''}</span>`
+    : '';
+
+  return `<div class="task-card ${done?'done':overdue?'overdue':dueSoon?'due-soon':''}">
     <div class="task-check ${done?'checked':''}" onclick="toggleTask('${t.id}','${done}')">
       ${done ? '<i class="ti ti-check" style="font-size:11px;color:#fff"></i>' : ''}
     </div>
     <div class="task-body">
-      <div class="task-title ${done?'done':''}">${t.title}</div>
-      ${t.description ? `<div style="font-size:11px;color:var(--text3);margin-bottom:5px;line-height:1.5">${t.description}</div>` : ''}
-      ${t.due_date ? `<div style="font-size:11px;color:${overdue?'var(--red)':'var(--amber)'};margin-bottom:5px">📅 ${t.due_date}${t.due_time?' at '+t.due_time:''} ${overdue?'⚠️ Overdue':''}</div>` : ''}
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+        <div class="task-title ${done?'done':''}">${t.title}</div>
+        ${dueFlag ? `<div style="flex-shrink:0">${dueFlag}</div>` : ''}
+      </div>
+      ${t.description && t.description !== 'undefined' ? `<div style="font-size:11px;color:var(--text3);margin-bottom:5px;line-height:1.5">${t.description}</div>` : ''}
       <div class="task-meta">
         <span class="task-tag ${tagCls}">${t.category||'general'}</span>
         <span class="task-tag ${priCls}">${t.priority||'medium'}</span>
@@ -2598,9 +2645,9 @@ function renderTaskCard(t) {
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0;flex-direction:column;align-items:flex-end">
       <div style="display:flex;gap:4px">
-        <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px" title="Comments & Details">💬</button>
-        <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Edit">✏️</button>
-        <button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px" title="Delete">🗑</button>
+        <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:2px" title="Comments">💬</button>
+        <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px">✏️</button>
+        <button onclick="deleteTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px;padding:2px">🗑</button>
       </div>
     </div>
   </div>`;
@@ -3028,6 +3075,220 @@ async function autoSaveSnapshot(accountId, ads) {
     }]});
     console.log('[Snapshot] Auto-saved:', acc?.name, today);
   } catch(e) { console.warn('[Snapshot] Auto-save failed:', e.message); }
+}
+
+// ── TASK DASHBOARD (Admin only) ───────────────────────────────────────────
+function renderTaskDashboard() {
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+
+  const total     = allTasks.length;
+  const pending   = allTasks.filter(t => (t.status||'pending') === 'pending').length;
+  const inProg    = allTasks.filter(t => t.status === 'in_progress').length;
+  const done      = allTasks.filter(t => t.status === 'done' || todayDone.has(t.id)).length;
+  const overdue   = allTasks.filter(t => t.due_date && new Date(t.due_date) < today && t.status !== 'done' && !todayDone.has(t.id)).length;
+  const dueSoon   = allTasks.filter(t => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= tomorrow && t.status !== 'done').length;
+  const completionPct = total > 0 ? Math.round((done/total)*100) : 0;
+
+  // By assignee
+  const byAssignee = {};
+  allTasks.forEach(t => {
+    const a = t.assignee || 'Unassigned';
+    if (!byAssignee[a]) byAssignee[a] = { total:0, done:0, overdue:0 };
+    byAssignee[a].total++;
+    if (t.status === 'done' || todayDone.has(t.id)) byAssignee[a].done++;
+    if (t.due_date && new Date(t.due_date) < today && t.status !== 'done') byAssignee[a].overdue++;
+  });
+
+  // By category
+  const byCat = {};
+  allTasks.forEach(t => {
+    const c = t.category || 'general';
+    if (!byCat[c]) byCat[c] = { total:0, done:0 };
+    byCat[c].total++;
+    if (t.status === 'done' || todayDone.has(t.id)) byCat[c].done++;
+  });
+
+  // By client (from description)
+  const byClient = {};
+  allTasks.forEach(t => {
+    const c = t.description?.replace('Client: ','').split(' | ')[0] || 'Other';
+    if (!byClient[c]) byClient[c] = { total:0, done:0 };
+    byClient[c].total++;
+    if (t.status === 'done' || todayDone.has(t.id)) byClient[c].done++;
+  });
+
+  // By frequency
+  const byFreq = {};
+  allTasks.forEach(t => {
+    const f = t.frequency || 'once';
+    if (!byFreq[f]) byFreq[f] = { total:0, done:0 };
+    byFreq[f].total++;
+    if (t.status === 'done' || todayDone.has(t.id)) byFreq[f].done++;
+  });
+
+  // Top overdue tasks
+  const overdueList = allTasks
+    .filter(t => t.due_date && new Date(t.due_date) < today && t.status !== 'done' && !todayDone.has(t.id))
+    .sort((a,b) => new Date(a.due_date) - new Date(b.due_date))
+    .slice(0, 5);
+
+  // Due today
+  const dueTodayList = allTasks
+    .filter(t => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) <= tomorrow && t.status !== 'done')
+    .slice(0, 5);
+
+  const maxClient = Math.max(...Object.values(byClient).map(v=>v.total), 1);
+  const maxAssignee = Math.max(...Object.values(byAssignee).map(v=>v.total), 1);
+  const avatarColor = { ashokh:'#2563eb', diva:'#7c3aed', anisa:'#059669', all:'#4f9cf9' };
+  const catIcon = { ads:'📊', content:'✍️', design:'🎨', report:'📋', general:'📌' };
+
+  document.getElementById('taskList').innerHTML = `
+    <!-- KPI STRIP -->
+    <div class="tdash-grid">
+      <div class="tdash-kpi" style="--kc:var(--blue)">
+        <div class="tdash-kpi-lbl">Total tasks</div>
+        <div class="tdash-kpi-val">${total}</div>
+        <div class="tdash-kpi-sub">Across all assignees</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--amber)">
+        <div class="tdash-kpi-lbl">Pending</div>
+        <div class="tdash-kpi-val" style="color:var(--amber)">${pending}</div>
+        <div class="tdash-kpi-sub">${inProg} in progress</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--green)">
+        <div class="tdash-kpi-lbl">Completed today</div>
+        <div class="tdash-kpi-val" style="color:var(--green)">${done}</div>
+        <div class="tdash-kpi-sub">${completionPct}% completion rate</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--red)">
+        <div class="tdash-kpi-lbl">Overdue</div>
+        <div class="tdash-kpi-val" style="color:${overdue>0?'var(--red)':'var(--green)'}">${overdue}</div>
+        <div class="tdash-kpi-sub">${dueSoon} due today</div>
+      </div>
+    </div>
+
+    <!-- COMPLETION RING + FREQUENCY BREAKDOWN -->
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:12px;margin-bottom:16px">
+      <div class="tdash-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Completion</div>
+        <div class="completion-ring" style="width:100px;height:100px">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bg4)" stroke-width="10"/>
+            <circle cx="50" cy="50" r="40" fill="none" stroke="${completionPct>=70?'var(--green)':completionPct>=40?'var(--amber)':'var(--red)'}" stroke-width="10"
+              stroke-dasharray="${(completionPct/100)*251.2} 251.2" stroke-linecap="round"/>
+          </svg>
+          <div class="completion-ring-label">
+            <div style="font-size:22px;font-weight:700;color:var(--text)">${completionPct}%</div>
+            <div style="font-size:9px;color:var(--text3)">done</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--text3)">${done} of ${total} tasks</div>
+      </div>
+      <div class="tdash-card">
+        <div class="tdash-card-title">📅 By frequency</div>
+        ${Object.entries(byFreq).sort((a,b)=>b[1].total-a[1].total).map(([freq,data])=>{
+          const pct = Math.round(data.done/data.total*100)||0;
+          const colors = {daily:'var(--green)',weekly:'var(--blue)',monthly:'var(--amber)',once:'var(--text3)'};
+          return `<div class="tdash-bar-row">
+            <div class="tdash-bar-label" style="text-transform:capitalize">${freq}</div>
+            <div class="tdash-bar-bg"><div class="tdash-bar-fill" style="width:${data.total/total*100}%;background:${colors[freq]||'var(--blue)'}"></div></div>
+            <div class="tdash-bar-val">${data.total}</div>
+            <div style="font-size:10px;color:var(--text3);width:36px;text-align:right;flex-shrink:0">${pct}% ✓</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- BY ASSIGNEE + BY CATEGORY -->
+    <div class="tdash-section">
+      <div class="tdash-card">
+        <div class="tdash-card-title">👤 By assignee</div>
+        ${Object.entries(byAssignee).sort((a,b)=>b[1].total-a[1].total).map(([name,data])=>{
+          const pct = Math.round(data.done/data.total*100)||0;
+          return `<div style="margin-bottom:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:${avatarColor[name]||'var(--blue)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${name[0]?.toUpperCase()}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:500;color:var(--text);text-transform:capitalize">${name}</div>
+                  <div style="font-size:10px;color:var(--text3)">${data.total} tasks · ${data.done} done${data.overdue>0?` · <span style="color:var(--red)">${data.overdue} overdue</span>`:''}</div>
+                </div>
+              </div>
+              <div style="font-size:16px;font-weight:700;color:${pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'}">${pct}%</div>
+            </div>
+            <div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
+              <div style="height:5px;width:${pct}%;background:${avatarColor[name]||'var(--blue)'};border-radius:3px;transition:width .6s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="tdash-card">
+        <div class="tdash-card-title">📂 By category</div>
+        ${Object.entries(byCat).sort((a,b)=>b[1].total-a[1].total).map(([cat,data])=>{
+          const pct = Math.round(data.done/data.total*100)||0;
+          const catColors = {ads:'var(--blue)',content:'var(--purple)',design:'var(--green)',report:'var(--amber)',general:'var(--text3)'};
+          return `<div class="tdash-bar-row">
+            <div class="tdash-bar-label">${catIcon[cat]||'📌'} ${cat}</div>
+            <div class="tdash-bar-bg"><div class="tdash-bar-fill" style="width:${data.total/total*100}%;background:${catColors[cat]||'var(--blue)'}"></div></div>
+            <div class="tdash-bar-val">${data.total}</div>
+            <div style="font-size:10px;color:var(--text3);width:36px;text-align:right;flex-shrink:0">${pct}%✓</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- BY CLIENT -->
+    <div class="tdash-card" style="margin-bottom:16px">
+      <div class="tdash-card-title">🏢 By client</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+        ${Object.entries(byClient).sort((a,b)=>b[1].total-a[1].total).map(([client,data])=>{
+          const pct = Math.round(data.done/data.total*100)||0;
+          return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px">
+            <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${client}">${client}</div>
+            <div style="font-size:18px;font-weight:700;color:var(--blue);margin-bottom:4px">${data.total}</div>
+            <div style="height:4px;background:var(--bg2);border-radius:2px;overflow:hidden;margin-bottom:4px">
+              <div style="height:4px;width:${pct}%;background:${pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)'};border-radius:2px"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3)">${pct}% complete</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- OVERDUE + DUE TODAY -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="tdash-card">
+        <div class="tdash-card-title" style="color:var(--red)">🚩 Overdue tasks (${overdueList.length})</div>
+        ${overdueList.length === 0
+          ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--green)">✅ No overdue tasks</div>'
+          : overdueList.map(t => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="width:3px;height:36px;background:var(--red);border-radius:2px;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--red);margin-top:2px">Due ${t.due_date} · ${t.assignee}</div>
+            </div>
+            <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">✏️</button>
+          </div>`).join('')}
+      </div>
+
+      <div class="tdash-card">
+        <div class="tdash-card-title" style="color:var(--amber)">⚡ Due today (${dueTodayList.length})</div>
+        ${dueTodayList.length === 0
+          ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--text3)">No tasks due today</div>'
+          : dueTodayList.map(t => `
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div style="width:3px;height:36px;background:var(--amber);border-radius:2px;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--amber);margin-top:2px">Due today · ${t.assignee}</div>
+            </div>
+            <button onclick="openComments('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px">💬</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
 }
 
 // ── HISTORY TAB (inside account) ──────────────────────────────────────────
