@@ -11,15 +11,24 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0f1117;--bg2:#181b23;--bg3:#1e2230;--bg4:#252a3a;--bg5:#2d3347;
-  --border:#2a2f42;--border2:#353b52;
-  --text:#e8ecf4;--text2:#8b92a8;--text3:#5a6080;
-  --blue:#4f9cf9;--blue2:#1a3a6e;--blue3:#0d1f40;
-  --green:#22c55e;--green2:#052e16;
-  --red:#ef4444;--red2:#2d0808;
-  --amber:#f59e0b;--amber2:#2d1a00;
+  /* Comvi-inspired deep teal + warm orange palette */
+  --bg:#0a1614;--bg2:#0e1d1f;--bg3:#142628;--bg4:#1b3235;--bg5:#244247;
+  --border:#1d3338;--border2:#2a4a51;
+  --text:#eef2f3;--text2:#8da0a6;--text3:#5d7079;
+  /* primary accent = warm coral-orange (keeps --blue var name so we don't rewrite 1000 references) */
+  --blue:#ed7a4f;--blue2:#3a1d12;--blue3:#27150e;
+  --green:#22c55e;--green2:#0a2718;
+  --red:#ef4f4f;--red2:#2d0c0c;
+  --amber:#f5c518;--amber2:#2d2200;
   --purple:#a78bfa;--purple2:#1e1040;
-  --teal:#14b8a6;--teal2:#042320;
+  --teal:#3ecfb4;--teal2:#072824;
+  /* New Comvi-specific tokens */
+  --accent:#ed7a4f;
+  --accent-soft:#f29a78;
+  --yellow:#f5c518;
+  --yellow-deep:#e0b212;
+  --card-radius:14px;
+  --pill-radius:10px;
 }
 html{font-size:16px}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
@@ -40,7 +49,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .account-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 .acc-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:all .15s}
 .acc-item:hover{background:var(--bg3);border-color:var(--border)}
-.acc-item.active{background:#0d1f40;border-color:rgba(79,156,249,.3)}
+.acc-item.active{background:#3a1d12;border-color:rgba(237,122,79,.3)}
 .acc-item.active .acc-name{color:var(--blue)}
 .acc-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:all .15s}
 .acc-item.active .acc-dot{background:var(--blue)}
@@ -155,7 +164,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* ── PLATFORM BADGE ── */
 .plat-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500}
-.plat-fb{background:#1a2a4a;color:#4f9cf9}
+.plat-fb{background:#3a1d12;color:#ed7a4f}
 .plat-ig{background:#2d1040;color:#c084fc}
 
 /* ── FILTER ROW ── */
@@ -168,7 +177,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* ── HISTORY PERIOD BUTTONS ── */
 .hist-period-btn{padding:6px 13px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s;white-space:nowrap}
 .hist-period-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border2)}
-.hist-period-btn.active{background:var(--blue2);border-color:rgba(79,156,249,.5);color:var(--blue)}
+.hist-period-btn.active{background:var(--blue2);border-color:rgba(237,122,79,.5);color:var(--blue)}
 
 /* ── HISTORY SUB-TABS ── */
 .hist-sub-tabs{display:flex;gap:2px;background:var(--bg2);border-radius:9px;padding:3px;width:fit-content;border:1px solid var(--border)}
@@ -181,7 +190,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .bf-month-btn:hover{border-color:var(--blue);color:var(--blue)}
 .bf-month-btn.done{border-color:rgba(34,197,94,.4);background:var(--green2);color:var(--green);cursor:default}
 .bf-month-btn.loading{opacity:.6;cursor:not-allowed}
-.bf-month-btn.current{border-color:rgba(79,156,249,.4);background:var(--blue2);color:var(--blue)}
+.bf-month-btn.current{border-color:rgba(237,122,79,.4);background:var(--blue2);color:var(--blue)}
 
 /* ── MOBILE ── */
 @media(max-width:768px){
@@ -221,19 +230,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* Left decorative panel */
 .login-left{
   flex:1;display:none;
-  background:linear-gradient(145deg,#0d1f40 0%,#111827 60%,#0f1117 100%);
+  background:linear-gradient(145deg,#0e2422 0%,#0c1d1c 55%,#0a1614 100%);
   position:relative;overflow:hidden;
   padding:48px;flex-direction:column;justify-content:space-between;
 }
 @media(min-width:900px){.login-left{display:flex}}
 .login-left::before{
   content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse at 30% 50%,rgba(79,156,249,.08) 0%,transparent 70%);
+  background:radial-gradient(ellipse at 30% 50%,rgba(237,122,79,.10) 0%,transparent 70%);
 }
 .login-left-logo{display:flex;align-items:center;gap:12px;position:relative;z-index:1}
 .login-left-mark{
   width:44px;height:44px;border-radius:12px;
-  background:linear-gradient(135deg,#2563eb,#4f9cf9);
+  background:linear-gradient(135deg,#c45a32,#ed7a4f);
   display:flex;align-items:center;justify-content:center;
   font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff;
 }
@@ -260,7 +269,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .login-card-logo{display:flex;align-items:center;gap:10px;margin-bottom:36px}
 .login-card-mark{
   width:38px;height:38px;border-radius:10px;
-  background:linear-gradient(135deg,#2563eb,#4f9cf9);
+  background:linear-gradient(135deg,#c45a32,#ed7a4f);
   display:flex;align-items:center;justify-content:center;
   font-family:'Playfair Display',serif;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;
 }
@@ -287,11 +296,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .login-attempts{font-size:11px;color:var(--amber);min-height:16px;margin-bottom:12px;text-align:center}
 .login-submit{
   width:100%;padding:13px;border-radius:8px;
-  background:linear-gradient(135deg,#2563eb,#4f9cf9);
+  background:linear-gradient(135deg,#c45a32,#ed7a4f);
   color:#fff;border:none;cursor:pointer;
   font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
   transition:opacity .15s;letter-spacing:.02em;
-  box-shadow:0 4px 16px rgba(79,156,249,.25);
+  box-shadow:0 4px 16px rgba(237,122,79,.25);
 }
 .login-submit:hover{opacity:.88}
 .login-submit:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
@@ -312,7 +321,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* user chip in topbar */
 .user-chip{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2)}
 .role-pip{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.04em}
-.rp-admin{background:#1a3a6e;color:var(--blue)}
+.rp-admin{background:#5a2d1d;color:var(--blue)}
 .rp-client{background:#042320;color:var(--teal)}
 .logout-ico{background:none;border:none;cursor:pointer;color:var(--text3);padding:5px;border-radius:6px;transition:color .15s;font-size:15px;line-height:1}
 .logout-ico:hover{color:var(--red)}
@@ -320,7 +329,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 @media(max-width:768px){
   #loginPage{flex-direction:column}
   #loginPage > div:first-child{display:none}
-  #loginPage > div:last-child{width:100%;border-left:none;border-top:1px solid #2a2f42;padding:32px 20px}
+  #loginPage > div:last-child{width:100%;border-left:none;border-top:1px solid #1d3338;padding:32px 20px}
 }
 /* ── SALES MODULE ── */
 .sales-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px}
@@ -369,7 +378,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .agent-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
 .agent-rank{width:24px;height:24px;border-radius:50%;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text3);flex-shrink:0}
 .agent-rank.gold{background:#2d1a00;color:#f59e0b}
-.agent-rank.silver{background:#1a1f2e;color:#8b92a8}
+.agent-rank.silver{background:#1a1f2e;color:#8da0a6}
 .agent-rank.bronze{background:#1f1008;color:#c2773a}
 @media(max-width:768px){.sales-grid{grid-template-columns:repeat(2,1fr)}.funnel-label{width:80px}.entry-row{grid-template-columns:1fr}}
 /* ── TASK MANAGER ── */
@@ -384,7 +393,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .task-title.done{text-decoration:line-through;color:var(--text3)}
 .task-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .task-tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
-.tag-ads{background:#0d1f40;color:var(--blue)}
+.tag-ads{background:#3a1d12;color:var(--blue)}
 .tag-content{background:#1e1040;color:var(--purple)}
 .tag-design{background:#1a2e1a;color:var(--green)}
 .tag-report{background:#2d1a00;color:var(--amber)}
@@ -396,7 +405,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .task-assignee{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:3px}
 .freq-badge{font-size:9px;padding:1px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
 .freq-daily{background:#052e16;color:var(--green)}
-.freq-weekly{background:#0d1f40;color:var(--blue)}
+.freq-weekly{background:#3a1d12;color:var(--blue)}
 .freq-monthly{background:#2d1a00;color:var(--amber)}
 .freq-once{background:var(--bg4);color:var(--text3)}
 .task-form{background:var(--bg3);border:1px solid var(--blue);border-radius:10px;padding:16px;margin-bottom:12px}
@@ -461,76 +470,310 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .attach-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
 @media(max-width:768px){.kanban-wrap{grid-template-columns:1fr}}
 </style>
+
+<style id="comvi-retheme">
+  /* ── COMVI POLISH ── */
+  body { font-feature-settings: "ss01","cv11"; }
+
+  /* Slightly softer scrollbars */
+  ::-webkit-scrollbar-thumb { background: #1f3a3e; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2d4f53; }
+
+  /* Sidebar — rounded inner panel feel */
+  .sidebar {
+    background: #0f2123;
+    border-right: 1px solid #15282b;
+  }
+  .sidebar-head {
+    padding: 22px 18px;
+    border-bottom: 1px solid #15282b;
+  }
+  .brand-logo {
+    background: linear-gradient(135deg, #ed7a4f, #f29a78);
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(237,122,79,.25);
+  }
+  .sidebar-section { padding: 18px 18px 8px; font-size: 10px; }
+  .account-list { padding: 0 10px 8px; }
+  .acc-item {
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 3px;
+  }
+  .acc-item.active {
+    background: linear-gradient(90deg, rgba(237,122,79,.16), rgba(237,122,79,.04));
+    border-color: rgba(237,122,79,.22);
+    position: relative;
+  }
+  .acc-item.active::before {
+    content:''; position:absolute; left:0; top:8px; bottom:8px; width:3px;
+    background: #ed7a4f; border-radius: 0 3px 3px 0;
+  }
+  .acc-item.active .acc-name { color: #ed7a4f; }
+  .acc-item.active .acc-dot { background: #ed7a4f; }
+  .sidebar-foot { padding: 14px; border-top: 1px solid #15282b; }
+
+  /* "Improve Your Sales Efficiency"-style CTA — applied to the sidebar refresh button container */
+  .sidebar-refresh {
+    background: linear-gradient(135deg, #ed7a4f 0%, #f29a78 100%);
+    color: #1a0c05;
+    font-weight: 600;
+    padding: 11px;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(237,122,79,.28);
+  }
+  .sidebar-refresh:hover { opacity: 1; filter: brightness(1.05); }
+
+  /* Top header */
+  .main-header {
+    background: #0a1614;
+    border-bottom: 1px solid #15282b;
+    padding: 20px 32px;
+  }
+  .header-account {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -.01em;
+  }
+  .header-meta { font-size: 11px; color: var(--text2); }
+  .live-pill {
+    background: #122426;
+    border: 1px solid #1d3338;
+    border-radius: 999px;
+    padding: 6px 13px;
+  }
+  .thresh-pill {
+    background: #122426;
+    border: 1px solid #1d3338;
+    border-radius: 999px;
+  }
+  .user-chip {
+    background: #122426;
+    border: 1px solid #1d3338;
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+
+  /* Nav tabs */
+  .nav-tabs {
+    background: #0a1614;
+    border-bottom: 1px solid #15282b;
+    padding: 0 32px;
+    gap: 4px;
+  }
+  .tab-btn {
+    padding: 14px 4px;
+    margin-right: 22px;
+    font-size: 13px;
+    letter-spacing: -.005em;
+  }
+  .tab-btn.active { color: #ed7a4f; border-bottom-color: #ed7a4f; }
+
+  /* Section titles — switch to clean sans, Comvi-style */
+  .section-title {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: -.01em;
+    color: var(--text);
+  }
+
+  /* Generic card polish — bigger radius, softer border, no harsh edge */
+  .gauge-card, .kpi-card, .s-card, .sales-kpi, .tdash-kpi, .tdash-card,
+  .kanban-col, .task-card, .insight-card {
+    border-radius: 14px;
+    border: 1px solid #16292c;
+    background: #122426;
+  }
+  .gauge-card, .kpi-card { padding: 20px 22px; }
+  .s-card { padding: 22px 24px; border-radius: 16px; }
+  .gauge-num { font-size: 32px; }
+  .kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .kpi-label, .gauge-label { letter-spacing: .08em; font-size: 10px; }
+
+  /* Top accent strip on sales-kpi → softer */
+  .sales-kpi::before { height: 3px; opacity: .9; }
+  .tdash-kpi::before { height: 3px; opacity: .9; }
+
+  /* Filter tabs / segmented controls */
+  .ftab {
+    background: #122426;
+    border: 1px solid #1d3338;
+    color: var(--text2);
+    border-radius: 999px;
+    padding: 6px 14px;
+  }
+  .ftab.active {
+    background: #ed7a4f;
+    color: #1a0c05;
+    border-color: #ed7a4f;
+    font-weight: 600;
+  }
+
+  .hist-period-btn {
+    background: #122426;
+    border: 1px solid #1d3338;
+    border-radius: 10px;
+  }
+  .hist-period-btn.active {
+    background: rgba(237,122,79,.12);
+    border-color: rgba(237,122,79,.35);
+    color: #ed7a4f;
+  }
+
+  .hist-sub-tabs {
+    background: #0e1d1f;
+    border: 1px solid #15282b;
+    border-radius: 10px;
+  }
+  .hist-sub-tab.active { background: #1b3235; color: var(--text); }
+
+  /* Tables */
+  .ad-table th { color: var(--text3); font-size: 10px; padding: 12px 14px; }
+  .ad-table td { padding: 14px 14px; }
+  .ad-table th, .ad-table td { border-bottom: 1px solid #15282b; }
+  .ad-table tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* Insight alerts — softer */
+  .insight-alert { border-radius: 12px; padding: 16px 18px; }
+  .insight-alert.good { background: rgba(34,197,94,.06); }
+  .insight-alert.warn { background: rgba(245,197,24,.06); }
+  .insight-alert.bad  { background: rgba(239,79,79,.06); }
+  .insight-alert.info { background: rgba(237,122,79,.06); }
+
+  /* Sparkline / chart frames */
+  .chart-wrap { height: 240px; }
+
+  /* Pills for "this week" etc — Comvi-style chip */
+  .week-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    background:#0e1d1f; border:1px solid #1d3338;
+    border-radius:999px; padding:6px 12px; font-size:11px;
+    color:var(--text2);
+  }
+
+  /* Plat badges retuned */
+  .plat-fb { background:#3a1d12; color:#ed7a4f; }
+  .plat-ig { background:#1e1040; color:#c084fc; }
+
+  /* Score badges — soften */
+  .score-badge { border-radius: 50%; }
+  .score-a { background:#0a2718; color:#22c55e; border-color:#0f3a23; }
+  .score-b { background:#2d2200; color:#f5c518; border-color:#5a4310; }
+  .score-c { background:#2d0c0c; color:#ef4f4f; border-color:#5a1818; }
+
+  /* Login page — re-skin */
+  .login-card-mark {
+    background: linear-gradient(135deg, #ed7a4f, #f29a78) !important;
+    border-radius: 10px !important;
+  }
+  .login-left-mark {
+    background: linear-gradient(135deg, #ed7a4f, #f29a78) !important;
+    border-radius: 12px !important;
+  }
+  .login-submit {
+    background: linear-gradient(135deg, #ed7a4f, #f29a78) !important;
+    color: #1a0c05 !important;
+    box-shadow: 0 8px 24px rgba(237,122,79,.28) !important;
+    font-weight: 600 !important;
+  }
+  .lf input:focus { border-color: #ed7a4f !important; }
+
+  /* Override common in-line "Playfair Display" header to DM Sans for Comvi crispness */
+  .login-left-title, .login-card-title, .entry-title { font-family: 'DM Sans', sans-serif !important; font-weight: 600 !important; letter-spacing: -.015em !important; }
+
+  /* Kanban */
+  .kanban-col { background: #0e1d1f; }
+  .kanban-card { background: #142628; border: 1px solid #15282b; border-radius: 10px; }
+
+  /* Task tags retuned */
+  .tag-ads { background:#3a1d12; color:#ed7a4f; }
+  .tag-report { background:#2d2200; color:#f5c518; }
+
+  /* Why-chips */
+  .why-good { background:#0a2718; color:#4ade80; border-color:#0f3a23; }
+  .why-bad  { background:#2d0c0c; color:#f87171; border-color:#5a1818; }
+  .why-warn { background:#2d2200; color:#fbbf24; border-color:#5a4310; }
+
+  /* tab-section padding */
+  .tab-section { padding: 28px 32px 56px; }
+  @media (max-width: 768px) { .tab-section { padding: 18px 16px 60px; } }
+
+  /* Make rp-admin / rp-client pips use new tints */
+  .rp-admin { background:#3a1d12; color:#ed7a4f; }
+  .rp-client { background:#072824; color:#3ecfb4; }
+</style>
 </head>
 <body>
 
 
 <!-- LOGIN PAGE — full inline styles, no CSS classes needed -->
-<div id="loginPage" style="position:fixed;inset:0;z-index:2000;background:#0f1117;display:flex;align-items:stretch;width:100vw;height:100vh;overflow:hidden">
+<div id="loginPage" style="position:fixed;inset:0;z-index:2000;background:#0a1614;display:flex;align-items:stretch;width:100vw;height:100vh;overflow:hidden">
 
   <!-- LEFT PANEL -->
-  <div style="flex:1;min-width:0;background:linear-gradient(145deg,#0d1f40 0%,#111827 60%,#0f1117 100%);padding:48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
-    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(79,156,249,.08) 0%,transparent 70%);pointer-events:none"></div>
+  <div style="flex:1;min-width:0;background:linear-gradient(145deg,#0e2422 0%,#0c1d1c 55%,#0a1614 100%);padding:48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(237,122,79,.10) 0%,transparent 70%);pointer-events:none"></div>
     <!-- Logo -->
-    <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
-      <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2563eb,#4f9cf9);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">G6</div>
+    <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1">
+      <img src="assets/g6-logo.png" alt="G6 Labs" style="height:56px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
       <div>
-        <div style="font-family:'Playfair Display',serif;font-size:17px;color:#e8ecf4;font-weight:600">G6 Labs Asia</div>
-        <div style="font-size:10px;color:#5a6080;letter-spacing:.08em;text-transform:uppercase;margin-top:2px">Ads Intelligence</div>
+        <div style="font-size:11px;color:#5d7079;letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px">Ads Intelligence</div>
+        <div style="font-size:13px;color:#8da0a6">G6 Labs Asia</div>
       </div>
     </div>
     <!-- Body -->
     <div style="position:relative;z-index:1">
-      <div style="font-family:'Playfair Display',serif;font-size:38px;color:#e8ecf4;line-height:1.25;margin-bottom:16px">Your ads,<br>under control.</div>
-      <div style="font-size:14px;color:#8b92a8;line-height:1.8;max-width:320px;margin-bottom:32px">Live Meta Ads performance dashboard — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
+      <div style="font-family:'Playfair Display',serif;font-size:38px;color:#eef2f3;line-height:1.25;margin-bottom:16px">Your ads,<br>under control.</div>
+      <div style="font-size:14px;color:#8da0a6;line-height:1.8;max-width:320px;margin-bottom:32px">Live Meta Ads performance dashboard — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
       <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Live Meta Ads data across all accounts</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Lead intelligence from Lark Bitable</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Automated email alerts when issues detected</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8b92a8"><div style="width:6px;height:6px;border-radius:50%;background:#4f9cf9;flex-shrink:0"></div>Health scoring, CPL tracking, handler leaderboard</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Live Meta Ads data across all accounts</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Lead intelligence from Lark Bitable</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Automated email alerts when issues detected</div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Health scoring, CPL tracking, handler leaderboard</div>
       </div>
     </div>
-    <div style="font-size:11px;color:#3a4060;position:relative;z-index:1">© 2026 G6 Labs Asia Sdn Bhd · Trisquare</div>
+    <div style="font-size:11px;color:#39555c;position:relative;z-index:1">© 2026 G6 Labs Asia Sdn Bhd · Trisquare</div>
   </div>
 
   <!-- RIGHT PANEL — form -->
-  <div style="width:460px;flex-shrink:0;background:#181b23;border-left:1px solid #2a2f42;display:flex;align-items:center;justify-content:center;padding:40px 36px;overflow-y:auto">
+  <div style="width:460px;flex-shrink:0;background:#0e1d1f;border-left:1px solid #1d3338;display:flex;align-items:center;justify-content:center;padding:40px 36px;overflow-y:auto">
     <div style="width:100%;max-width:360px">
 
       <!-- Card logo -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:36px">
-        <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#4f9cf9);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#fff;flex-shrink:0">G6</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:36px">
+        <img src="assets/g6-logo.png" alt="G6 Labs" style="height:48px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
         <div>
-          <div style="font-family:'Playfair Display',serif;font-size:16px;color:#e8ecf4;font-weight:600">G6 Labs Asia</div>
-          <div style="font-size:11px;color:#5a6080;letter-spacing:.06em;text-transform:uppercase;margin-top:1px">Ads Intelligence</div>
+          <div style="font-size:11px;color:#5d7079;letter-spacing:.1em;text-transform:uppercase">Ads Intelligence</div>
+          <div style="font-size:12px;color:#8da0a6;margin-top:1px">G6 Labs Asia</div>
         </div>
       </div>
 
-      <div style="font-family:'Playfair Display',serif;font-size:26px;color:#e8ecf4;margin-bottom:6px">Welcome back</div>
-      <div style="font-size:13px;color:#8b92a8;margin-bottom:28px;line-height:1.6">Sign in to access the dashboard and live ads data.</div>
+      <div style="font-family:'Playfair Display',serif;font-size:26px;color:#eef2f3;margin-bottom:6px">Welcome back</div>
+      <div style="font-size:13px;color:#8da0a6;margin-bottom:28px;line-height:1.6">Sign in to access the dashboard and live ads data.</div>
 
       <!-- Error box -->
       <div id="loginErr" style="display:none;background:rgba(240,82,82,.08);border:1px solid rgba(240,82,82,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#fca5a5;margin-bottom:16px;line-height:1.5"></div>
 
       <!-- Username -->
       <div style="margin-bottom:18px">
-        <label for="loginUser" style="display:block;font-size:12px;font-weight:500;color:#8b92a8;margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase">Username</label>
+        <label for="loginUser" style="display:block;font-size:12px;font-weight:500;color:#8da0a6;margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase">Username</label>
         <input id="loginUser" type="text" placeholder="e.g. ashokh" autocomplete="username"
           onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"
-          style="width:100%;background:#111318;border:1px solid #2a2f42;border-radius:8px;padding:13px 15px;color:#e8ecf4;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box"
-          onfocus="this.style.borderColor='#4f9cf9'" onblur="this.style.borderColor='#2a2f42'">
+          style="width:100%;background:#0d1c1e;border:1px solid #1d3338;border-radius:8px;padding:13px 15px;color:#eef2f3;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box"
+          onfocus="this.style.borderColor='#ed7a4f'" onblur="this.style.borderColor='#1d3338'">
       </div>
 
       <!-- Password -->
       <div style="margin-bottom:6px">
-        <label for="loginPass" style="display:block;font-size:12px;font-weight:500;color:#8b92a8;margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase">Password</label>
+        <label for="loginPass" style="display:block;font-size:12px;font-weight:500;color:#8da0a6;margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase">Password</label>
         <div style="position:relative">
           <input id="loginPass" type="password" placeholder="••••••••••" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')doLogin()"
-            style="width:100%;background:#111318;border:1px solid #2a2f42;border-radius:8px;padding:13px 44px 13px 15px;color:#e8ecf4;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box"
-            onfocus="this.style.borderColor='#4f9cf9'" onblur="this.style.borderColor='#2a2f42'">
+            style="width:100%;background:#0d1c1e;border:1px solid #1d3338;border-radius:8px;padding:13px 44px 13px 15px;color:#eef2f3;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box"
+            onfocus="this.style.borderColor='#ed7a4f'" onblur="this.style.borderColor='#1d3338'">
           <button type="button" onclick="togglePw()" aria-label="Show/hide password"
-            style="position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5a6080;font-size:17px;padding:0;line-height:1">
+            style="position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5d7079;font-size:17px;padding:0;line-height:1">
             <i class="ti ti-eye" id="pwEyeIcon"></i>
           </button>
         </div>
@@ -541,34 +784,34 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
       <!-- Sign in button -->
       <button id="loginBtn" onclick="doLogin()"
-        style="width:100%;padding:14px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#4f9cf9);color:#fff;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.02em;box-shadow:0 4px 16px rgba(79,156,249,.25)"
+        style="width:100%;padding:14px;border-radius:8px;background:linear-gradient(135deg,#c45a32,#ed7a4f);color:#fff;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.02em;box-shadow:0 4px 16px rgba(237,122,79,.25)"
         onmouseover="this.style.opacity='.87'" onmouseout="this.style.opacity='1'">
         Sign in →
       </button>
 
       <!-- Quick select -->
-      <div style="margin-top:26px;padding-top:22px;border-top:1px solid #2a2f42">
-        <div style="font-size:11px;font-weight:500;color:#5a6080;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Quick select</div>
+      <div style="margin-top:26px;padding-top:22px;border-top:1px solid #1d3338">
+        <div style="font-size:11px;font-weight:500;color:#5d7079;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Quick select</div>
         <div style="display:flex;gap:10px">
           <button onclick="quickSelect('ashokh')"
-            style="flex:1;padding:10px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
-            onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
-            ashokh<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Admin</span>
+            style="flex:1;padding:10px 12px;border-radius:8px;background:#0d1c1e;border:1px solid #1d3338;color:#8da0a6;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
+            onmouseover="this.style.borderColor='#ed7a4f';this.style.color='#ed7a4f'" onmouseout="this.style.borderColor='#1d3338';this.style.color='#8da0a6'">
+            ashokh<br><span style="font-size:10px;color:#5d7079;text-transform:uppercase;letter-spacing:.04em">Admin</span>
           </button>
           <button onclick="quickSelect('diva')"
-            style="flex:1;padding:10px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
-            onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
-            diva<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Team</span>
+            style="flex:1;padding:10px 12px;border-radius:8px;background:#0d1c1e;border:1px solid #1d3338;color:#8da0a6;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
+            onmouseover="this.style.borderColor='#ed7a4f';this.style.color='#ed7a4f'" onmouseout="this.style.borderColor='#1d3338';this.style.color='#8da0a6'">
+            diva<br><span style="font-size:10px;color:#5d7079;text-transform:uppercase;letter-spacing:.04em">Team</span>
           </button>
           <button onclick="quickSelect('anisa')"
-            style="flex:1;padding:10px 12px;border-radius:8px;background:#111318;border:1px solid #2a2f42;color:#8b92a8;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
-            onmouseover="this.style.borderColor='#4f9cf9';this.style.color='#4f9cf9'" onmouseout="this.style.borderColor='#2a2f42';this.style.color='#8b92a8'">
-            anisa<br><span style="font-size:10px;color:#5a6080;text-transform:uppercase;letter-spacing:.04em">Team</span>
+            style="flex:1;padding:10px 12px;border-radius:8px;background:#0d1c1e;border:1px solid #1d3338;color:#8da0a6;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
+            onmouseover="this.style.borderColor='#ed7a4f';this.style.color='#ed7a4f'" onmouseout="this.style.borderColor='#1d3338';this.style.color='#8da0a6'">
+            anisa<br><span style="font-size:10px;color:#5d7079;text-transform:uppercase;letter-spacing:.04em">Team</span>
           </button>
         </div>
       </div>
 
-      <div style="margin-top:22px;font-size:12px;color:#3a4060;text-align:center;line-height:1.6">🔒 Secured · Sessions expire after 4 hours</div>
+      <div style="margin-top:22px;font-size:12px;color:#39555c;text-align:center;line-height:1.6">🔒 Secured · Sessions expire after 4 hours</div>
     </div>
   </div>
 </div>
@@ -581,10 +824,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-head">
-      <div class="brand-logo">G6</div>
+      <img src="assets/g6-logo.png" alt="G6 Labs" class="brand-logo-img" style="height:44px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
       <div>
-        <div class="brand-name">G6 Labs Asia</div>
-        <div class="brand-sub">Ads Intelligence</div>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase">Ads Intelligence</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:1px">G6 Labs Asia</div>
       </div>
     </div>
 
@@ -996,7 +1239,7 @@ function renderOverview(ads){
           <div class="gauge-sub">Avg CTR ${avgCtr>0?avgCtr.toFixed(2)+'%':'—'} across active ads</div>
           <div class="gauge-bar"><div class="gauge-fill" style="width:${ctrScore}%;background:${ctrColor}"></div></div>
         </div>
-        <div class="gauge-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(79,156,249,.3)'" onmouseleave="this.style.borderColor='var(--border)'">
+        <div class="gauge-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(237,122,79,.3)'" onmouseleave="this.style.borderColor='var(--border)'">
           <div class="gauge-label">Alert Status <span style="font-size:9px;color:var(--text3)">↗</span></div>
           <div class="gauge-num" style="color:${alertColor}">${alertScore}<span style="font-size:16px;color:var(--text3)">/100</span></div>
           <div class="gauge-sub">${alerts} alert${alerts!==1?'s':''} · ${warns} warning${warns!==1?'s':''} on active ads</div>
@@ -1038,7 +1281,7 @@ function renderOverview(ads){
           ${avgCpr>0&&avgCpr<=15?'<div class="kpi-good"><i class="ti ti-check"></i> Within target</div>':avgCpr>15?'<div class="kpi-alert"><i class="ti ti-alert-circle"></i> Above RM 15</div>':'<div class="kpi-hint">—</div>'}
           <div style="height:38px;margin-top:10px"><canvas id="cplSpark" style="display:block;width:100%;height:38px"></canvas></div>
         </div>
-        <div class="kpi-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(79,156,249,.4)'" onmouseleave="this.style.borderColor=''">
+        <div class="kpi-card" onclick="jumpToTab('health')" style="cursor:pointer;transition:border-color .15s" onmouseenter="this.style.borderColor='rgba(237,122,79,.4)'" onmouseleave="this.style.borderColor=''">
           <div class="kpi-label">Issues <span style="font-size:9px;color:var(--text3)">↗ active only</span></div>
           <div class="kpi-value">${alerts+warns}</div>
           ${alerts>0?`<div class="kpi-alert"><i class="ti ti-alert-circle"></i> ${alerts} alert${alerts>1?'s':''}</div>`:warns>0?`<div class="kpi-warn"><i class="ti ti-alert-triangle"></i> ${warns} warning${warns>1?'s':''}</div>`:'<div class="kpi-good"><i class="ti ti-check"></i> All clear</div>'}
@@ -1082,8 +1325,8 @@ function renderOverview(ads){
           datasets:[{
             label:'Spend (RM)',
             data:camps.map(([,v])=>parseFloat(v.spend.toFixed(2))),
-            backgroundColor:camps.map(([,v])=>v.hasActive?'rgba(79,156,249,.7)':'rgba(100,110,135,.28)'),
-            borderColor:camps.map(([,v])=>v.hasActive?'#4f9cf9':'rgba(100,110,135,.5)'),
+            backgroundColor:camps.map(([,v])=>v.hasActive?'rgba(237,122,79,.7)':'rgba(100,110,135,.28)'),
+            borderColor:camps.map(([,v])=>v.hasActive?'#ed7a4f':'rgba(100,110,135,.5)'),
             borderWidth:1,
             borderRadius:4,
           }]
@@ -1103,8 +1346,8 @@ function renderOverview(ads){
             }}
           },
           scales:{
-            x:{ticks:{color:'#5a6080',font:{size:10}},grid:{display:false}},
-            y:{ticks:{color:'#5a6080',font:{size:10},callback:v=>'RM '+v},grid:{color:'rgba(42,47,66,.6)'}}
+            x:{ticks:{color:'#5d7079',font:{size:10}},grid:{display:false}},
+            y:{ticks:{color:'#5d7079',font:{size:10},callback:v=>'RM '+v},grid:{color:'rgba(42,47,66,.6)'}}
           }
         }
       });
@@ -1323,7 +1566,7 @@ async function loadSparklines(accountId){
     const to=yDay();
     const rows=await sbFetch('get_meta_history',{account_id:accountId,from,to});
     if(!Array.isArray(rows)||rows.length<2)return;
-    drawSparkline('spendSpark',rows.map(r=>parseFloat(r.spend)||0),'#4f9cf9');
+    drawSparkline('spendSpark',rows.map(r=>parseFloat(r.spend)||0),'#ed7a4f');
     drawSparkline('ctrSpark',  rows.map(r=>parseFloat(r.ctr)||0), '#22c55e');
     drawSparkline('cplSpark',  rows.map(r=>parseFloat(r.cpl)||0), '#f59e0b');
   }catch{}
@@ -1349,14 +1592,14 @@ let leadsLoading    = false;
 
 const GROUP_META = {
   converted:    { label: 'Converted',    color: '#22c55e', bg: '#052e16' },
-  good_quality: { label: 'Good quality', color: '#4f9cf9', bg: '#0d1f40' },
+  good_quality: { label: 'Good quality', color: '#ed7a4f', bg: '#3a1d12' },
   bad_quality:  { label: 'Bad quality',  color: '#ef4444', bg: '#2d0808' },
-  disqualified: { label: 'Disqualified', color: '#8b92a8', bg: '#1e2230' },
+  disqualified: { label: 'Disqualified', color: '#8da0a6', bg: '#1e2230' },
 };
 
 const PROGRESS_COLORS = {
   'Completed':                          '#22c55e',
-  'Set Appointment':                    '#4f9cf9',
+  'Set Appointment':                    '#ed7a4f',
   'Responsive':                         '#14b8a6',
   'Waiting Reply':                      '#a78bfa',
   'Yet to set appt':                    '#f59e0b',
@@ -1366,11 +1609,11 @@ const PROGRESS_COLORS = {
   'No resp before price':               '#ef4444',
   'No Respond after 1st message/price': '#ef4444',
   'Delete Message':                     '#ef4444',
-  'SPAM/Job vacancy':                   '#8b92a8',
-  'Out of location':                    '#8b92a8',
-  'Language Problem':                   '#8b92a8',
-  'Another clinic':                     '#8b92a8',
-  'Pass to Other Branch':               '#8b92a8',
+  'SPAM/Job vacancy':                   '#8da0a6',
+  'Out of location':                    '#8da0a6',
+  'Language Problem':                   '#8da0a6',
+  'Another clinic':                     '#8da0a6',
+  'Pass to Other Branch':               '#8da0a6',
 };
 
 async function loadLeads(force=false) {
@@ -1603,7 +1846,7 @@ function renderLeads() {
         <div class="s-card-title"><i class="ti ti-trophy"></i> Membership closing rate</div>
         ${(Object.entries(stats?.byHandler||{}).map(([h,d])=>({name:h,...d,rate:d.total>0?((d.converted/d.total)*100).toFixed(0):0})).sort((a,b)=>b.converted-a.converted)).map((h,i)=>`
         <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#2d1a00':i===1?'#1a1f2e':'var(--bg4)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${i===0?'#f59e0b':i===1?'#8b92a8':'var(--text3)'};flex-shrink:0">${i+1}</div>
+          <div style="width:22px;height:22px;border-radius:50%;background:${i===0?'#2d1a00':i===1?'#1a1f2e':'var(--bg4)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${i===0?'#f59e0b':i===1?'#8da0a6':'var(--text3)'};flex-shrink:0">${i+1}</div>
           <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">${h.name}</div><div style="font-size:11px;color:var(--text3)">${h.total} leads · ${h.converted} closed</div></div>
           <div style="font-size:14px;font-weight:700;color:${parseFloat(h.rate)>=30?'var(--green)':'var(--amber)'}">${h.rate}%</div>
         </div>`).join('')||'<div style="text-align:center;padding:20px;font-size:12px;color:var(--text3)">No handler data yet</div>'}
@@ -1612,7 +1855,7 @@ function renderLeads() {
       <div class="s-card">
         <div class="s-card-title"><i class="ti ti-trending-up"></i> Gym membership funnel</div>
         ${[
-          {label:'Inquiries',     count:total,                                  color:'#4f9cf9'},
+          {label:'Inquiries',     count:total,                                  color:'#ed7a4f'},
           {label:'Called / Contacted', count:stats?.byGroup?.good_quality||0,  color:'#a78bfa'},
           {label:'Appointments',  count:(stats?.upcoming||[]).length + (stats?.byGroup?.converted||0), color:'#f59e0b'},
           {label:'Memberships closed', count:stats?.byGroup?.converted||0,     color:'#22c55e'},
@@ -1637,7 +1880,7 @@ function renderLeads() {
       <div class="s-card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i> Lead progress breakdown</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">
         ${Object.entries(stats?.byProgress || {}).sort((a,b)=>b[1]-a[1]).map(([p,n]) => {
-          const color = PROGRESS_COLORS[p] || '#8b92a8';
+          const color = PROGRESS_COLORS[p] || '#8da0a6';
           const pct   = total > 0 ? (n/total*100).toFixed(0) : 0;
           return `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:10px 12px;border-left:3px solid ${color}">
             <div style="font-size:11px;color:var(--text2);margin-bottom:4px;line-height:1.3">${p}</div>
@@ -1741,8 +1984,8 @@ function renderLeads() {
           </tr></thead>
           <tbody>
             ${allRecords.slice(0,100).map(r => {
-              const gm  = GROUP_META[r.group] || { label: 'Unknown', color: '#8b92a8', bg: '#1e2230' };
-              const pc  = PROGRESS_COLORS[r.progress] || '#8b92a8';
+              const gm  = GROUP_META[r.group] || { label: 'Unknown', color: '#8da0a6', bg: '#1e2230' };
+              const pc  = PROGRESS_COLORS[r.progress] || '#8da0a6';
               return `<tr>
                 <td style="font-weight:500;color:var(--text)">${r.name||'—'}</td>
                 <td><span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg4);color:var(--text2)">${r.zoneName}</span></td>
@@ -1790,8 +2033,8 @@ async function doLogin() {
 
   errEl.style.display = 'none';
   warnEl.textContent = '';
-  document.getElementById('loginUser').style.borderColor = '#2a2f42';
-  document.getElementById('loginPass').style.borderColor = '#2a2f42';
+  document.getElementById('loginUser').style.borderColor = '#1d3338';
+  document.getElementById('loginPass').style.borderColor = '#1d3338';
 
   if (!userId || !password) {
     errEl.textContent = 'Please enter your username and password.';
@@ -1940,7 +2183,7 @@ function calcHealthScore(kpis) {
 
 function healthLabel(score) {
   if (score >= 92) return { label: 'Excellent', color: '#22c55e' };
-  if (score >= 75) return { label: 'Healthy',   color: '#4f9cf9' };
+  if (score >= 75) return { label: 'Healthy',   color: '#ed7a4f' };
   if (score >= 50) return { label: 'Warning',   color: '#f59e0b' };
   return              { label: 'Critical',  color: '#ef4444' };
 }
@@ -2181,7 +2424,7 @@ function renderSales() {
 
   // Funnel steps
   const funnel = [
-    { label:'Impressions',  count: impr,      color:'#4f9cf9' },
+    { label:'Impressions',  count: impr,      color:'#ed7a4f' },
     { label:'Clicks',       count: clicks,     color:'#a78bfa' },
     { label:'Leads',        count: totLeads,   color:'#14b8a6' },
     { label:'Appointments', count: totAppts,   color:'#f59e0b' },
@@ -2512,7 +2755,7 @@ async function showTasks() {
           <div style="display:flex;gap:3px">
             ${['all','ashokh','diva','anisa'].map(a=>`
             <button onclick="taskFilterAssignee='${a}';applyTaskFilters();document.querySelectorAll('.af-btn').forEach(b=>b.classList.remove('active-filter'));this.classList.add('active-filter')"
-              class="af-btn" style="padding:5px 10px;border-radius:6px;border:1px solid ${taskFilterAssignee===a?'var(--blue)':'var(--border2)'};background:${taskFilterAssignee===a?'rgba(79,156,249,.15)':'var(--bg2)'};color:${taskFilterAssignee===a?'var(--blue)':'var(--text2)'};cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;white-space:nowrap">
+              class="af-btn" style="padding:5px 10px;border-radius:6px;border:1px solid ${taskFilterAssignee===a?'var(--blue)':'var(--border2)'};background:${taskFilterAssignee===a?'rgba(237,122,79,.15)':'var(--bg2)'};color:${taskFilterAssignee===a?'var(--blue)':'var(--text2)'};cursor:pointer;font-family:inherit;font-size:11px;font-weight:500;white-space:nowrap">
               ${a==='all'?'All':a.charAt(0).toUpperCase()+a.slice(1)}
             </button>`).join('')}
           </div>
@@ -2661,7 +2904,7 @@ function applyTaskFilters() {
 function renderKanbanFiltered(filtered) {
   const statuses = [
     { key:'pending',     label:'To Do',       color:'var(--text3)', bg:'var(--bg4)' },
-    { key:'in_progress', label:'In Progress',  color:'var(--blue)',  bg:'rgba(79,156,249,.1)' },
+    { key:'in_progress', label:'In Progress',  color:'var(--blue)',  bg:'rgba(237,122,79,.1)' },
     { key:'done',        label:'Done',         color:'var(--green)', bg:'rgba(34,197,94,.1)' },
   ];
   const byStatus = {};
@@ -2998,10 +3241,10 @@ async function loadComments(taskId) {
       el.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:var(--text3)">No comments yet — be the first to comment</div>';
       return;
     }
-    const avatarColors = { ashokh:'#2563eb', diva:'#7c3aed', anisa:'#059669', system:'#8b92a8' };
+    const avatarColors = { ashokh:'#c45a32', diva:'#7c3aed', anisa:'#059669', system:'#8da0a6' };
     el.innerHTML = comments.map(c => `
       <div class="comment-item" style="display:flex;gap:10px;margin-bottom:14px">
-        <div class="cavatar" style="background:${avatarColors[c.author]||'#4f9cf9'};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">
+        <div class="cavatar" style="background:${avatarColors[c.author]||'#ed7a4f'};width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">
           ${(c.author||'?')[0].toUpperCase()}
         </div>
         <div class="cbubble" style="flex:1">
@@ -3330,7 +3573,7 @@ async function renderTaskDashboard() {
     if (t.status==='done'||todayDone.has(t.id)) byClient[c].done++;
   });
 
-  const avatarColor = { ashokh:'#2563eb', diva:'#7c3aed', anisa:'#059669', all:'#4f9cf9' };
+  const avatarColor = { ashokh:'#c45a32', diva:'#7c3aed', anisa:'#059669', all:'#ed7a4f' };
   const catIcon = { ads:'📊', content:'✍️', design:'🎨', report:'📋', general:'📌' };
   const pointsMap = {};
   (Array.isArray(pointsData)?pointsData:[]).forEach(p => { pointsMap[p.assignee] = p.total_points; });
