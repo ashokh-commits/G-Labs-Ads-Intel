@@ -4610,7 +4610,11 @@ async function copySummary() {
   if (!ads || !activeId) { alert('Load an account first'); return; }
   const acc = ACCOUNTS.find(a => a.id === activeId);
 
-  // MTD totals from live cache
+  // Show loading state
+  const origBtnHtml = btn?.innerHTML || '';
+  if (btn) { btn.innerHTML = '<i class="ti ti-loader-2"></i> Loading…'; btn.disabled = true; }
+
+  // MTD totals from live cache (month-to-date: mStart → yDay)
   const totalSpend   = ads.reduce((s,a) => s + rmN(a.spend), 0);
   const totalImpr    = ads.reduce((s,a) => s + intN(a.impr), 0);
   const totalClicks  = ads.reduce((s,a) => s + intN(a.clicks), 0);
@@ -4621,49 +4625,71 @@ async function copySummary() {
   const avgCtr       = totalImpr > 0 ? (totalClicks / totalImpr * 100) : 0;
   const cpl          = leads > 0 ? (totalSpend / leads) : 0;
 
-  // Yesterday's snapshot from history table
-  let ySpend = 0, yLeads = 0;
+  // ── Yesterday's actual daily data — call Meta API for just that one day ──
+  // (meta_snapshots stores cumulative MTD totals, NOT single-day values)
+  let ySpend = 0, yLeads = 0, yImpr = 0, yClicks = 0, yHasData = false;
   try {
-    const yd   = new Date(); yd.setDate(yd.getDate()-1);
-    const yStr = yd.toISOString().split('T')[0];
-    const rows = await sbFetch('get_meta_history', { account_id: activeId, from: yStr, to: yStr });
-    if (Array.isArray(rows) && rows[0]) {
-      ySpend = parseFloat(rows[0].spend || 0);
-      yLeads = parseInt(rows[0].leads || 0);
+    const yStr = yDay(); // e.g. 2026-05-28
+    const yRes = await authedFetch('/api/meta-proxy', {
+      method: 'POST',
+      body:   JSON.stringify({ accountId: activeId, since: yStr, until: yStr }),
+    });
+    if (yRes.ok) {
+      const yJson = await yRes.json();
+      (yJson.data || []).forEach(ad => {
+        const ins  = ad.insights?.data?.[0] || {};
+        const sp   = parseFloat(ins.spend || 0);
+        const imp  = parseInt(ins.impressions || 0);
+        const clk  = parseInt(ins.link_clicks || 0);
+        const acts = ins.actions || [];
+        const conv = acts.find(a => (a.action_type||'').includes('messaging_conversation'));
+        let res    = parseInt(conv?.value || 0);
+        if (!res && Array.isArray(ins.results) && ins.results[0]) res = parseInt(ins.results[0].value || 0);
+        ySpend  += sp;
+        yImpr   += imp;
+        yClicks += clk;
+        yLeads  += res;
+      });
+      yHasData = ySpend > 0 || yLeads > 0;
     }
-  } catch(e) {}
+  } catch(e) { console.warn('[copySummary] Yesterday fetch failed:', e.message); }
 
-  const today    = new Date().toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const todayLbl = new Date().toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const ydLbl    = new Date(new Date().setDate(new Date().getDate()-1)).toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long' });
   const monthLbl = new Date().toLocaleString('en-MY', { month: 'long', year: 'numeric' });
+
+  const rm2 = v => `RM ${v.toLocaleString('en-MY', {minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
   const summary = [
     `📊 *${acc?.name || 'Account'}* — Ads Performance Summary`,
-    `📅 *${today}*`,
+    `📅 *${todayLbl}*`,
     ``,
     `*📆 Month-to-Date (${monthLbl}):*`,
-    `💰 Total Spend: RM ${totalSpend.toLocaleString('en-MY', {minimumFractionDigits:2,maximumFractionDigits:2})}`,
+    `💰 Total Spend: ${rm2(totalSpend)}`,
     `📞 Total Leads: ${leads.toLocaleString()}`,
     `📊 Avg CTR: ${avgCtr > 0 ? avgCtr.toFixed(2)+'%' : '—'}`,
     `💵 Avg CPL: ${cpl > 0 ? 'RM '+cpl.toFixed(2) : '—'}`,
     `✅ Active Ads: ${active}`,
     ``,
-    `*📅 Yesterday's Performance:*`,
-    `💰 Spend: ${ySpend > 0 ? 'RM '+ySpend.toLocaleString('en-MY', {minimumFractionDigits:2}) : '—'}`,
-    `📞 Leads: ${yLeads > 0 ? yLeads : '—'}`,
+    `*📅 Yesterday (${ydLbl}):*`,
+    `💰 Spend: ${yHasData && ySpend > 0 ? rm2(ySpend) : '—'}`,
+    `📞 Leads: ${yHasData && yLeads > 0 ? yLeads : '—'}`,
+    ...(yHasData && yImpr > 0 ? [`📊 CTR: ${yImpr > 0 && yClicks > 0 ? (yClicks/yImpr*100).toFixed(2)+'%' : '—'}`] : []),
     ``,
     `— G6 Labs Ads Intelligence`,
   ].join('\n');
 
+  if (btn) { btn.disabled = false; }
+
   try {
     await navigator.clipboard.writeText(summary);
-    if (btn) { const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 2000); }
+    if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; setTimeout(() => { btn.innerHTML = origBtnHtml; btn.style.color = ''; btn.style.borderColor = ''; }, 2500); }
   } catch(e) {
-    // Fallback for browsers that don't support clipboard API
     const ta = document.createElement('textarea');
     ta.value = summary; ta.style.position = 'fixed'; ta.style.opacity = '0';
     document.body.appendChild(ta); ta.select(); document.execCommand('copy');
     document.body.removeChild(ta);
-    if (btn) { const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; setTimeout(() => { btn.innerHTML = orig; }, 2000); }
+    if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; setTimeout(() => { btn.innerHTML = origBtnHtml; }, 2500); }
   }
 }
 
@@ -4701,11 +4727,27 @@ async function showSettings() {
 }
 
 async function loadUsers() {
+  const el = document.getElementById('userList');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
   try {
     const users = await sbFetch('get_users', {});
     renderUserMgmt(Array.isArray(users) ? users : []);
   } catch(e) {
-    document.getElementById('userList').innerHTML = `<div style="color:var(--red);padding:20px">Failed to load users: ${e.message}</div>`;
+    // Likely: users table hasn't been created yet
+    el.innerHTML = `
+      <div class="s-card" style="text-align:center;padding:36px 28px">
+        <div style="font-size:36px;margin-bottom:14px">⚙️</div>
+        <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:10px">Users table not set up yet</div>
+        <div style="font-size:13px;color:var(--text3);line-height:1.8;margin-bottom:16px">
+          Run <code style="background:var(--bg4);padding:2px 8px;border-radius:4px;color:var(--blue);font-size:12px">SUPABASE_USERS.sql</code>
+          in your <strong style="color:var(--text2)">Supabase → SQL Editor</strong> to create the users table and seed initial users, then refresh this page.
+        </div>
+        <button onclick="loadUsers()" style="padding:8px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">
+          Retry
+        </button>
+        <div style="font-size:11px;color:var(--text3);margin-top:12px">Error: ${e.message}</div>
+      </div>`;
   }
 }
 

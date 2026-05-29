@@ -435,6 +435,11 @@ module.exports = async (req, res) => {
     if (action === 'get_users') {
       if (!isSuperAdmin) return res.status(403).json({ error: 'Superadmin only' });
       const r = await sb('GET', 'users', null, '?select=username,name,role,superadmin,accounts,email,active&order=created_at.asc');
+      if (!r.ok) {
+        // Table likely doesn't exist yet — return a clear error so the UI can guide the user
+        console.error('[get_users] Supabase error:', JSON.stringify(r.data).slice(0, 200));
+        return res.status(500).json({ error: 'users_table_missing', hint: 'Run SUPABASE_USERS.sql in Supabase SQL Editor first.' });
+      }
       return res.status(200).json(Array.isArray(r.data) ? r.data : []);
     }
 
