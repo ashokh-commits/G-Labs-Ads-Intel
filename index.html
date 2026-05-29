@@ -2008,6 +2008,10 @@ function renderLeads() {
 // ── AUTH ──────────────────────────────────────────────────────────────────
 let authToken   = localStorage.getItem('g6_token') || null;
 let currentUser = JSON.parse(localStorage.getItem('g6_user') || 'null');
+// Backward compat: sessions issued before the Supabase-auth migration lack `superadmin`
+if (currentUser && currentUser.superadmin === undefined) {
+  currentUser.superadmin = currentUser.userId === 'ashokh';
+}
 let sessionTimeout = null;
 const SESSION_MS = 4 * 60 * 60 * 1000; // 4 hours
 
@@ -2701,7 +2705,7 @@ async function sbFetch(action, params={}, body=null) {
 
 // ── TASK MANAGER ──────────────────────────────────────────────────────────
 let allTasks = [], todayDone = new Set(), yesterdayDone = new Set(), taskTab = 'daily';
-let taskView = 'list';
+let taskView = 'dashboard'; // default; user choice persists — no auto-override
 let _missedDailyTasks = []; // shared with processOverdueDeductions()
 let taskSort = 'priority'; // priority, assignee, category, due_date, title
 let taskFilterAssignee = 'all';
@@ -2715,9 +2719,12 @@ async function showTasks() {
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Task Manager';
   document.getElementById('headerMeta').style.display = 'none';
-  const isAdmin = currentUser?.role === 'admin' && currentUser?.userId === 'ashokh';
-  // Default to dashboard view for ashokh
-  if (isAdmin && taskView === 'list' && allTasks.length > 0) taskView = 'dashboard';
+
+  // Clients have no access to Task Manager
+  if (currentUser?.role === 'client') {
+    document.getElementById('content').innerHTML = `<div class="state-wrap"><div class="state-icon">🔒</div><div class="state-title">No access</div><div class="state-sub">Task Manager is for the internal team only.</div></div>`;
+    return;
+  }
 
   document.getElementById('content').innerHTML = `
     <div class="tab-section active" style="padding:18px 22px 60px">
@@ -2751,7 +2758,8 @@ async function showTasks() {
             onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border2)'">
         </div>
 
-        <!-- Assignee filter -->
+        ${currentUser?.superadmin ? `
+        <!-- Assignee filter (superadmin only) -->
         <div style="display:flex;align-items:center;gap:5px">
           <span style="font-size:11px;color:var(--text3);white-space:nowrap">Who:</span>
           <div style="display:flex;gap:3px">
@@ -2761,7 +2769,12 @@ async function showTasks() {
               ${a==='all'?'All':a.charAt(0).toUpperCase()+a.slice(1)}
             </button>`).join('')}
           </div>
-        </div>
+        </div>` : `
+        <!-- Non-superadmin: show own name as static label -->
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--text3)">Showing:</span>
+          <span style="padding:5px 10px;border-radius:6px;background:rgba(79,156,249,.12);border:1px solid rgba(79,156,249,.3);color:var(--blue);font-size:11px;font-weight:600;text-transform:capitalize">${currentUser?.name || currentUser?.userId}</span>
+        </div>`}
 
         <!-- Category filter -->
         <div style="display:flex;align-items:center;gap:5px">
@@ -2841,13 +2854,17 @@ function applyTaskFilters() {
   const freqOrder     = { daily:0, weekly:1, monthly:2, once:3 };
 
   let filtered = allTasks.filter(t => {
+    // Non-superadmin admins can only ever see their own tasks (hard enforce)
+    if (currentUser?.role === 'admin' && !currentUser?.superadmin) {
+      if (t.assignee !== currentUser.userId && t.assignee !== 'all') return false;
+    }
     // Frequency tab filter (skip for 'all' tab)
     if (taskTab && taskTab !== '' && t.frequency !== taskTab) return false;
-    // Assignee filter
-    if (taskFilterAssignee !== 'all' && t.assignee !== taskFilterAssignee) return false;
+    // Assignee filter (superadmin only — non-superadmin is enforced above)
+    if (currentUser?.superadmin && taskFilterAssignee !== 'all' && t.assignee !== taskFilterAssignee) return false;
     // Category filter
     if (taskFilterCategory !== 'all' && t.category !== taskFilterCategory) return false;
-    // Client search (from description field)
+    // Search
     if (taskSearch) {
       const s = taskSearch.toLowerCase();
       if (!t.title?.toLowerCase().includes(s) && !t.description?.toLowerCase().includes(s)) return false;
@@ -3501,6 +3518,12 @@ async function autoSaveAdSnapshot(accountId, ads) {
 
 // ── TASK DASHBOARD (Admin only) ───────────────────────────────────────────
 async function renderTaskDashboard() {
+  // Non-superadmin admins (Diva, Anisa) get a personal view — their tasks/score only
+  if (currentUser?.role === 'admin' && !currentUser?.superadmin) {
+    await renderPersonalDashboard();
+    return;
+  }
+
   document.getElementById('taskList').innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
 
   // Load points data
@@ -3806,28 +3829,203 @@ async function renderTaskDashboard() {
     </div>`;
 }
 
-// Deduct points for all missed daily tasks from yesterday (run once per day, gated by localStorage)
+// ── PERSONAL DASHBOARD (Diva / Anisa — own tasks + own score only) ────────
+async function renderPersonalDashboard() {
+  const el = document.getElementById('taskList');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
+
+  const me     = currentUser.userId;
+  const myName = currentUser.name || me;
+  const avatarColor = { ashokh:'#c45a32', diva:'#7c3aed', anisa:'#059669' };
+
+  // Load my points
+  let myPoints = 100;
+  try {
+    const pts  = await sbFetch('get_points', {});
+    const mine = (pts||[]).find(p => p.assignee === me);
+    myPoints   = mine?.total_points ?? 100;
+  } catch(e) {}
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Filter all tasks to only mine (assignee = me OR 'all')
+  const myTasks = allTasks.filter(t => t.assignee === me || t.assignee === 'all');
+
+  // Daily
+  const myDaily    = myTasks.filter(t => t.frequency === 'daily');
+  const myDailyDone= myDaily.filter(t => todayDone.has(t.id) || t.status === 'done').length;
+  const myDailyPct = myDaily.length > 0 ? Math.round(myDailyDone / myDaily.length * 100) : 0;
+
+  // Overall completion
+  const myDone    = myTasks.filter(t => todayDone.has(t.id) || t.status === 'done').length;
+  const myCompPct = myTasks.length > 0 ? Math.round(myDone / myTasks.length * 100) : 0;
+
+  // Due today
+  const myDueToday = myTasks.filter(t => {
+    if (todayDone.has(t.id) || t.status === 'done') return false;
+    if (t.due_date) { const d = new Date(t.due_date); d.setHours(0,0,0,0); return d.getTime() === today.getTime(); }
+    return t.frequency === 'daily';
+  });
+
+  // Overdue
+  const myPastDue   = myTasks.filter(t => t.due_date && new Date(t.due_date) < today && t.status !== 'done' && !todayDone.has(t.id));
+  const myMissed    = myTasks.filter(t => t.frequency === 'daily' && !yesterdayDone.has(t.id) && !todayDone.has(t.id) && t.status !== 'done');
+  const myOverdue   = [...myPastDue, ...myMissed];
+
+  // Completed today
+  const myDoneToday = myTasks.filter(t => todayDone.has(t.id));
+
+  const bar   = myPoints >= 80 ? 'var(--green)' : myPoints >= 50 ? 'var(--amber)' : 'var(--red)';
+  const acol  = avatarColor[me] || 'var(--blue)';
+
+  el.innerHTML = `
+    <!-- KPIs -->
+    <div class="tdash-grid" style="margin-bottom:12px">
+      <div class="tdash-kpi" style="--kc:var(--blue)">
+        <div class="tdash-kpi-lbl">My tasks</div>
+        <div class="tdash-kpi-val">${myTasks.length}</div>
+        <div class="tdash-kpi-sub">${myDone} done · ${myTasks.length-myDone} pending</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--green)">
+        <div class="tdash-kpi-lbl">Daily today</div>
+        <div class="tdash-kpi-val" style="color:${myDailyPct>=80?'var(--green)':myDailyPct>=50?'var(--amber)':'var(--red)'}">${myDailyDone}/${myDaily.length}</div>
+        <div style="height:4px;background:var(--bg4);border-radius:2px;margin:6px 0">
+          <div style="height:4px;width:${myDailyPct}%;background:${myDailyPct>=80?'var(--green)':myDailyPct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .6s"></div>
+        </div>
+        <div class="tdash-kpi-sub">${myDailyPct}% · ${myDaily.length-myDailyDone} remaining</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--amber)">
+        <div class="tdash-kpi-lbl">Completion</div>
+        <div class="tdash-kpi-val" style="color:var(--amber)">${myCompPct}%</div>
+        <div class="tdash-kpi-sub">${myDone} of ${myTasks.length} done</div>
+      </div>
+      <div class="tdash-kpi" style="--kc:var(--red)">
+        <div class="tdash-kpi-lbl">Overdue</div>
+        <div class="tdash-kpi-val" style="color:${myOverdue.length>0?'var(--red)':'var(--green)'}">${myOverdue.length}</div>
+        <div class="tdash-kpi-sub">${myPastDue.length} past-due · ${myMissed.length} daily missed</div>
+      </div>
+    </div>
+
+    <!-- My Points -->
+    <div class="tdash-card" style="margin-bottom:12px">
+      <div class="tdash-card-title">🏆 My Points</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:50%;background:${acol};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff">${myName[0].toUpperCase()}</div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);text-transform:capitalize">${myName}</div>
+            <div style="font-size:10px;color:var(--text3)">Daily miss −3 · Complete +2 daily / +4 weekly / +8 monthly</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:30px;font-weight:700;color:${bar}">${myPoints}</div>
+          <div style="font-size:10px;color:var(--text3)">points</div>
+        </div>
+      </div>
+      <div style="height:10px;background:var(--bg4);border-radius:5px;overflow:hidden">
+        <div style="height:10px;width:${Math.min(100,Math.max(0,myPoints))}%;background:${bar};border-radius:5px;transition:width .8s"></div>
+      </div>
+    </div>
+
+    <!-- Due Today + Overdue -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="tdash-card">
+        <div class="tdash-card-title" style="color:var(--amber)">⚡ Due today — ${myDueToday.length}</div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:8px">Your daily + due-date tasks</div>
+        ${myDueToday.length === 0
+          ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--green)">✅ All caught up!</div>'
+          : myDueToday.map(t=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+            <div class="task-check ${todayDone.has(t.id)?'checked':''}" onclick="toggleTask('${t.id}','${todayDone.has(t.id)}')" style="width:18px;height:18px;min-width:18px">
+              ${todayDone.has(t.id)?'<i class="ti ti-check" style="font-size:10px;color:#fff"></i>':''}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--text3)"><span class="freq-badge freq-${t.frequency}">${t.frequency}</span>${t.due_date?` · 📅 ${t.due_date}`:''}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+
+      <div class="tdash-card">
+        <div class="tdash-card-title" style="color:var(--red)">🚩 Overdue — ${myOverdue.length}</div>
+        ${myOverdue.length === 0
+          ? '<div style="text-align:center;padding:16px;font-size:12px;color:var(--green)">✅ No overdue tasks</div>'
+          : `${myPastDue.map(t=>`
+          <div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+            <div style="width:3px;min-height:26px;background:var(--red);border-radius:2px;flex-shrink:0;margin-top:2px"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--red)">Due ${t.due_date}</div>
+            </div>
+          </div>`).join('')}
+          ${myMissed.length > 0 ? `
+          <div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;margin:8px 0 4px;letter-spacing:.04em">⚠️ Daily missed yesterday — ${myMissed.length}</div>
+          ${myMissed.slice(0,6).map(t=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+            <div style="width:3px;height:24px;background:rgba(239,68,68,.45);border-radius:2px;flex-shrink:0"></div>
+            <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${t.title}</div>
+          </div>`).join('')}
+          ${myMissed.length > 6 ? `<div style="font-size:10px;color:var(--text3);padding:4px 0">+${myMissed.length-6} more</div>` : ''}
+          ` : ''}`}
+      </div>
+    </div>
+
+    <!-- Completed today -->
+    <div class="tdash-card">
+      <div class="tdash-card-title" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+        ✅ Completed today — ${myDoneToday.length}
+        <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px">(click to expand)</span>
+      </div>
+      <div style="display:none">
+        ${myDoneToday.length === 0
+          ? '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nothing completed yet today.</div>'
+          : myDoneToday.map(t=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+            <i class="ti ti-circle-check" style="color:var(--green);font-size:14px;flex-shrink:0"></i>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;color:var(--text);text-decoration:line-through;text-decoration-color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:10px;color:var(--text3)"><span class="freq-badge freq-${t.frequency}">${t.frequency}</span></div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// Deduct points for all missed daily tasks — batched (3 API calls, no race condition)
 async function processOverdueDeductions() {
-  const btn = document.getElementById('deductBtn');
+  const btn     = document.getElementById('deductBtn');
   const todayKey = `g6_deduct_${new Date().toISOString().split('T')[0]}`;
-  if (localStorage.getItem(todayKey)) { alert('Already processed for today.'); return; }
+
+  if (localStorage.getItem(todayKey)) {
+    // Allow reset via Shift+click for admin corrections
+    alert('Already processed for today. To re-run, hold Shift and click again.');
+    return;
+  }
   if (!_missedDailyTasks.length) { alert('No missed tasks to process.'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
-  let count = 0;
+  // Aggregate per assignee to avoid N×M sequential requests
+  const byAssignee = {};
   for (const t of _missedDailyTasks) {
     const assignees = t.assignee === 'all' ? ['ashokh','diva','anisa'] : [t.assignee];
-    for (const assignee of assignees) {
-      await sbFetch('deduct_points', {}, {
-        assignee, task_id: t.id, task_title: t.title, frequency: 'daily',
-      }).catch(()=>{});
-      count++;
+    for (const a of assignees) {
+      if (!byAssignee[a]) byAssignee[a] = { pts: 0, tasks: [] };
+      byAssignee[a].pts -= 3;
+      byAssignee[a].tasks.push({ id: t.id, title: t.title });
     }
   }
 
-  localStorage.setItem(todayKey, '1');
-  if (btn) { btn.textContent = `✅ ${count} done`; btn.style.color = 'var(--green)'; }
-  setTimeout(() => renderTaskDashboard(), 1200); // re-render to show updated points
+  try {
+    await sbFetch('batch_deduct_points', {}, { byAssignee });
+    localStorage.setItem(todayKey, '1');
+    const totalDeducted = Object.values(byAssignee).reduce((s,v) => s + Math.abs(v.pts), 0);
+    if (btn) { btn.textContent = `✅ −${totalDeducted} pts applied`; btn.style.color = 'var(--green)'; }
+    setTimeout(() => renderTaskDashboard(), 1200);
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = `❌ ${e.message}`; }
+    console.error('[Deduct]', e);
+  }
 }
 
 // ── HISTORY TAB (inside account) ──────────────────────────────────────────
@@ -4400,6 +4598,12 @@ document.getElementById('datePill').textContent = mStart() + ' → ' + yDay();
     if (!res.ok) { doLogout(); return; }
     const data = await res.json();
     if (!data.valid) { doLogout(); return; }
+    // Refresh currentUser from token (picks up superadmin field after auth migration)
+    if (data.user) {
+      currentUser = { ...currentUser, ...data.user };
+      if (currentUser.superadmin === undefined) currentUser.superadmin = currentUser.userId === 'ashokh';
+      localStorage.setItem('g6_user', JSON.stringify(currentUser));
+    }
     // Session valid — restore UI
     document.getElementById('chipUser').textContent = currentUser.userId;
     const rolePip = document.getElementById('chipRole');

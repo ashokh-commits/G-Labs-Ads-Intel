@@ -305,6 +305,38 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'batch_deduct_points') {
+      // Superadmin only — deduct missed-daily points for multiple assignees in one request.
+      // Body: { byAssignee: { diva: { pts: -N, tasks: [{id, title}] }, ... } }
+      // Avoids N×M sequential requests that cause race conditions.
+      const { byAssignee } = body;
+      if (!byAssignee || typeof byAssignee !== 'object') return res.status(400).json({ error: 'byAssignee required' });
+      const today = new Date().toISOString().split('T')[0];
+
+      for (const [assignee, data] of Object.entries(byAssignee)) {
+        // Log each individual task miss
+        for (const t of (data.tasks || [])) {
+          await sb('POST', 'task_points', {
+            assignee,
+            task_id:    t.id   || null,
+            task_title: t.title || '',
+            points:    -3,
+            reason:    'missed_daily',
+            date:      today,
+          }, '');
+        }
+        // Single GET + PATCH per assignee (no race condition)
+        const cur    = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
+        const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
+        const newPts = Math.max(0, curPts + (data.pts || 0));
+        await sb('PATCH', 'assignee_points', {
+          total_points: newPts,
+          updated_at:   new Date().toISOString(),
+        }, `?assignee=eq.${assignee}`);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
     // ── AD SNAPSHOTS ───────────────────────────────────────────────────────
 
     if (action === 'save_ad_snapshots') {
