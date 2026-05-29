@@ -4046,61 +4046,385 @@ async function processOverdueDeductions() {
   }
 }
 
-// ── HISTORY TAB (inside account) ──────────────────────────────────────────
-let histPeriodAcct = 'this_month';
-let histViewMode   = 'account';   // 'account' | 'ads'
-let histAdPeriod   = 'this_month'; // period for ad-level view
-let histBfExpanded = false;        // backfill panel open/closed
+// ── HISTORY TAB — complete rewrite ────────────────────────────────────────
+// State
+let histTab      = 'daily';    // 'daily' | 'account'
+let histDateMode = 'month';    // 'month' | 'date' | 'custom'
+let histMonth    = (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; })();
+let histPickDate = yDay();     // specific date (YYYY-MM-DD)
+let histGroupBy  = 'campaign'; // 'campaign' | 'ad'
+let histSortCol  = 'spend';
+let histSortDir  = 'desc';
+let _histRows    = [];         // cached for re-sort without refetch
+let histBfExpanded = false;    // backfill panel
 
 async function renderHistoryTab() {
   const acc = ACCOUNTS.find(a => a.id === activeId);
   const c   = document.getElementById('content');
+  const now  = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // Build month options (Jan this year → current month)
+  const monthOpts = [];
+  for (let m = 0; m <= now.getMonth(); m++) {
+    const d    = new Date(now.getFullYear(), m, 1);
+    const key  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl  = d.toLocaleString('en-MY',{month:'long',year:'numeric'});
+    monthOpts.push({ key, lbl });
+  }
 
   c.innerHTML = `
     <div class="tab-section active" style="padding:20px 24px 60px">
-      <div style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
         <div>
           <div class="section-title">Performance History</div>
-          <div class="section-sub">${acc?.name||''} · Historical Meta Ads data</div>
+          <div class="section-sub">${acc?.name||''} · Ad-level daily data from backfilled snapshots</div>
         </div>
         <button onclick="saveCurrentSnapshot()" style="padding:7px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:5px;white-space:nowrap">
           💾 Save snapshot
         </button>
       </div>
 
-      <!-- Sub-tab switcher -->
+      <!-- Sub-tabs -->
       <div class="hist-sub-tabs" style="margin-bottom:18px">
-        <button class="hist-sub-tab ${histViewMode==='account'?'active':''}" onclick="setHistView('account')">
-          <i class="ti ti-chart-line" style="font-size:13px;vertical-align:-2px"></i> Account Summary
+        <button class="hist-sub-tab ${histTab==='daily'?'active':''}" onclick="setHistTab('daily')">
+          <i class="ti ti-calendar-stats" style="font-size:13px;vertical-align:-2px"></i> Daily History
         </button>
-        <button class="hist-sub-tab ${histViewMode==='ads'?'active':''}" onclick="setHistView('ads')">
-          <i class="ti ti-table" style="font-size:13px;vertical-align:-2px"></i> Ad Intelligence
+        <button class="hist-sub-tab ${histTab==='account'?'active':''}" onclick="setHistTab('account')">
+          <i class="ti ti-chart-line" style="font-size:13px;vertical-align:-2px"></i> Period Comparison
         </button>
       </div>
 
-      <!-- Content area -->
-      <div id="histMainContent"></div>
+      <div id="histContent"></div>
     </div>`;
 
-  if (histViewMode === 'account') renderHistAccountView();
-  else renderHistAdsView();
+  if (histTab === 'daily') renderHistDailyView();
+  else renderHistAccountView();
 }
 
-function setHistView(mode) {
-  histViewMode = mode;
+function setHistTab(tab) {
+  histTab = tab;
   document.querySelectorAll('.hist-sub-tab').forEach((b,i) => {
-    b.classList.toggle('active', (i===0&&mode==='account')||(i===1&&mode==='ads'));
+    b.classList.toggle('active', (i===0&&tab==='daily')||(i===1&&tab==='account'));
   });
-  const el = document.getElementById('histMainContent');
+  const el = document.getElementById('histContent');
   if (!el) return;
-  if (mode === 'account') renderHistAccountView();
-  else renderHistAdsView();
+  if (tab === 'daily') renderHistDailyView();
+  else renderHistAccountView();
 }
 
-// ── Account Summary view (existing flow, refactored into sub-tab) ─────────
+// ── DAILY HISTORY VIEW ─────────────────────────────────────────────────────
+function renderHistDailyView() {
+  const el = document.getElementById('histContent');
+  if (!el) return;
+
+  const now = new Date();
+  const monthOpts = [];
+  for (let m = 0; m <= now.getMonth(); m++) {
+    const d    = new Date(now.getFullYear(), m, 1);
+    const key  = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const lbl  = d.toLocaleString('en-MY',{month:'short',year:'numeric'});
+    monthOpts.push({ key, lbl });
+  }
+  if (!histMonth) histMonth = monthOpts[monthOpts.length-1]?.key || '';
+
+  el.innerHTML = `
+    <!-- Controls row -->
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+
+      <!-- Date mode toggle -->
+      <div class="hist-sub-tabs" style="border-radius:7px">
+        <button class="hist-sub-tab ${histDateMode==='month'?'active':''}" style="padding:6px 14px;font-size:12px" onclick="setHistDateMode('month')">Full month</button>
+        <button class="hist-sub-tab ${histDateMode==='date'?'active':''}"  style="padding:6px 14px;font-size:12px" onclick="setHistDateMode('date')">Specific date</button>
+        <button class="hist-sub-tab ${histDateMode==='custom'?'active':''}" style="padding:6px 14px;font-size:12px" onclick="setHistDateMode('custom')">Custom range</button>
+      </div>
+
+      <!-- Month picker (full month mode) -->
+      ${histDateMode==='month' ? `
+      <select id="histMonthPicker" onchange="histMonth=this.value;loadHistDailyData()"
+        style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+        ${monthOpts.map(o=>`<option value="${o.key}" ${histMonth===o.key?'selected':''}>${o.lbl}</option>`).join('')}
+      </select>` : ''}
+
+      <!-- Date picker (specific date mode) -->
+      ${histDateMode==='date' ? `
+      <input type="date" id="histDatePicker" value="${histPickDate}"
+        onchange="histPickDate=this.value;loadHistDailyData()"
+        style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      ` : ''}
+
+      <!-- Custom range (custom mode) -->
+      ${histDateMode==='custom' ? `
+      <input type="date" id="histFromPicker" value="${histMonth+'-01'}"
+        style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      <span style="color:var(--text3);font-size:12px">→</span>
+      <input type="date" id="histToPicker" value="${histPickDate}"
+        style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      <button onclick="histCustomLoad()" style="padding:6px 14px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600">Load</button>
+      ` : ''}
+
+      <!-- Group by -->
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--text3)">Group:</span>
+        <div class="hist-sub-tabs" style="border-radius:7px">
+          <button class="hist-sub-tab ${histGroupBy==='campaign'?'active':''}" style="padding:5px 12px;font-size:11px" onclick="histGroupBy='campaign';renderHistTable()">Campaign</button>
+          <button class="hist-sub-tab ${histGroupBy==='ad'?'active':''}"       style="padding:5px 12px;font-size:11px" onclick="histGroupBy='ad';renderHistTable()">By Ad</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backfill panel (collapsible) -->
+    <div class="s-card" style="margin-bottom:14px;padding:14px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="histBfExpanded=!histBfExpanded;document.getElementById('histBfBody').style.display=histBfExpanded?'block':'none';document.getElementById('histBfArrow').className='ti '+(histBfExpanded?'ti-chevron-up':'ti-chevron-down')">
+        <div style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px">
+          <i class="ti ti-database-import" style="color:var(--blue)"></i>
+          Backfill Data from Meta
+          <span style="font-size:10px;font-weight:400;color:var(--text3)">— pull daily ad data into database</span>
+        </div>
+        <i class="ti ${histBfExpanded?'ti-chevron-up':'ti-chevron-down'}" id="histBfArrow" style="color:var(--text3)"></i>
+      </div>
+      <div id="histBfBody" style="display:${histBfExpanded?'block':'none'};margin-top:12px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Each button downloads all ad-level data for that month from Meta and saves daily records. Green = already saved.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="bfMonthBtns">
+          ${monthOpts.map(m=>`
+          <button class="bf-month-btn" id="bf-${m.key}" onclick="runBackfillMonth('${m.key+'-01'}','${new Date(parseInt(m.key.split('-')[0]),parseInt(m.key.split('-')[1]),0).toISOString().split('T')[0]}','${m.key}',this)">
+            <span id="bf-icon-${m.key}">📥</span> ${m.lbl}
+          </button>`).join('')}
+        </div>
+        <div id="bfStatus" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
+        <button onclick="runBackfillAll(window._bfMonths)" style="margin-top:10px;padding:7px 14px;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:11px;display:flex;align-items:center;gap:5px">
+          <i class="ti ti-player-play"></i> Backfill all months
+        </button>
+      </div>
+    </div>
+
+    <!-- Table area -->
+    <div id="histTableArea"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>`;
+
+  // Store months for backfill-all button
+  window._bfMonths = monthOpts.map(o => ({
+    key: o.key, label: o.lbl,
+    since: o.key+'-01',
+    until: new Date(parseInt(o.key.split('-')[0]), parseInt(o.key.split('-')[1]), 0).toISOString().split('T')[0],
+  }));
+  checkBackfillStatus(window._bfMonths).catch(()=>{});
+  loadHistDailyData();
+}
+
+function setHistDateMode(mode) {
+  histDateMode = mode;
+  renderHistDailyView();
+}
+
+function histCustomLoad() {
+  const from = document.getElementById('histFromPicker')?.value;
+  const to   = document.getElementById('histToPicker')?.value;
+  if (!from || !to) return;
+  loadHistDailyData(from, to);
+}
+
+async function loadHistDailyData(fromOverride, toOverride) {
+  const el = document.getElementById('histTableArea');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+
+  let from, to;
+  if (fromOverride && toOverride) {
+    from = fromOverride; to = toOverride;
+  } else if (histDateMode === 'month') {
+    const [yr,mo] = histMonth.split('-').map(Number);
+    from = `${yr}-${String(mo).padStart(2,'0')}-01`;
+    to   = new Date(yr, mo, 0).toISOString().split('T')[0];
+  } else if (histDateMode === 'date') {
+    from = to = histPickDate;
+  } else {
+    from = document.getElementById('histFromPicker')?.value || histMonth+'-01';
+    to   = document.getElementById('histToPicker')?.value  || histPickDate;
+  }
+
+  try {
+    const rows = await sbFetch('get_ad_summary', { account_id: activeId, from, to });
+    _histRows = Array.isArray(rows) ? rows : [];
+    renderHistTable(from, to);
+  } catch(e) {
+    el.innerHTML = `<div class="s-card" style="text-align:center;padding:32px">
+      <div style="font-size:28px;margin-bottom:10px">📭</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:8px">No data for this period</div>
+      <div style="font-size:13px;color:var(--text3)">Run the backfill above to download ad data from Meta into the database, then try again.</div>
+    </div>`;
+  }
+}
+
+function renderHistTable(from, to) {
+  const el = document.getElementById('histTableArea');
+  if (!el) return;
+
+  let rows = [..._histRows];
+  if (!rows.length) {
+    el.innerHTML = `<div class="s-card" style="text-align:center;padding:32px">
+      <div style="font-size:28px;margin-bottom:10px">📭</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:8px">No data for this period</div>
+      <div style="font-size:13px;color:var(--text3)">Use the <strong>Backfill Data</strong> panel above to download ad data from Meta, then try again.</div>
+    </div>`;
+    return;
+  }
+
+  const cplT = parseFloat(document.getElementById('cplT')?.value)||15;
+  const ctrT = parseFloat(document.getElementById('ctrT')?.value)||0.5;
+
+  // Sort
+  const sd = histSortDir === 'asc' ? 1 : -1;
+  const sortFns = {
+    spend:     (a,b) => sd*(a.spend-b.spend),
+    impressions:(a,b)=> sd*(a.impressions-b.impressions),
+    clicks:    (a,b) => sd*(a.clicks-b.clicks),
+    ctr:       (a,b) => sd*(a.ctr-b.ctr),
+    results:   (a,b) => sd*((a.results||a.conversations)-(b.results||b.conversations)),
+    cpl:       (a,b) => sd*(a.cpl-b.cpl),
+    freq:      (a,b) => sd*(a.avg_frequency-b.avg_frequency),
+    ad_name:   (a,b) => sd*(a.ad_name||'').localeCompare(b.ad_name||''),
+    campaign:  (a,b) => sd*(a.campaign_name||'').localeCompare(b.campaign_name||''),
+  };
+  rows.sort(sortFns[histSortCol] || sortFns.spend);
+
+  // Group by campaign if needed
+  let renderRows;
+  if (histGroupBy === 'campaign') {
+    const byCamp = {};
+    rows.forEach(r => {
+      const k = r.campaign_name || 'Uncategorised';
+      if (!byCamp[k]) byCamp[k] = { campaign_name: k, ads:[], spend:0, impressions:0, reach:0, clicks:0, results:0, conversations:0, cpl_sum:0, cpl_cnt:0, freq_sum:0, freq_cnt:0 };
+      const c = byCamp[k];
+      c.ads.push(r); c.spend+=r.spend; c.impressions+=r.impressions; c.reach+=r.reach;
+      c.clicks+=r.clicks; c.results+=r.results; c.conversations+=r.conversations;
+      if (r.cpl>0){c.cpl_sum+=r.cpl;c.cpl_cnt++;}
+      if (r.avg_frequency>0){c.freq_sum+=r.avg_frequency;c.freq_cnt++;}
+    });
+    // Build combined rows: campaign header + ad sub-rows
+    renderRows = Object.values(byCamp).sort((a,b) => b.spend - a.spend);
+  }
+
+  // Totals
+  const tot = rows.reduce((acc,r) => ({
+    spend:  acc.spend+r.spend, impressions: acc.impressions+r.impressions,
+    reach:  acc.reach+r.reach, clicks: acc.clicks+r.clicks,
+    results: acc.results+(r.results||r.conversations||0),
+  }), {spend:0,impressions:0,reach:0,clicks:0,results:0});
+  const totCtr = tot.impressions>0 ? (tot.clicks/tot.impressions*100) : 0;
+  const totCpl = tot.results>0 ? (tot.spend/tot.results) : 0;
+
+  const sortArrow = col => histSortCol===col ? (histSortDir==='asc'?'▲':'▼') : '↕';
+  const thStyle   = col => `cursor:pointer;user-select:none;white-space:nowrap;color:${histSortCol===col?'var(--blue)':'var(--text3)'}`;
+  const th        = (col, label, align='left') =>
+    `<th onclick="histSortCol='${col}';histSortDir=histSortCol==='${col}'&&histSortDir==='desc'?'asc':'desc';histSortCol='${col}';renderHistTable()" style="${thStyle(col)};text-align:${align}">${label} ${sortArrow(col)}</th>`;
+
+  const fmtRow = (r, isSub=false) => {
+    const res  = r.results||r.conversations||0;
+    const cplC = r.cpl>0&&r.cpl<=cplT?'var(--green)':r.cpl>cplT?'var(--red)':'var(--text3)';
+    const ctrC = r.ctr>=ctrT?'var(--green)':r.ctr>0?'var(--amber)':'var(--text3)';
+    return `<tr style="background:${isSub?'var(--bg2)':'var(--bg3)'}">
+      <td style="padding-left:${isSub?'28px':'12px'};color:var(--text${isSub?'2':''});font-size:${isSub?'11':'12'}px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.ad_name||''}">
+        ${isSub?'<span style="color:var(--text3);margin-right:4px">└</span>':''}${r.ad_name||'—'}
+      </td>
+      <td style="font-size:11px;color:var(--text3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.campaign_name||''}">${isSub?'':r.campaign_name||'—'}</td>
+      <td style="color:var(--red);font-weight:${isSub?400:600}">RM ${r.spend.toFixed(2)}</td>
+      <td>${r.impressions?.toLocaleString()||'—'}</td>
+      <td>${r.reach?.toLocaleString()||'—'}</td>
+      <td>${r.clicks?.toLocaleString()||'—'}</td>
+      <td style="color:${ctrC}">${r.ctr>0?r.ctr.toFixed(2)+'%':'—'}</td>
+      <td style="color:var(--green);font-weight:${isSub?400:600}">${res||'—'}</td>
+      <td style="color:${cplC}">${r.cpl>0?'RM '+r.cpl.toFixed(2):'—'}</td>
+      <td style="color:${r.avg_frequency>3?'var(--red)':r.avg_frequency>0?'var(--text2)':'var(--text3)'}">${r.avg_frequency>0?r.avg_frequency.toFixed(1)+'×':'—'}</td>
+    </tr>`;
+  };
+
+  const fmtCampRow = (camp) => {
+    const avgFreq = camp.freq_cnt>0?(camp.freq_sum/camp.freq_cnt):0;
+    const campCtr = camp.impressions>0?(camp.clicks/camp.impressions*100):0;
+    const campCpl = camp.results>0?(camp.spend/camp.results):(camp.conversations>0?(camp.spend/camp.conversations):0);
+    const campRes = camp.results||camp.conversations||0;
+    const cplC    = campCpl>0&&campCpl<=cplT?'var(--green)':campCpl>cplT?'var(--red)':'var(--text3)';
+    return `<tr style="background:var(--bg4);border-top:1px solid var(--border2)">
+      <td colspan="2" style="font-size:12px;font-weight:700;color:var(--text);padding-left:12px">
+        <i class="ti ti-brand-meta" style="font-size:11px;color:var(--blue);margin-right:5px"></i>${camp.campaign_name}
+        <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px">${camp.ads.length} ads</span>
+      </td>
+      <td style="color:var(--red);font-weight:700">RM ${camp.spend.toFixed(2)}</td>
+      <td>${camp.impressions?.toLocaleString()||'—'}</td>
+      <td>${camp.reach?.toLocaleString()||'—'}</td>
+      <td>${camp.clicks?.toLocaleString()||'—'}</td>
+      <td style="color:${campCtr>=ctrT?'var(--green)':campCtr>0?'var(--amber)':'var(--text3)'}">${campCtr>0?campCtr.toFixed(2)+'%':'—'}</td>
+      <td style="color:var(--green);font-weight:700">${campRes||'—'}</td>
+      <td style="color:${cplC}">${campCpl>0?'RM '+campCpl.toFixed(2):'—'}</td>
+      <td style="color:${avgFreq>3?'var(--red)':avgFreq>0?'var(--text2)':'var(--text3)'}">${avgFreq>0?avgFreq.toFixed(1)+'×':'—'}</td>
+    </tr>`;
+  };
+
+  let bodyHtml = '';
+  if (histGroupBy === 'campaign') {
+    renderRows.forEach(camp => {
+      bodyHtml += fmtCampRow(camp);
+      camp.ads.sort(sortFns[histSortCol] || sortFns.spend).forEach(r => { bodyHtml += fmtRow(r, true); });
+    });
+  } else {
+    rows.forEach(r => { bodyHtml += fmtRow(r, false); });
+  }
+
+  const periodLabel = histDateMode==='month' ? `${histMonth}` : histDateMode==='date' ? histPickDate : `${from} → ${to}`;
+
+  el.innerHTML = `
+    <div class="s-card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">
+          <i class="ti ti-table" style="color:var(--blue);margin-right:6px"></i>
+          ${rows.length} ads · ${periodLabel}
+        </div>
+        <div style="font-size:12px;color:var(--text3)">
+          Total: <strong style="color:var(--red)">RM ${tot.spend.toFixed(2)}</strong>
+          · <strong style="color:var(--green)">${tot.results} leads</strong>
+          · CTR <strong style="color:${totCtr>=ctrT?'var(--green)':'var(--amber)'}">${totCtr.toFixed(2)}%</strong>
+          · CPL <strong style="color:${totCpl>0&&totCpl<=cplT?'var(--green)':totCpl>cplT?'var(--red)':'var(--text2)'}">
+            ${totCpl>0?'RM '+totCpl.toFixed(2):'—'}
+          </strong>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="ad-table" style="min-width:900px">
+          <thead><tr>
+            ${th('ad_name','Ad name')}
+            ${th('campaign','Campaign')}
+            ${th('spend','Spend','right')}
+            ${th('impressions','Impr','right')}
+            ${th('','Reach','right')}
+            ${th('clicks','Clicks','right')}
+            ${th('ctr','CTR','right')}
+            ${th('results','Results','right')}
+            ${th('cpl','CPL','right')}
+            ${th('freq','Freq','right')}
+          </tr></thead>
+          <tbody>${bodyHtml}</tbody>
+          <tfoot><tr style="background:var(--bg5);border-top:2px solid var(--border2)">
+            <td colspan="2" style="font-size:12px;font-weight:700;color:var(--text);padding-left:12px">TOTAL</td>
+            <td style="color:var(--red);font-weight:700;text-align:right">RM ${tot.spend.toFixed(2)}</td>
+            <td style="text-align:right;font-weight:600">${tot.impressions.toLocaleString()}</td>
+            <td style="text-align:right">${tot.reach.toLocaleString()}</td>
+            <td style="text-align:right">${tot.clicks.toLocaleString()}</td>
+            <td style="text-align:right;color:${totCtr>=ctrT?'var(--green)':'var(--amber)'};font-weight:600">${totCtr.toFixed(2)}%</td>
+            <td style="text-align:right;color:var(--green);font-weight:700">${tot.results}</td>
+            <td style="text-align:right;color:${totCpl>0&&totCpl<=cplT?'var(--green)':totCpl>cplT?'var(--red)':'var(--text2)'};font-weight:600">${totCpl>0?'RM '+totCpl.toFixed(2):'—'}</td>
+            <td></td>
+          </tfoot>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ── PERIOD COMPARISON VIEW (Account-level, meta_snapshots) ─────────────────
+let histPeriodAcct = 'this_month';
 
 function renderHistAccountView() {
-  const el = document.getElementById('histMainContent');
+  const el = document.getElementById('histContent');
   if (!el) return;
   el.innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
@@ -4121,11 +4445,10 @@ function setHistPeriod(p, btn) {
 }
 
 async function loadHistAcctData() {
-  const el  = document.getElementById('histAcctContent');
+  const el = document.getElementById('histAcctContent');
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
-
-  const now   = new Date();
+  const now = new Date();
   let from, to = now.toISOString().split('T')[0];
   let fromPrev, toPrev;
 
@@ -4148,7 +4471,6 @@ async function loadHistAcctData() {
     const dp= new Date(now); dp.setDate(dp.getDate()-60); fromPrev = dp.toISOString().split('T')[0];
     toPrev  = from;
   } else if (histPeriodAcct === 'compare') {
-    // Custom compare — show date pickers
     el.innerHTML = `
       <div class="s-card" style="margin-bottom:14px">
         <div class="s-card-title">Compare two periods</div>
@@ -4175,22 +4497,19 @@ async function loadHistAcctData() {
       sbFetch('get_meta_history', { account_id: activeId, from, to }),
       fromPrev ? sbFetch('get_meta_history', { account_id: activeId, from: fromPrev, to: toPrev }) : Promise.resolve([]),
     ]);
-
     renderHistData(el, rows, prevRows, from, to, fromPrev, toPrev);
   } catch(e) {
     el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">
       <div style="font-size:28px;margin-bottom:10px">📭</div>
       <div style="font-size:14px;font-weight:500;color:var(--text2)">No historical data yet</div>
-      <div style="font-size:12px;margin-top:6px;margin-bottom:16px">Click "Save today's snapshot" to start building history</div>
+      <div style="font-size:12px;margin-top:6px">Account-level snapshots are saved automatically when you load an account each day.</div>
     </div>`;
   }
 }
 
 async function runComparison() {
-  const a1 = document.getElementById('compA1')?.value;
-  const a2 = document.getElementById('compA2')?.value;
-  const b1 = document.getElementById('compB1')?.value;
-  const b2 = document.getElementById('compB2')?.value;
+  const a1=document.getElementById('compA1')?.value, a2=document.getElementById('compA2')?.value;
+  const b1=document.getElementById('compB1')?.value, b2=document.getElementById('compB2')?.value;
   if (!a1||!a2||!b1||!b2) { alert('Please fill all 4 dates'); return; }
   const el = document.getElementById('compResult');
   el.innerHTML = '<div style="text-align:center;padding:20px"><div class="spinner"></div></div>';
@@ -4203,194 +4522,54 @@ async function runComparison() {
 
 function renderHistData(el, rows, prevRows, from, to, fromPrev, toPrev) {
   const agg = r => r.reduce((a,x) => ({
-    spend:       a.spend       + parseFloat(x.spend||0),
-    impressions: a.impressions + parseInt(x.impressions||0),
-    clicks:      a.clicks      + parseInt(x.clicks||0),
-    leads:       a.leads       + parseInt(x.leads||0),
+    spend:a.spend+parseFloat(x.spend||0), impressions:a.impressions+parseInt(x.impressions||0),
+    clicks:a.clicks+parseInt(x.clicks||0), leads:a.leads+parseInt(x.leads||0),
   }), {spend:0,impressions:0,clicks:0,leads:0});
-
   const tot  = agg(rows||[]);
   const prev = agg(prevRows||[]);
-
   const delta = (cur, prv) => {
     if (!prv) return '';
     const d = prv > 0 ? ((cur-prv)/prv*100).toFixed(1) : 0;
     const up = cur >= prv;
     return `<div style="font-size:11px;color:${up?'var(--green)':'var(--red)'};margin-top:3px">${up?'▲':'▼'} ${Math.abs(d)}% vs prev</div>`;
   };
-
   const cpl  = tot.leads > 0 ? (tot.spend/tot.leads).toFixed(2) : '—';
   const ctr  = tot.impressions > 0 ? (tot.clicks/tot.impressions*100).toFixed(2) : '—';
   const pcpl = prev.leads > 0 ? prev.spend/prev.leads : 0;
   const pctr = prev.impressions > 0 ? prev.clicks/prev.impressions*100 : 0;
-
   if (!rows?.length) {
     el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">
       <div style="font-size:28px;margin-bottom:10px">📭</div>
       <div style="font-size:14px;font-weight:500;color:var(--text2)">No data for this period</div>
-      <div style="font-size:12px;margin-top:6px">Data is saved automatically when you load an account each day.<br>Or click "Save today's snapshot" to save now.</div>
+      <div style="font-size:12px;margin-top:6px">Snapshots are auto-saved when you load each account daily.</div>
     </div>`;
     return;
   }
-
   el.innerHTML = `
-    <!-- KPI comparison -->
     <div class="sales-grid" style="margin-bottom:16px">
-      <div class="sales-kpi" style="--kpi-color:var(--red)">
-        <div class="sales-kpi-label">Spend</div>
-        <div class="sales-kpi-value">RM ${tot.spend.toLocaleString('en-MY',{minimumFractionDigits:2})}</div>
-        ${delta(tot.spend, prev.spend)}
-        ${prev.spend>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: RM ${prev.spend.toFixed(2)}</div>`:''}
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--blue)">
-        <div class="sales-kpi-label">Impressions</div>
-        <div class="sales-kpi-value">${tot.impressions.toLocaleString()}</div>
-        ${delta(tot.impressions, prev.impressions)}
-        ${prev.impressions>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${prev.impressions.toLocaleString()}</div>`:''}
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--purple)">
-        <div class="sales-kpi-label">Clicks</div>
-        <div class="sales-kpi-value">${tot.clicks.toLocaleString()}</div>
-        ${delta(tot.clicks, prev.clicks)}
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--teal)">
-        <div class="sales-kpi-label">CTR</div>
-        <div class="sales-kpi-value">${ctr}%</div>
-        ${delta(parseFloat(ctr||0), pctr)}
-        ${pctr>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${pctr.toFixed(2)}%</div>`:''}
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--green)">
-        <div class="sales-kpi-label">Leads</div>
-        <div class="sales-kpi-value">${tot.leads.toLocaleString()}</div>
-        ${delta(tot.leads, prev.leads)}
-        ${prev.leads>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${prev.leads}</div>`:''}
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--amber)">
-        <div class="sales-kpi-label">CPL</div>
-        <div class="sales-kpi-value">${cpl==='—'?'—':'RM '+cpl}</div>
-        ${pcpl>0?delta(parseFloat(cpl||0), pcpl):''}
-        ${pcpl>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: RM ${pcpl.toFixed(2)}</div>`:''}
-      </div>
+      <div class="sales-kpi" style="--kpi-color:var(--red)"><div class="sales-kpi-label">Spend</div><div class="sales-kpi-value">RM ${tot.spend.toLocaleString('en-MY',{minimumFractionDigits:2})}</div>${delta(tot.spend,prev.spend)}${prev.spend>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: RM ${prev.spend.toFixed(2)}</div>`:''}</div>
+      <div class="sales-kpi" style="--kpi-color:var(--blue)"><div class="sales-kpi-label">Impressions</div><div class="sales-kpi-value">${tot.impressions.toLocaleString()}</div>${delta(tot.impressions,prev.impressions)}</div>
+      <div class="sales-kpi" style="--kpi-color:var(--purple)"><div class="sales-kpi-label">Clicks</div><div class="sales-kpi-value">${tot.clicks.toLocaleString()}</div>${delta(tot.clicks,prev.clicks)}</div>
+      <div class="sales-kpi" style="--kpi-color:var(--teal)"><div class="sales-kpi-label">CTR</div><div class="sales-kpi-value">${ctr}%</div>${delta(parseFloat(ctr||0),pctr)}${pctr>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${pctr.toFixed(2)}%</div>`:''}</div>
+      <div class="sales-kpi" style="--kpi-color:var(--green)"><div class="sales-kpi-label">Leads</div><div class="sales-kpi-value">${tot.leads.toLocaleString()}</div>${delta(tot.leads,prev.leads)}${prev.leads>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: ${prev.leads}</div>`:''}</div>
+      <div class="sales-kpi" style="--kpi-color:var(--amber)"><div class="sales-kpi-label">CPL</div><div class="sales-kpi-value">${cpl==='—'?'—':'RM '+cpl}</div>${pcpl>0?delta(parseFloat(cpl||0),pcpl):''}${pcpl>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px">Prev: RM ${pcpl.toFixed(2)}</div>`:''}</div>
     </div>
-
-    <!-- Daily table -->
-    <div class="s-card">
-      <div class="s-card-title"><i class="ti ti-table"></i> Daily breakdown — ${from} to ${to} · ${rows.length} days tracked</div>
-      <div style="overflow-x:auto">
-        <table class="ad-table">
-          <thead><tr><th>Date</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Leads</th><th>CPL</th></tr></thead>
-          <tbody>
-            ${rows.map(r=>`<tr>
-              <td style="color:var(--text);font-weight:500">${r.date}</td>
-              <td style="color:var(--red)">RM ${parseFloat(r.spend||0).toFixed(2)}</td>
-              <td>${parseInt(r.impressions||0).toLocaleString()}</td>
-              <td>${parseInt(r.clicks||0).toLocaleString()}</td>
-              <td>${r.ctr?parseFloat(r.ctr).toFixed(2)+'%':'—'}</td>
-              <td style="color:var(--green);font-weight:600">${r.leads||0}</td>
-              <td style="color:var(--amber)">${r.leads>0?'RM '+(parseFloat(r.spend||0)/parseInt(r.leads)).toFixed(2):'—'}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
+    <div class="s-card"><div class="s-card-title"><i class="ti ti-table"></i> Daily breakdown — ${from} to ${to} · ${rows.length} days</div>
+      <div style="overflow-x:auto"><table class="ad-table"><thead><tr><th>Date</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>Leads</th><th>CPL</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr>
+          <td style="color:var(--text);font-weight:500">${r.date}</td>
+          <td style="color:var(--red)">RM ${parseFloat(r.spend||0).toFixed(2)}</td>
+          <td>${parseInt(r.impressions||0).toLocaleString()}</td>
+          <td>${parseInt(r.clicks||0).toLocaleString()}</td>
+          <td>${r.ctr?parseFloat(r.ctr).toFixed(2)+'%':'—'}</td>
+          <td style="color:var(--green);font-weight:600">${r.leads||0}</td>
+          <td style="color:var(--amber)">${r.leads>0?'RM '+(parseFloat(r.spend||0)/parseInt(r.leads)).toFixed(2):'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
     </div>`;
 }
 
-// ── AD INTELLIGENCE HISTORY VIEW ─────────────────────────────────────────
-
-function renderHistAdsView() {
-  const el = document.getElementById('histMainContent');
-  if (!el) return;
-
-  // Generate month list from Jan of current year to current month
-  const now = new Date();
-  const months = [];
-  const startYear = now.getFullYear();
-  const startMonth = 0; // January
-  for (let m = startMonth; m <= now.getMonth(); m++) {
-    const d = new Date(startYear, m, 1);
-    months.push({
-      label: d.toLocaleString('en-MY', { month: 'short', year: '2-digit' }),
-      since: `${startYear}-${String(m+1).padStart(2,'0')}-01`,
-      until: new Date(startYear, m+1, 0).toISOString().split('T')[0],
-      key:   `${startYear}-${String(m+1).padStart(2,'0')}`,
-    });
-  }
-
-  const periodLabels = {
-    this_month:   'This month',
-    last_month:   'Last month',
-    last_3months: 'Last 3 months',
-    custom:       'Custom range',
-  };
-
-  // Store months in a global so onclick can reference it safely (avoids JSON quote escaping in HTML attrs)
-  window._bfMonths = months;
-
-  el.innerHTML = `
-    <!-- Period selector -->
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-      ${Object.entries(periodLabels).map(([p,l])=>`
-      <button class="hist-period-btn ${histAdPeriod===p?'active':''}" onclick="setHistAdPeriod('${p}',this)">${l}</button>`).join('')}
-    </div>
-
-    ${histAdPeriod === 'custom' ? `
-    <div class="s-card" style="margin-bottom:14px">
-      <div class="s-card-title">Custom date range</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:5px">From</div>
-          <input type="date" id="adHistFrom" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none"></div>
-        <div><div style="font-size:11px;color:var(--text3);margin-bottom:5px">To</div>
-          <input type="date" id="adHistTo" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none"></div>
-        <button onclick="loadAdHistoryCustom()" style="padding:9px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Load →</button>
-      </div>
-    </div>` : ''}
-
-    <!-- Backfill panel -->
-    <div class="s-card" style="margin-bottom:14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleBackfillPanel()">
-        <div class="s-card-title" style="margin-bottom:0">
-          <i class="ti ti-database-import"></i> Backfill Historical Data
-          <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:6px">— pull Jan → now from Meta API into database</span>
-        </div>
-        <i class="ti ${histBfExpanded?'ti-chevron-up':'ti-chevron-down'}" style="color:var(--text3);font-size:16px" id="bfChevron"></i>
-      </div>
-      <div id="bfPanel" style="display:${histBfExpanded?'block':'none'};margin-top:14px">
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Click a month to pull and save all ad-level data from Meta. Green = already in database. Each fetch takes ~5–15 seconds.</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap" id="bfMonths">
-          ${months.map(m=>`
-          <button class="bf-month-btn" id="bf-${m.key}" onclick="runBackfillMonth('${m.since}','${m.until}','${m.key}',this)">
-            <span id="bf-icon-${m.key}">📥</span> ${m.label}
-          </button>`).join('')}
-        </div>
-        <div id="bfStatus" style="font-size:12px;color:var(--text3);margin-top:10px"></div>
-        <button onclick="runBackfillAll(window._bfMonths)" style="margin-top:12px;padding:8px 16px;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-player-play"></i> Backfill all months
-        </button>
-      </div>
-    </div>
-
-    <!-- Ad data table -->
-    <div id="adHistContent"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>`;
-
-  // Check backfill status for each month and load ad data
-  checkBackfillStatus(months).catch(()=>{});
-  loadAdHistory().catch(()=>{});
-}
-
-function setHistAdPeriod(p, btn) {
-  histAdPeriod = p;
-  renderHistAdsView();
-}
-
-function toggleBackfillPanel() {
-  histBfExpanded = !histBfExpanded;
-  const panel   = document.getElementById('bfPanel');
-  const chevron = document.getElementById('bfChevron');
-  if (panel)   panel.style.display   = histBfExpanded ? 'block' : 'none';
-  if (chevron) chevron.className = `ti ${histBfExpanded ? 'ti-chevron-up' : 'ti-chevron-down'}`;
-}
-
-// Check which months already have data and update button states
+// Backfill helpers (shared with daily view)
 async function checkBackfillStatus(months) {
   for (const m of months) {
     try {
@@ -4398,219 +4577,52 @@ async function checkBackfillStatus(months) {
       const btn  = document.getElementById(`bf-${m.key}`);
       const icon = document.getElementById(`bf-icon-${m.key}`);
       if (!btn) continue;
-      if (data?.has_data) {
-        btn.classList.add('done');
-        if (icon) icon.textContent = '✓';
-        btn.title = `${data.count} rows · ${data.dates?.length || 0} days`;
-      }
-    } catch { /* ignore individual failures */ }
+      if (data?.has_data) { btn.classList.add('done'); if (icon) icon.textContent = '✓'; btn.title = `${data.count} rows · ${data.dates?.length||0} days`; }
+    } catch {}
   }
 }
 
-// Run backfill for a single month
 async function runBackfillMonth(since, until, key, btn) {
   if (btn.classList.contains('done') || btn.classList.contains('loading')) return;
-  btn.classList.add('loading');
-  btn.disabled = true;
-  const icon   = document.getElementById(`bf-icon-${key}`);
+  btn.classList.add('loading'); btn.disabled = true;
+  const icon = document.getElementById(`bf-icon-${key}`);
   const status = document.getElementById('bfStatus');
-  if (icon)   icon.textContent = '⏳';
+  if (icon) icon.textContent = '⏳';
   if (status) status.textContent = `Fetching ${since} → ${until}…`;
-
   try {
-    const res = await authedFetch('/api/meta-backfill', {
-      method: 'POST',
-      body:   JSON.stringify({ accountId: activeId, since, until }),
-    });
+    const res  = await authedFetch('/api/meta-backfill', { method:'POST', body: JSON.stringify({ accountId: activeId, since, until }) });
     const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'Backfill failed');
-
-    btn.classList.remove('loading');
-    btn.classList.add('done');
-    btn.disabled = false;
+    if (!res.ok || data.error) throw new Error(data.error||'Backfill failed');
+    btn.classList.remove('loading'); btn.classList.add('done'); btn.disabled = false;
     if (icon)   icon.textContent = '✓';
-    if (status) status.textContent = `✅ Saved ${data.saved} rows (${data.records} ad×day records) for ${since.slice(0,7)}`;
-    // Refresh the ad data table
-    loadAdHistory().catch(()=>{});
+    if (status) status.textContent = `✅ Saved ${data.saved} records for ${key}`;
+    loadHistDailyData().catch(()=>{});
   } catch(e) {
-    btn.classList.remove('loading');
-    btn.disabled = false;
-    if (icon)   icon.textContent = '⚠️';
+    btn.classList.remove('loading'); btn.disabled = false;
+    if (icon) icon.textContent = '⚠️';
     if (status) status.textContent = `❌ ${e.message}`;
   }
 }
 
-// Run backfill for all months sequentially
 async function runBackfillAll(months) {
   const status = document.getElementById('bfStatus');
   for (const m of months) {
     const btn = document.getElementById(`bf-${m.key}`);
     if (!btn || btn.classList.contains('done')) continue;
-    if (status) status.textContent = `Backfilling ${m.label}…`;
+    if (status) status.textContent = `Backfilling ${m.label||m.key}…`;
     await runBackfillMonth(m.since, m.until, m.key, btn);
-    await new Promise(r => setTimeout(r, 800)); // brief pause between months
+    await new Promise(r => setTimeout(r, 600));
   }
   if (status) status.textContent += ' — All done!';
 }
 
-// Calculate from/to dates for the selected ad period
-function getAdHistDates() {
-  const now = new Date();
-  let from, to = now.toISOString().split('T')[0];
-  if (histAdPeriod === 'this_month') {
-    from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-  } else if (histAdPeriod === 'last_month') {
-    const lm = new Date(now.getFullYear(), now.getMonth()-1, 1);
-    from = lm.toISOString().split('T')[0];
-    to   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
-  } else if (histAdPeriod === 'last_3months') {
-    const d = new Date(now.getFullYear(), now.getMonth()-2, 1);
-    from = d.toISOString().split('T')[0];
-  } else {
-    // custom — handled separately
-    from = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-  }
-  return { from, to };
-}
 
-async function loadAdHistoryCustom() {
-  const from = document.getElementById('adHistFrom')?.value;
-  const to   = document.getElementById('adHistTo')?.value;
-  if (!from || !to) { alert('Please select both dates'); return; }
-  const el = document.getElementById('adHistContent');
-  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
-  try {
-    const ads = await sbFetch('get_ad_summary', { account_id: activeId, from, to });
-    renderAdHistory(el, ads, from, to);
-  } catch(e) {
-    el.innerHTML = `<div style="color:var(--red);padding:20px">${e.message}</div>`;
-  }
-}
-
-async function loadAdHistory() {
-  if (histAdPeriod === 'custom') return; // custom uses loadAdHistoryCustom()
-  const el = document.getElementById('adHistContent');
-  if (!el) return;
-  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
-  const { from, to } = getAdHistDates();
-  try {
-    const ads = await sbFetch('get_ad_summary', { account_id: activeId, from, to });
-    renderAdHistory(el, ads, from, to);
-  } catch(e) {
-    el.innerHTML = `<div style="color:var(--red);padding:20px">${e.message}</div>`;
-  }
-}
-
-function renderAdHistory(el, ads, from, to) {
-  if (!Array.isArray(ads) || ads.length === 0) {
-    const month = from?.slice(0,7) || '';
-    el.innerHTML = `
-      <div class="s-card" style="text-align:center;padding:40px 24px">
-        <div style="font-size:36px;margin-bottom:12px">📭</div>
-        <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:8px">No ad data for this period</div>
-        <div style="font-size:13px;color:var(--text3);line-height:1.7">
-          Click <strong style="color:var(--text2)">Backfill Historical Data</strong> above and press the
-          <strong style="color:var(--text2)">${month}</strong> button to download data from Meta API into the database.
-        </div>
-      </div>`;
-    return;
-  }
-
-  // Summary KPIs
-  const totSpend  = ads.reduce((s,a)=>s+a.spend,0);
-  const totImpr   = ads.reduce((s,a)=>s+a.impressions,0);
-  const totClicks = ads.reduce((s,a)=>s+a.clicks,0);
-  const totRes    = ads.reduce((s,a)=>s+a.results,0);
-  const totConvs  = ads.reduce((s,a)=>s+a.conversations,0);
-  const avgCtr    = totImpr > 0 ? (totClicks/totImpr*100) : 0;
-  const avgCpl    = totRes  > 0 ? (totSpend/totRes)       : (totConvs > 0 ? totSpend/totConvs : 0);
-  const ctrT = parseFloat(document.getElementById('ctrT')?.value)||0.5;
-  const cplT = parseFloat(document.getElementById('cplT')?.value)||15;
-
-  el.innerHTML = `
-    <!-- Summary KPIs -->
-    <div class="sales-grid" style="margin-bottom:16px">
-      <div class="sales-kpi" style="--kpi-color:var(--red)">
-        <div class="sales-kpi-label">Total Spend</div>
-        <div class="sales-kpi-value">RM ${totSpend.toLocaleString('en-MY',{minimumFractionDigits:2})}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px">${ads.length} ads · ${from} → ${to}</div>
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--blue)">
-        <div class="sales-kpi-label">Impressions</div>
-        <div class="sales-kpi-value">${totImpr.toLocaleString()}</div>
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--purple)">
-        <div class="sales-kpi-label">Clicks</div>
-        <div class="sales-kpi-value">${totClicks.toLocaleString()}</div>
-        <div style="font-size:10px;color:${avgCtr>=ctrT?'var(--green)':'var(--amber)'};margin-top:3px">CTR ${avgCtr.toFixed(2)}%</div>
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--green)">
-        <div class="sales-kpi-label">Results</div>
-        <div class="sales-kpi-value">${(totRes||totConvs).toLocaleString()}</div>
-      </div>
-      <div class="sales-kpi" style="--kpi-color:var(--amber)">
-        <div class="sales-kpi-label">Avg CPL</div>
-        <div class="sales-kpi-value" style="color:${avgCpl>0&&avgCpl<=cplT?'var(--green)':avgCpl>cplT?'var(--red)':'var(--text)'}">
-          ${avgCpl > 0 ? 'RM '+avgCpl.toFixed(2) : '—'}
-        </div>
-      </div>
-    </div>
-
-    <!-- Ad performance table -->
-    <div class="s-card">
-      <div class="s-card-title"><i class="ti ti-table"></i> Per-ad breakdown · ${ads.length} ads · ${from} → ${to}</div>
-      <div style="overflow-x:auto">
-        <table class="ad-table">
-          <thead>
-            <tr>
-              <th style="min-width:160px">Ad name</th>
-              <th style="min-width:120px">Campaign</th>
-              <th>Spend</th>
-              <th>Impr</th>
-              <th>Clicks</th>
-              <th>CTR</th>
-              <th>Results</th>
-              <th>CPL</th>
-              <th>Avg Freq</th>
-              <th>Days</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${ads.map(a => {
-              const cplColor = a.cpl>0&&a.cpl<=cplT?'var(--green)':a.cpl>cplT?'var(--red)':'var(--text3)';
-              const ctrColor = a.ctr>=ctrT?'var(--green)':a.ctr>0?'var(--amber)':'var(--text3)';
-              const freqT    = parseFloat(document.getElementById('freqT')?.value)||3;
-              const freqColor= a.avg_frequency>freqT?'var(--red)':a.avg_frequency>0?'var(--text2)':'var(--text3)';
-              return `<tr>
-                <td style="color:var(--text);font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.ad_name}">${a.ad_name||'—'}</td>
-                <td style="color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${a.campaign_name}">${a.campaign_name||'—'}</td>
-                <td style="color:var(--red);font-weight:600">RM ${a.spend.toFixed(2)}</td>
-                <td>${a.impressions.toLocaleString()}</td>
-                <td>${a.clicks.toLocaleString()}</td>
-                <td style="color:${ctrColor}">${a.ctr>0?a.ctr.toFixed(2)+'%':'—'}</td>
-                <td style="color:var(--green);font-weight:600">${a.results||a.conversations||0}</td>
-                <td style="color:${cplColor};font-weight:600">${a.cpl>0?'RM '+a.cpl.toFixed(2):'—'}</td>
-                <td style="color:${freqColor}">${a.avg_frequency>0?a.avg_frequency.toFixed(1)+'×':'—'}</td>
-                <td style="color:var(--text3)">${a.days}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-        Data source: ad_snapshots table · backfilled from Meta Ads API · sorted by spend desc
-      </div>
-    </div>`;
-}
-
-// ── COPY SUMMARY (Overview tab) ───────────────────────────────────────────
+// ── COPY SUMMARY (Overview tab "📋 Copy Summary" button) ──────────────────
 async function copySummary() {
   const btn = document.getElementById('copySummaryBtn');
   const ads = cache[activeId];
   if (!ads || !activeId) { alert('Load an account first'); return; }
   const acc = ACCOUNTS.find(a => a.id === activeId);
-
-  // Show loading state
   const origBtnHtml = btn?.innerHTML || '';
   if (btn) { btn.innerHTML = '<i class="ti ti-loader-2"></i> Loading…'; btn.disabled = true; }
 
@@ -4625,71 +4637,52 @@ async function copySummary() {
   const avgCtr       = totalImpr > 0 ? (totalClicks / totalImpr * 100) : 0;
   const cpl          = leads > 0 ? (totalSpend / leads) : 0;
 
-  // ── Yesterday's actual daily data — call Meta API for just that one day ──
-  // (meta_snapshots stores cumulative MTD totals, NOT single-day values)
+  // Yesterday from ad_snapshots (true daily data from backfill — NOT meta_snapshots which is cumulative MTD)
   let ySpend = 0, yLeads = 0, yImpr = 0, yClicks = 0, yHasData = false;
   try {
-    const yStr = yDay(); // e.g. 2026-05-28
-    const yRes = await authedFetch('/api/meta-proxy', {
-      method: 'POST',
-      body:   JSON.stringify({ accountId: activeId, since: yStr, until: yStr }),
-    });
-    if (yRes.ok) {
-      const yJson = await yRes.json();
-      (yJson.data || []).forEach(ad => {
-        const ins  = ad.insights?.data?.[0] || {};
-        const sp   = parseFloat(ins.spend || 0);
-        const imp  = parseInt(ins.impressions || 0);
-        const clk  = parseInt(ins.link_clicks || 0);
-        const acts = ins.actions || [];
-        const conv = acts.find(a => (a.action_type||'').includes('messaging_conversation'));
-        let res    = parseInt(conv?.value || 0);
-        if (!res && Array.isArray(ins.results) && ins.results[0]) res = parseInt(ins.results[0].value || 0);
-        ySpend  += sp;
-        yImpr   += imp;
-        yClicks += clk;
-        yLeads  += res;
-      });
+    const yStr  = yDay();
+    const yRows = await sbFetch('get_ad_summary', { account_id: activeId, from: yStr, to: yStr });
+    if (Array.isArray(yRows) && yRows.length > 0) {
+      ySpend  = yRows.reduce((s,a) => s + (a.spend||0), 0);
+      yLeads  = yRows.reduce((s,a) => s + Math.max(a.results||0, a.conversations||0), 0);
+      yImpr   = yRows.reduce((s,a) => s + (a.impressions||0), 0);
+      yClicks = yRows.reduce((s,a) => s + (a.clicks||0), 0);
       yHasData = ySpend > 0 || yLeads > 0;
     }
-  } catch(e) { console.warn('[copySummary] Yesterday fetch failed:', e.message); }
+  } catch(e) { console.warn('[copySummary] Yesterday fetch:', e.message); }
 
+  if (btn) btn.disabled = false;
   const todayLbl = new Date().toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
   const ydLbl    = new Date(new Date().setDate(new Date().getDate()-1)).toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long' });
-  const monthLbl = new Date().toLocaleString('en-MY', { month: 'long', year: 'numeric' });
-
-  const rm2 = v => `RM ${v.toLocaleString('en-MY', {minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const monthLbl = new Date().toLocaleString('en-MY', { month:'long', year:'numeric' });
+  const rm2      = v => `RM ${v.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
   const summary = [
-    `📊 *${acc?.name || 'Account'}* — Ads Performance Summary`,
+    `📊 *${acc?.name||'Account'}* — Ads Performance Summary`,
     `📅 *${todayLbl}*`,
     ``,
     `*📆 Month-to-Date (${monthLbl}):*`,
     `💰 Total Spend: ${rm2(totalSpend)}`,
     `📞 Total Leads: ${leads.toLocaleString()}`,
-    `📊 Avg CTR: ${avgCtr > 0 ? avgCtr.toFixed(2)+'%' : '—'}`,
-    `💵 Avg CPL: ${cpl > 0 ? 'RM '+cpl.toFixed(2) : '—'}`,
+    `📊 Avg CTR: ${avgCtr>0?avgCtr.toFixed(2)+'%':'—'}`,
+    `💵 Avg CPL: ${cpl>0?'RM '+cpl.toFixed(2):'—'}`,
     `✅ Active Ads: ${active}`,
     ``,
     `*📅 Yesterday (${ydLbl}):*`,
-    `💰 Spend: ${yHasData && ySpend > 0 ? rm2(ySpend) : '—'}`,
-    `📞 Leads: ${yHasData && yLeads > 0 ? yLeads : '—'}`,
-    ...(yHasData && yImpr > 0 ? [`📊 CTR: ${yImpr > 0 && yClicks > 0 ? (yClicks/yImpr*100).toFixed(2)+'%' : '—'}`] : []),
+    `💰 Spend: ${yHasData&&ySpend>0?rm2(ySpend):'— (run backfill to enable)'}`,
+    `📞 Leads: ${yHasData&&yLeads>0?yLeads:'—'}`,
+    ...(yHasData&&yImpr>0?[`📊 CTR: ${yClicks>0&&yImpr>0?(yClicks/yImpr*100).toFixed(2)+'%':'—'}`]:[]),
     ``,
     `— G6 Labs Ads Intelligence`,
   ].join('\n');
 
-  if (btn) { btn.disabled = false; }
-
   try {
     await navigator.clipboard.writeText(summary);
-    if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; setTimeout(() => { btn.innerHTML = origBtnHtml; btn.style.color = ''; btn.style.borderColor = ''; }, 2500); }
+    if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; btn.style.color='var(--green)'; btn.style.borderColor='var(--green)'; setTimeout(()=>{ btn.innerHTML=origBtnHtml; btn.style.color=''; btn.style.borderColor=''; },2500); }
   } catch(e) {
-    const ta = document.createElement('textarea');
-    ta.value = summary; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta);
-    if (btn) { btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; setTimeout(() => { btn.innerHTML = origBtnHtml; }, 2500); }
+    const ta = document.createElement('textarea'); ta.value=summary; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    if (btn) { btn.innerHTML='<i class="ti ti-check"></i> Copied!'; setTimeout(()=>{ btn.innerHTML=origBtnHtml; },2500); }
   }
 }
 
@@ -4699,7 +4692,6 @@ async function showSettings() {
     document.getElementById('content').innerHTML = `<div class="state-wrap"><div class="state-icon">🔒</div><div class="state-title">Superadmin only</div></div>`;
     return;
   }
-  // Update nav state
   document.getElementById('settingsNavBtn').classList.add('nav-active');
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
   document.getElementById('historyNavBtn')?.classList.remove('nav-active');
@@ -4720,9 +4712,8 @@ async function showSettings() {
         </button>
       </div>
       <div id="addUserFormArea"></div>
-      <div id="userList"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+      <div id="userList"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
     </div>`;
-
   loadUsers();
 }
 
@@ -4734,19 +4725,16 @@ async function loadUsers() {
     const users = await sbFetch('get_users', {});
     renderUserMgmt(Array.isArray(users) ? users : []);
   } catch(e) {
-    // Likely: users table hasn't been created yet
     el.innerHTML = `
       <div class="s-card" style="text-align:center;padding:36px 28px">
         <div style="font-size:36px;margin-bottom:14px">⚙️</div>
         <div style="font-size:15px;font-weight:600;color:var(--text2);margin-bottom:10px">Users table not set up yet</div>
         <div style="font-size:13px;color:var(--text3);line-height:1.8;margin-bottom:16px">
           Run <code style="background:var(--bg4);padding:2px 8px;border-radius:4px;color:var(--blue);font-size:12px">SUPABASE_USERS.sql</code>
-          in your <strong style="color:var(--text2)">Supabase → SQL Editor</strong> to create the users table and seed initial users, then refresh this page.
+          in <strong style="color:var(--text2)">Supabase → SQL Editor</strong>, then click Retry.
         </div>
-        <button onclick="loadUsers()" style="padding:8px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">
-          Retry
-        </button>
-        <div style="font-size:11px;color:var(--text3);margin-top:12px">Error: ${e.message}</div>
+        <button onclick="loadUsers()" style="padding:8px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Retry</button>
+        <div style="font-size:11px;color:var(--text3);margin-top:12px">${e.message}</div>
       </div>`;
   }
 }
@@ -4754,56 +4742,36 @@ async function loadUsers() {
 function renderUserMgmt(users) {
   const el = document.getElementById('userList');
   if (!el) return;
+  window._usersCache = users;
   const avatarColor = { ashokh:'#c45a32', diva:'#7c3aed', anisa:'#059669' };
-  const roleLabel = r => r === 'admin' ? 'Admin' : 'Client';
-  const roleBg    = r => r === 'admin' ? 'rgba(79,156,249,.12)' : 'rgba(20,184,166,.12)';
-  const roleClr   = r => r === 'admin' ? 'var(--blue)' : 'var(--teal)';
-
+  const roleBg  = r => r==='admin'?'rgba(79,156,249,.12)':'rgba(20,184,166,.12)';
+  const roleClr = r => r==='admin'?'var(--blue)':'var(--teal)';
   el.innerHTML = `
     <div class="s-card" style="padding:0;overflow:hidden">
       <table class="ad-table" style="width:100%">
         <thead><tr>
-          <th style="padding:12px 18px">User</th>
-          <th>Role</th>
-          <th>Access</th>
-          <th>Email</th>
-          <th>Status</th>
+          <th style="padding:12px 18px">User</th><th>Role</th><th>Access</th><th>Email</th><th>Status</th>
           <th style="text-align:right;padding-right:18px">Actions</th>
         </tr></thead>
         <tbody>
           ${users.map(u => {
-            const acol = avatarColor[u.username] || '#4f9cf9';
-            const accLabel = Array.isArray(u.accounts) && u.accounts.includes('*')
-              ? 'All accounts'
-              : `${(u.accounts||[]).length} account${(u.accounts||[]).length!==1?'s':''}`;
+            const acol = avatarColor[u.username]||'#4f9cf9';
+            const accLabel = Array.isArray(u.accounts)&&u.accounts.includes('*')?'All accounts':`${(u.accounts||[]).length} account${(u.accounts||[]).length!==1?'s':''}`;
             return `<tr style="opacity:${u.active===false?'.45':'1'}">
               <td style="padding:12px 18px">
                 <div style="display:flex;align-items:center;gap:10px">
                   <div style="width:32px;height:32px;border-radius:50%;background:${acol};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${(u.name||u.username)[0].toUpperCase()}</div>
-                  <div>
-                    <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name || u.username}</div>
-                    <div style="font-size:11px;color:var(--text3)">@${u.username}</div>
-                  </div>
+                  <div><div style="font-size:13px;font-weight:600;color:var(--text)">${u.name||u.username}</div><div style="font-size:11px;color:var(--text3)">@${u.username}</div></div>
                 </div>
               </td>
-              <td>
-                <span style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;background:${roleBg(u.role)};color:${roleClr(u.role)}">
-                  ${u.superadmin ? '⭐ Superadmin' : roleLabel(u.role)}
-                </span>
-              </td>
+              <td><span style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;background:${roleBg(u.role)};color:${roleClr(u.role)}">${u.superadmin?'⭐ Superadmin':u.role==='admin'?'Admin':'Client'}</span></td>
               <td style="font-size:12px;color:var(--text2)">${accLabel}</td>
-              <td style="font-size:12px;color:var(--text3)">${u.email || '—'}</td>
-              <td>
-                <span style="font-size:11px;font-weight:600;color:${u.active===false?'var(--red)':'var(--green)'}">${u.active===false?'Inactive':'Active'}</span>
-              </td>
+              <td style="font-size:12px;color:var(--text3)">${u.email||'—'}</td>
+              <td><span style="font-size:11px;font-weight:600;color:${u.active===false?'var(--red)':'var(--green)'}">${u.active===false?'Inactive':'Active'}</span></td>
               <td style="text-align:right;padding-right:18px">
                 <div style="display:flex;gap:5px;justify-content:flex-end">
                   <button onclick="openEditUser('${u.username}')" style="padding:5px 12px;border-radius:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:11px">✏️ Edit</button>
-                  ${u.username !== currentUser.userId ? `
-                  <button onclick="toggleUserActive('${u.username}',${u.active===false})"
-                    style="padding:5px 12px;border-radius:6px;background:${u.active===false?'rgba(34,197,94,.1)':'rgba(239,68,68,.08)'};border:1px solid ${u.active===false?'rgba(34,197,94,.3)':'rgba(239,68,68,.25)'};color:${u.active===false?'var(--green)':'var(--red)'};cursor:pointer;font-family:inherit;font-size:11px">
-                    ${u.active===false?'Activate':'Deactivate'}
-                  </button>` : ''}
+                  ${u.username!==currentUser.userId?`<button onclick="toggleUserActive('${u.username}',${u.active===false})" style="padding:5px 12px;border-radius:6px;background:${u.active===false?'rgba(34,197,94,.1)':'rgba(239,68,68,.08)'};border:1px solid ${u.active===false?'rgba(34,197,94,.3)':'rgba(239,68,68,.25)'};color:${u.active===false?'var(--green)':'var(--red)'};cursor:pointer;font-family:inherit;font-size:11px">${u.active===false?'Activate':'Deactivate'}</button>`:''}
                 </div>
               </td>
             </tr>`;
@@ -4811,55 +4779,29 @@ function renderUserMgmt(users) {
         </tbody>
       </table>
     </div>`;
-
-  // Attach stored user list for edit lookups
-  window._usersCache = users;
 }
 
 function openAddUserForm() {
   const el = document.getElementById('addUserFormArea');
   if (!el) return;
-  const accOpts = ACCOUNTS.map(a =>
-    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:3px 0;cursor:pointer">
-      <input type="checkbox" class="acc-check" value="${a.id}" style="accent-color:var(--blue)"> ${a.name}
-    </label>`
-  ).join('');
-
+  const accOpts = ACCOUNTS.map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:3px 0;cursor:pointer"><input type="checkbox" class="acc-check" value="${a.id}" style="accent-color:var(--blue)"> ${a.name}</label>`).join('');
   el.innerHTML = `
     <div class="s-card" style="margin-bottom:16px;border-color:rgba(79,156,249,.3)">
       <div class="s-card-title"><i class="ti ti-user-plus"></i> Add New User</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Username *</label>
-          <input id="nu_username" placeholder="e.g. sarah" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Full name *</label>
-          <input id="nu_name" placeholder="e.g. Sarah Lim" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Password *</label>
-          <input id="nu_password" type="password" placeholder="Set initial password" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Email</label>
-          <input id="nu_email" type="email" placeholder="optional" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Role</label>
-          <select id="nu_role" onchange="updateAccPicker()" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Username *</label><input id="nu_username" placeholder="e.g. sarah" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Full name *</label><input id="nu_name" placeholder="e.g. Sarah Lim" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Password *</label><input id="nu_password" type="password" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Email</label><input id="nu_email" type="email" placeholder="optional" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+        <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Role</label>
+          <select id="nu_role" onchange="document.getElementById('accPickerWrap').style.display=this.value==='admin'?'none':'block'" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer">
             <option value="client">Client — view assigned accounts only</option>
             <option value="admin">Admin — full team member</option>
           </select>
         </div>
         <div id="accPickerWrap">
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Account access</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);margin-bottom:6px;cursor:pointer">
-            <input type="checkbox" id="nu_allAccounts" onchange="toggleAllAccounts(this)" style="accent-color:var(--blue)"> All accounts (admin)
-          </label>
-          <div id="nu_accList" style="max-height:180px;overflow-y:auto;background:var(--bg5);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">
-            ${accOpts}
-          </div>
+          <div style="max-height:180px;overflow-y:auto;background:var(--bg5);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">${accOpts}</div>
         </div>
       </div>
       <div id="nu_error" style="color:var(--red);font-size:12px;margin-top:10px;display:none"></div>
@@ -4870,137 +4812,63 @@ function openAddUserForm() {
     </div>`;
 }
 
-function updateAccPicker() {
-  const role = document.getElementById('nu_role')?.value;
-  const wrap = document.getElementById('accPickerWrap');
-  if (wrap) wrap.style.display = role === 'admin' ? 'none' : 'block';
-  if (role === 'admin') {
-    const allChk = document.getElementById('nu_allAccounts');
-    if (allChk) allChk.checked = true;
-  }
-}
-
-function toggleAllAccounts(chk) {
-  const checkboxes = document.querySelectorAll('#nu_accList .acc-check');
-  checkboxes.forEach(c => { c.checked = false; c.disabled = chk.checked; });
-}
-
 async function saveNewUser() {
-  const username = document.getElementById('nu_username')?.value.trim().toLowerCase();
-  const name     = document.getElementById('nu_name')?.value.trim();
-  const password = document.getElementById('nu_password')?.value;
-  const email    = document.getElementById('nu_email')?.value.trim();
-  const role     = document.getElementById('nu_role')?.value || 'client';
-  const errEl    = document.getElementById('nu_error');
-
-  if (!username || !name || !password) {
-    if (errEl) { errEl.textContent = 'Username, name, and password are required.'; errEl.style.display = 'block'; }
-    return;
-  }
-
-  const allAccounts = document.getElementById('nu_allAccounts')?.checked;
-  let accounts = ['*'];
-  if (!allAccounts && role === 'client') {
-    const checked = [...document.querySelectorAll('#nu_accList .acc-check:checked')].map(c => c.value);
-    if (!checked.length) {
-      if (errEl) { errEl.textContent = 'Select at least one account for clients.'; errEl.style.display = 'block'; }
-      return;
-    }
-    accounts = checked;
-  }
-
-  try {
-    if (errEl) errEl.style.display = 'none';
-    await sbFetch('create_user', {}, { username, name, password, role, superadmin: false, accounts, email: email || null });
-    document.getElementById('addUserFormArea').innerHTML = '';
+  const username=document.getElementById('nu_username')?.value.trim().toLowerCase();
+  const name    =document.getElementById('nu_name')?.value.trim();
+  const password=document.getElementById('nu_password')?.value;
+  const email   =document.getElementById('nu_email')?.value.trim();
+  const role    =document.getElementById('nu_role')?.value||'client';
+  const errEl   =document.getElementById('nu_error');
+  if (!username||!name||!password){if(errEl){errEl.textContent='Username, name and password required.';errEl.style.display='block';}return;}
+  const checked=[...document.querySelectorAll('#nu_accList .acc-check:checked')].map(c=>c.value);
+  const accounts=role==='admin'?['*']:(checked.length?checked:null);
+  if(!accounts){if(errEl){errEl.textContent='Select at least one account for clients.';errEl.style.display='block';}return;}
+  try{
+    if(errEl)errEl.style.display='none';
+    await sbFetch('create_user',{},{username,name,password,role,superadmin:false,accounts,email:email||null});
+    document.getElementById('addUserFormArea').innerHTML='';
     loadUsers();
-  } catch(e) {
-    if (errEl) { errEl.textContent = 'Failed: '+e.message; errEl.style.display = 'block'; }
-  }
+  }catch(e){if(errEl){errEl.textContent='Failed: '+e.message;errEl.style.display='block';}}
 }
 
 function openEditUser(username) {
-  const users = window._usersCache || [];
-  const u = users.find(x => x.username === username);
-  if (!u) return;
-  const el = document.getElementById('userList');
-  if (!el) return;
-
-  const isAllAccounts = Array.isArray(u.accounts) && u.accounts.includes('*');
-  const accOpts = ACCOUNTS.map(a =>
-    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:3px 0;cursor:pointer">
-      <input type="checkbox" class="edit-acc-check" value="${a.id}" ${(u.accounts||[]).includes(a.id)?'checked':''} ${isAllAccounts?'disabled':''} style="accent-color:var(--blue)"> ${a.name}
-    </label>`
-  ).join('');
-
-  // Inject edit form before the table
-  const form = document.createElement('div');
-  form.id = 'editUserForm';
-  form.innerHTML = `
-    <div class="s-card" style="margin-bottom:14px;border-color:rgba(245,158,11,.3)">
-      <div class="s-card-title"><i class="ti ti-edit"></i> Edit — ${u.name} (@${u.username})</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Full name</label>
-          <input id="eu_name" value="${u.name||''}" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Email</label>
-          <input id="eu_email" value="${u.email||''}" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">New password <span style="color:var(--text3)">(leave blank to keep current)</span></label>
-          <input id="eu_password" type="password" placeholder="Leave blank to keep" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
-        </div>
-        <div>
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Role</label>
-          <select id="eu_role" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer" ${u.superadmin?'disabled':''}>
-            <option value="client" ${u.role==='client'?'selected':''}>Client</option>
-            <option value="admin"  ${u.role==='admin'?'selected':''}>Admin</option>
-          </select>
-        </div>
-        ${!u.superadmin ? `
-        <div style="grid-column:1/-1">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Account access</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);margin-bottom:6px;cursor:pointer">
-            <input type="checkbox" id="eu_allAccounts" ${isAllAccounts?'checked':''} onchange="document.querySelectorAll('.edit-acc-check').forEach(c=>{c.disabled=this.checked;if(this.checked)c.checked=false})" style="accent-color:var(--blue)"> All accounts
-          </label>
-          <div style="max-height:160px;overflow-y:auto;background:var(--bg5);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">${accOpts}</div>
-        </div>` : ''}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:14px">
-        <button onclick="saveEditUser('${u.username}')" style="padding:9px 20px;background:var(--amber);border:none;border-radius:8px;color:#000;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Save Changes</button>
-        <button onclick="document.getElementById('editUserForm')?.remove();loadUsers()" style="padding:9px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:13px">Cancel</button>
-      </div>
-    </div>`;
-
+  const u=(window._usersCache||[]).find(x=>x.username===username);
+  if(!u)return;
+  const el=document.getElementById('userList');
+  if(!el)return;
+  const isAll=Array.isArray(u.accounts)&&u.accounts.includes('*');
+  const accOpts=ACCOUNTS.map(a=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:3px 0;cursor:pointer"><input type="checkbox" class="edit-acc-check" value="${a.id}" ${(u.accounts||[]).includes(a.id)?'checked':''} ${isAll?'disabled':''} style="accent-color:var(--blue)"> ${a.name}</label>`).join('');
+  const form=document.createElement('div');form.id='editUserForm';
+  form.innerHTML=`<div class="s-card" style="margin-bottom:14px;border-color:rgba(245,158,11,.3)">
+    <div class="s-card-title"><i class="ti ti-edit"></i> Edit — ${u.name} (@${u.username})</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Full name</label><input id="eu_name" value="${u.name||''}" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+      <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Email</label><input id="eu_email" value="${u.email||''}" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+      <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">New password <span style="color:var(--text3)">(leave blank to keep)</span></label><input id="eu_password" type="password" placeholder="Leave blank to keep" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box"></div>
+      <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Role</label><select id="eu_role" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer" ${u.superadmin?'disabled':''}><option value="client" ${u.role==='client'?'selected':''}>Client</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
+      ${!u.superadmin?`<div style="grid-column:1/-1"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Account access</label><label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);margin-bottom:6px;cursor:pointer"><input type="checkbox" id="eu_allAccounts" ${isAll?'checked':''} onchange="document.querySelectorAll('.edit-acc-check').forEach(c=>{c.disabled=this.checked;if(this.checked)c.checked=false})" style="accent-color:var(--blue)"> All accounts</label><div style="max-height:160px;overflow-y:auto;background:var(--bg5);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">${accOpts}</div></div>`:''}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="saveEditUser('${u.username}')" style="padding:9px 20px;background:var(--amber);border:none;border-radius:8px;color:#000;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Save Changes</button>
+      <button onclick="document.getElementById('editUserForm')?.remove();loadUsers()" style="padding:9px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:13px">Cancel</button>
+    </div>
+  </div>`;
   el.insertBefore(form, el.firstChild);
 }
 
 async function saveEditUser(username) {
-  const name     = document.getElementById('eu_name')?.value.trim();
-  const email    = document.getElementById('eu_email')?.value.trim();
-  const password = document.getElementById('eu_password')?.value;
-  const role     = document.getElementById('eu_role')?.value;
-  const allAccounts = document.getElementById('eu_allAccounts')?.checked;
-
-  let accounts;
-  if (allAccounts) {
-    accounts = ['*'];
-  } else {
-    const checked = [...document.querySelectorAll('.edit-acc-check:checked')].map(c => c.value);
-    accounts = checked.length ? checked : null; // null = don't change
-  }
-
-  const payload = { username, name, email: email || null, role };
-  if (password) payload.password = password;
-  if (accounts) payload.accounts = accounts;
-
-  try {
-    await sbFetch('update_user', {}, payload);
-    document.getElementById('editUserForm')?.remove();
-    loadUsers();
-  } catch(e) { alert('Failed: '+e.message); }
+  const name=document.getElementById('eu_name')?.value.trim();
+  const email=document.getElementById('eu_email')?.value.trim();
+  const password=document.getElementById('eu_password')?.value;
+  const role=document.getElementById('eu_role')?.value;
+  const allAccounts=document.getElementById('eu_allAccounts')?.checked;
+  let accounts=allAccounts?['*']:[...document.querySelectorAll('.edit-acc-check:checked')].map(c=>c.value);
+  if(!allAccounts&&!accounts.length)accounts=null;
+  const payload={username,name,email:email||null,role};
+  if(password)payload.password=password;
+  if(accounts)payload.accounts=accounts;
+  try{await sbFetch('update_user',{},payload);document.getElementById('editUserForm')?.remove();loadUsers();}
+  catch(e){alert('Failed: '+e.message);}
 }
 
 async function toggleUserActive(username, makeActive) {
