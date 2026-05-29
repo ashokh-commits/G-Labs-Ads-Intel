@@ -840,6 +840,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <span>Task Manager</span>
         <span id="tasksBadge" style="display:none;margin-left:auto;background:var(--red);color:#fff;font-size:9px;padding:1px 6px;border-radius:10px;font-weight:700"></span>
       </button>
+      <button onclick="showSettings()" id="settingsNavBtn"
+        style="display:none;width:100%;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text2);transition:background .15s;text-align:left"
+        onmouseover="this.style.background='var(--bg3)'" onmouseout="if(!this.classList.contains('nav-active'))this.style.background='none'">
+        <i class="ti ti-settings" style="font-size:16px;color:var(--text3)"></i>
+        <span>Settings</span>
+      </button>
     </div>
 
     <div style="height:1px;background:var(--border);margin:10px 8px"></div>
@@ -988,6 +994,10 @@ function buildSidebar(){
     </div>`).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
 
   document.getElementById('accountList').innerHTML = html;
+
+  // Show Settings nav button for superadmin only
+  const settingsBtn = document.getElementById('settingsNavBtn');
+  if (settingsBtn) settingsBtn.style.display = currentUser?.superadmin ? 'flex' : 'none';
 
   // Restore perf section state
   const perfOpen = localStorage.getItem('g6_perf_open') !== '0';
@@ -1223,8 +1233,17 @@ function renderOverview(ads){
 
   document.getElementById('content').innerHTML=`
     <div class="tab-section active" id="tab-overview">
-      <div class="section-title">Performance Overview</div>
-      <div class="section-sub">${mLabel()} · ${ads.length} ads with activity · <span style="color:var(--green);font-weight:500">${active} active</span> · health metrics scoped to active ads only</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div>
+          <div class="section-title">Performance Overview</div>
+          <div class="section-sub">${mLabel()} · ${ads.length} ads with activity · <span style="color:var(--green);font-weight:500">${active} active</span> · health metrics scoped to active ads only</div>
+        </div>
+        <button onclick="copySummary()" id="copySummaryBtn"
+          style="padding:8px 14px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:all .15s;flex-shrink:0"
+          onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">
+          <i class="ti ti-copy"></i> Copy Summary
+        </button>
+      </div>
 
       <div class="gauge-row">
         <div class="gauge-card">
@@ -3998,9 +4017,8 @@ async function processOverdueDeductions() {
   const todayKey = `g6_deduct_${new Date().toISOString().split('T')[0]}`;
 
   if (localStorage.getItem(todayKey)) {
-    // Allow reset via Shift+click for admin corrections
-    alert('Already processed for today. To re-run, hold Shift and click again.');
-    return;
+    if (!confirm('Points already processed today. Click OK to clear the flag and re-run deductions (only do this if scores are still wrong).')) return;
+    localStorage.removeItem(todayKey);
   }
   if (!_missedDailyTasks.length) { alert('No missed tasks to process.'); return; }
   if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
@@ -4583,6 +4601,372 @@ function renderAdHistory(el, ads, from, to) {
         Data source: ad_snapshots table · backfilled from Meta Ads API · sorted by spend desc
       </div>
     </div>`;
+}
+
+// ── COPY SUMMARY (Overview tab) ───────────────────────────────────────────
+async function copySummary() {
+  const btn = document.getElementById('copySummaryBtn');
+  const ads = cache[activeId];
+  if (!ads || !activeId) { alert('Load an account first'); return; }
+  const acc = ACCOUNTS.find(a => a.id === activeId);
+
+  // MTD totals from live cache
+  const totalSpend   = ads.reduce((s,a) => s + rmN(a.spend), 0);
+  const totalImpr    = ads.reduce((s,a) => s + intN(a.impr), 0);
+  const totalClicks  = ads.reduce((s,a) => s + intN(a.clicks), 0);
+  const totalLeads   = ads.reduce((s,a) => s + intN(a.convs), 0);
+  const totalResults = ads.reduce((s,a) => s + intN(a.results), 0);
+  const leads        = Math.max(totalLeads, totalResults);
+  const active       = ads.filter(a => (a.es||a.status||'').toLowerCase() === 'active').length;
+  const avgCtr       = totalImpr > 0 ? (totalClicks / totalImpr * 100) : 0;
+  const cpl          = leads > 0 ? (totalSpend / leads) : 0;
+
+  // Yesterday's snapshot from history table
+  let ySpend = 0, yLeads = 0;
+  try {
+    const yd   = new Date(); yd.setDate(yd.getDate()-1);
+    const yStr = yd.toISOString().split('T')[0];
+    const rows = await sbFetch('get_meta_history', { account_id: activeId, from: yStr, to: yStr });
+    if (Array.isArray(rows) && rows[0]) {
+      ySpend = parseFloat(rows[0].spend || 0);
+      yLeads = parseInt(rows[0].leads || 0);
+    }
+  } catch(e) {}
+
+  const today    = new Date().toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const monthLbl = new Date().toLocaleString('en-MY', { month: 'long', year: 'numeric' });
+
+  const summary = [
+    `📊 *${acc?.name || 'Account'}* — Ads Performance Summary`,
+    `📅 *${today}*`,
+    ``,
+    `*📆 Month-to-Date (${monthLbl}):*`,
+    `💰 Total Spend: RM ${totalSpend.toLocaleString('en-MY', {minimumFractionDigits:2,maximumFractionDigits:2})}`,
+    `📞 Total Leads: ${leads.toLocaleString()}`,
+    `📊 Avg CTR: ${avgCtr > 0 ? avgCtr.toFixed(2)+'%' : '—'}`,
+    `💵 Avg CPL: ${cpl > 0 ? 'RM '+cpl.toFixed(2) : '—'}`,
+    `✅ Active Ads: ${active}`,
+    ``,
+    `*📅 Yesterday's Performance:*`,
+    `💰 Spend: ${ySpend > 0 ? 'RM '+ySpend.toLocaleString('en-MY', {minimumFractionDigits:2}) : '—'}`,
+    `📞 Leads: ${yLeads > 0 ? yLeads : '—'}`,
+    ``,
+    `— G6 Labs Ads Intelligence`,
+  ].join('\n');
+
+  try {
+    await navigator.clipboard.writeText(summary);
+    if (btn) { const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; btn.style.color = 'var(--green)'; btn.style.borderColor = 'var(--green)'; setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 2000); }
+  } catch(e) {
+    // Fallback for browsers that don't support clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = summary; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (btn) { const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copied!'; setTimeout(() => { btn.innerHTML = orig; }, 2000); }
+  }
+}
+
+// ── SETTINGS — User Access Management (superadmin only) ───────────────────
+async function showSettings() {
+  if (!currentUser?.superadmin) {
+    document.getElementById('content').innerHTML = `<div class="state-wrap"><div class="state-icon">🔒</div><div class="state-title">Superadmin only</div></div>`;
+    return;
+  }
+  // Update nav state
+  document.getElementById('settingsNavBtn').classList.add('nav-active');
+  document.getElementById('tasksNavBtn').classList.remove('nav-active');
+  document.getElementById('historyNavBtn')?.classList.remove('nav-active');
+  document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('navTabs').style.display = 'none';
+  document.getElementById('headerAccount').textContent = 'Settings';
+  document.getElementById('headerMeta').style.display = 'none';
+
+  document.getElementById('content').innerHTML = `
+    <div class="tab-section active" style="padding:20px 24px 60px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+        <div>
+          <div class="section-title">User Access Management</div>
+          <div class="section-sub">Create, edit, and control user access to ad accounts and features</div>
+        </div>
+        <button onclick="openAddUserForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-user-plus"></i> Add User
+        </button>
+      </div>
+      <div id="addUserFormArea"></div>
+      <div id="userList"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+    </div>`;
+
+  loadUsers();
+}
+
+async function loadUsers() {
+  try {
+    const users = await sbFetch('get_users', {});
+    renderUserMgmt(Array.isArray(users) ? users : []);
+  } catch(e) {
+    document.getElementById('userList').innerHTML = `<div style="color:var(--red);padding:20px">Failed to load users: ${e.message}</div>`;
+  }
+}
+
+function renderUserMgmt(users) {
+  const el = document.getElementById('userList');
+  if (!el) return;
+  const avatarColor = { ashokh:'#c45a32', diva:'#7c3aed', anisa:'#059669' };
+  const roleLabel = r => r === 'admin' ? 'Admin' : 'Client';
+  const roleBg    = r => r === 'admin' ? 'rgba(79,156,249,.12)' : 'rgba(20,184,166,.12)';
+  const roleClr   = r => r === 'admin' ? 'var(--blue)' : 'var(--teal)';
+
+  el.innerHTML = `
+    <div class="s-card" style="padding:0;overflow:hidden">
+      <table class="ad-table" style="width:100%">
+        <thead><tr>
+          <th style="padding:12px 18px">User</th>
+          <th>Role</th>
+          <th>Access</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th style="text-align:right;padding-right:18px">Actions</th>
+        </tr></thead>
+        <tbody>
+          ${users.map(u => {
+            const acol = avatarColor[u.username] || '#4f9cf9';
+            const accLabel = Array.isArray(u.accounts) && u.accounts.includes('*')
+              ? 'All accounts'
+              : `${(u.accounts||[]).length} account${(u.accounts||[]).length!==1?'s':''}`;
+            return `<tr style="opacity:${u.active===false?'.45':'1'}">
+              <td style="padding:12px 18px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <div style="width:32px;height:32px;border-radius:50%;background:${acol};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">${(u.name||u.username)[0].toUpperCase()}</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name || u.username}</div>
+                    <div style="font-size:11px;color:var(--text3)">@${u.username}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;background:${roleBg(u.role)};color:${roleClr(u.role)}">
+                  ${u.superadmin ? '⭐ Superadmin' : roleLabel(u.role)}
+                </span>
+              </td>
+              <td style="font-size:12px;color:var(--text2)">${accLabel}</td>
+              <td style="font-size:12px;color:var(--text3)">${u.email || '—'}</td>
+              <td>
+                <span style="font-size:11px;font-weight:600;color:${u.active===false?'var(--red)':'var(--green)'}">${u.active===false?'Inactive':'Active'}</span>
+              </td>
+              <td style="text-align:right;padding-right:18px">
+                <div style="display:flex;gap:5px;justify-content:flex-end">
+                  <button onclick="openEditUser('${u.username}')" style="padding:5px 12px;border-radius:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:11px">✏️ Edit</button>
+                  ${u.username !== currentUser.userId ? `
+                  <button onclick="toggleUserActive('${u.username}',${u.active===false})"
+                    style="padding:5px 12px;border-radius:6px;background:${u.active===false?'rgba(34,197,94,.1)':'rgba(239,68,68,.08)'};border:1px solid ${u.active===false?'rgba(34,197,94,.3)':'rgba(239,68,68,.25)'};color:${u.active===false?'var(--green)':'var(--red)'};cursor:pointer;font-family:inherit;font-size:11px">
+                    ${u.active===false?'Activate':'Deactivate'}
+                  </button>` : ''}
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  // Attach stored user list for edit lookups
+  window._usersCache = users;
+}
+
+function openAddUserForm() {
+  const el = document.getElementById('addUserFormArea');
+  if (!el) return;
+  const accOpts = ACCOUNTS.map(a =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:3px 0;cursor:pointer">
+      <input type="checkbox" class="acc-check" value="${a.id}" style="accent-color:var(--blue)"> ${a.name}
+    </label>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="s-card" style="margin-bottom:16px;border-color:rgba(79,156,249,.3)">
+      <div class="s-card-title"><i class="ti ti-user-plus"></i> Add New User</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Username *</label>
+          <input id="nu_username" placeholder="e.g. sarah" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Full name *</label>
+          <input id="nu_name" placeholder="e.g. Sarah Lim" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Password *</label>
+          <input id="nu_password" type="password" placeholder="Set initial password" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Email</label>
+          <input id="nu_email" type="email" placeholder="optional" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Role</label>
+          <select id="nu_role" onchange="updateAccPicker()" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+            <option value="client">Client — view assigned accounts only</option>
+            <option value="admin">Admin — full team member</option>
+          </select>
+        </div>
+        <div id="accPickerWrap">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Account access</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);margin-bottom:6px;cursor:pointer">
+            <input type="checkbox" id="nu_allAccounts" onchange="toggleAllAccounts(this)" style="accent-color:var(--blue)"> All accounts (admin)
+          </label>
+          <div id="nu_accList" style="max-height:180px;overflow-y:auto;background:var(--bg5);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">
+            ${accOpts}
+          </div>
+        </div>
+      </div>
+      <div id="nu_error" style="color:var(--red);font-size:12px;margin-top:10px;display:none"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="saveNewUser()" style="padding:9px 20px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Create User</button>
+        <button onclick="document.getElementById('addUserFormArea').innerHTML=''" style="padding:9px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:13px">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function updateAccPicker() {
+  const role = document.getElementById('nu_role')?.value;
+  const wrap = document.getElementById('accPickerWrap');
+  if (wrap) wrap.style.display = role === 'admin' ? 'none' : 'block';
+  if (role === 'admin') {
+    const allChk = document.getElementById('nu_allAccounts');
+    if (allChk) allChk.checked = true;
+  }
+}
+
+function toggleAllAccounts(chk) {
+  const checkboxes = document.querySelectorAll('#nu_accList .acc-check');
+  checkboxes.forEach(c => { c.checked = false; c.disabled = chk.checked; });
+}
+
+async function saveNewUser() {
+  const username = document.getElementById('nu_username')?.value.trim().toLowerCase();
+  const name     = document.getElementById('nu_name')?.value.trim();
+  const password = document.getElementById('nu_password')?.value;
+  const email    = document.getElementById('nu_email')?.value.trim();
+  const role     = document.getElementById('nu_role')?.value || 'client';
+  const errEl    = document.getElementById('nu_error');
+
+  if (!username || !name || !password) {
+    if (errEl) { errEl.textContent = 'Username, name, and password are required.'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  const allAccounts = document.getElementById('nu_allAccounts')?.checked;
+  let accounts = ['*'];
+  if (!allAccounts && role === 'client') {
+    const checked = [...document.querySelectorAll('#nu_accList .acc-check:checked')].map(c => c.value);
+    if (!checked.length) {
+      if (errEl) { errEl.textContent = 'Select at least one account for clients.'; errEl.style.display = 'block'; }
+      return;
+    }
+    accounts = checked;
+  }
+
+  try {
+    if (errEl) errEl.style.display = 'none';
+    await sbFetch('create_user', {}, { username, name, password, role, superadmin: false, accounts, email: email || null });
+    document.getElementById('addUserFormArea').innerHTML = '';
+    loadUsers();
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Failed: '+e.message; errEl.style.display = 'block'; }
+  }
+}
+
+function openEditUser(username) {
+  const users = window._usersCache || [];
+  const u = users.find(x => x.username === username);
+  if (!u) return;
+  const el = document.getElementById('userList');
+  if (!el) return;
+
+  const isAllAccounts = Array.isArray(u.accounts) && u.accounts.includes('*');
+  const accOpts = ACCOUNTS.map(a =>
+    `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);padding:3px 0;cursor:pointer">
+      <input type="checkbox" class="edit-acc-check" value="${a.id}" ${(u.accounts||[]).includes(a.id)?'checked':''} ${isAllAccounts?'disabled':''} style="accent-color:var(--blue)"> ${a.name}
+    </label>`
+  ).join('');
+
+  // Inject edit form before the table
+  const form = document.createElement('div');
+  form.id = 'editUserForm';
+  form.innerHTML = `
+    <div class="s-card" style="margin-bottom:14px;border-color:rgba(245,158,11,.3)">
+      <div class="s-card-title"><i class="ti ti-edit"></i> Edit — ${u.name} (@${u.username})</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Full name</label>
+          <input id="eu_name" value="${u.name||''}" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Email</label>
+          <input id="eu_email" value="${u.email||''}" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">New password <span style="color:var(--text3)">(leave blank to keep current)</span></label>
+          <input id="eu_password" type="password" placeholder="Leave blank to keep" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Role</label>
+          <select id="eu_role" style="width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;cursor:pointer" ${u.superadmin?'disabled':''}>
+            <option value="client" ${u.role==='client'?'selected':''}>Client</option>
+            <option value="admin"  ${u.role==='admin'?'selected':''}>Admin</option>
+          </select>
+        </div>
+        ${!u.superadmin ? `
+        <div style="grid-column:1/-1">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px">Account access</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--blue);margin-bottom:6px;cursor:pointer">
+            <input type="checkbox" id="eu_allAccounts" ${isAllAccounts?'checked':''} onchange="document.querySelectorAll('.edit-acc-check').forEach(c=>{c.disabled=this.checked;if(this.checked)c.checked=false})" style="accent-color:var(--blue)"> All accounts
+          </label>
+          <div style="max-height:160px;overflow-y:auto;background:var(--bg5);border-radius:6px;padding:8px 10px;border:1px solid var(--border)">${accOpts}</div>
+        </div>` : ''}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="saveEditUser('${u.username}')" style="padding:9px 20px;background:var(--amber);border:none;border-radius:8px;color:#000;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Save Changes</button>
+        <button onclick="document.getElementById('editUserForm')?.remove();loadUsers()" style="padding:9px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:13px">Cancel</button>
+      </div>
+    </div>`;
+
+  el.insertBefore(form, el.firstChild);
+}
+
+async function saveEditUser(username) {
+  const name     = document.getElementById('eu_name')?.value.trim();
+  const email    = document.getElementById('eu_email')?.value.trim();
+  const password = document.getElementById('eu_password')?.value;
+  const role     = document.getElementById('eu_role')?.value;
+  const allAccounts = document.getElementById('eu_allAccounts')?.checked;
+
+  let accounts;
+  if (allAccounts) {
+    accounts = ['*'];
+  } else {
+    const checked = [...document.querySelectorAll('.edit-acc-check:checked')].map(c => c.value);
+    accounts = checked.length ? checked : null; // null = don't change
+  }
+
+  const payload = { username, name, email: email || null, role };
+  if (password) payload.password = password;
+  if (accounts) payload.accounts = accounts;
+
+  try {
+    await sbFetch('update_user', {}, payload);
+    document.getElementById('editUserForm')?.remove();
+    loadUsers();
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+async function toggleUserActive(username, makeActive) {
+  if (!confirm(`${makeActive ? 'Activate' : 'Deactivate'} user @${username}?`)) return;
+  try {
+    await sbFetch('toggle_user', {}, { username, active: makeActive });
+    loadUsers();
+  } catch(e) { alert('Failed: '+e.message); }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────

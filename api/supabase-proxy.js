@@ -325,14 +325,14 @@ module.exports = async (req, res) => {
             date:      today,
           }, '');
         }
-        // Single GET + PATCH per assignee (no race condition)
+        // GET current → UPSERT new total (handles missing row + avoids race condition)
         const cur    = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
         const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
         const newPts = Math.max(0, curPts + (data.pts || 0));
-        await sb('PATCH', 'assignee_points', {
-          total_points: newPts,
-          updated_at:   new Date().toISOString(),
-        }, `?assignee=eq.${assignee}`);
+        await sb('POST', 'assignee_points',
+          { assignee, total_points: newPts, updated_at: new Date().toISOString() },
+          '?on_conflict=assignee'
+        );
       }
       return res.status(200).json({ ok: true });
     }
@@ -426,6 +426,56 @@ module.exports = async (req, res) => {
       const rows = Array.isArray(r.data) ? r.data : [];
       const dates = [...new Set(rows.map(row => row.date))].sort();
       return res.status(200).json({ count: rows.length, dates, has_data: rows.length > 0 });
+    }
+
+    // ── USER MANAGEMENT (superadmin only) ────────────────────────────────────
+
+    const isSuperAdmin = user.superadmin === true || user.userId === 'ashokh';
+
+    if (action === 'get_users') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Superadmin only' });
+      const r = await sb('GET', 'users', null, '?select=username,name,role,superadmin,accounts,email,active&order=created_at.asc');
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'create_user') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { username, name, password, role, superadmin: sa, accounts: accts, email } = body;
+      if (!username || !password) return res.status(400).json({ error: 'username and password required' });
+      const password_hash = crypto.createHmac('sha256', JWT_SECRET).update(password.trim()).digest('hex');
+      const r = await sb('POST', 'users', {
+        username:      username.toLowerCase().trim(),
+        password_hash,
+        name:          name || username,
+        role:          role || 'client',
+        superadmin:    sa === true,
+        accounts:      Array.isArray(accts) ? accts : (role === 'admin' ? ['*'] : []),
+        email:         email || null,
+        active:        true,
+      }, '');
+      const created = Array.isArray(r.data) ? r.data[0] : r.data;
+      if (!r.ok) return res.status(400).json({ error: 'Failed to create user', detail: r.data });
+      return res.status(200).json({ ok: true, user: created });
+    }
+
+    if (action === 'update_user') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { username, password, ...updates } = body;
+      if (!username) return res.status(400).json({ error: 'username required' });
+      const payload = { ...updates, updated_at: new Date().toISOString() };
+      if (password) payload.password_hash = crypto.createHmac('sha256', JWT_SECRET).update(password.trim()).digest('hex');
+      delete payload.username; // don't overwrite PK
+      const r = await sb('PATCH', 'users', payload, `?username=eq.${encodeURIComponent(username)}`);
+      return res.status(200).json({ ok: r.ok });
+    }
+
+    if (action === 'toggle_user') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { username, active } = body;
+      if (!username) return res.status(400).json({ error: 'username required' });
+      if (username === user.userId) return res.status(400).json({ error: 'Cannot deactivate yourself' });
+      const r = await sb('PATCH', 'users', { active: !!active, updated_at: new Date().toISOString() }, `?username=eq.${encodeURIComponent(username)}`);
+      return res.status(200).json({ ok: r.ok });
     }
 
     return res.status(404).json({ error: `Unknown action: ${action}` });
