@@ -428,6 +428,17 @@ module.exports = async (req, res) => {
       return res.status(200).json({ count: rows.length, dates, has_data: rows.length > 0 });
     }
 
+    if (action === 'clear_ad_snapshots') {
+      // Superadmin only — delete all ad_snapshots for an account so dirty MTD data
+      // can be replaced with accurate daily rows via backfill.
+      if (user.superadmin !== true && user.userId !== 'ashokh') return res.status(403).json({ error: 'Superadmin only' });
+      const accountId = body.account_id || '';
+      if (!accountId) return res.status(400).json({ error: 'account_id required' });
+      const r = await sb('DELETE', 'ad_snapshots', null, `?account_id=eq.${accountId}`);
+      console.log(`[clear_ad_snapshots] Cleared ad_snapshots for account ${accountId}`);
+      return res.status(200).json({ ok: true, deleted: true });
+    }
+
     // ── USER MANAGEMENT (superadmin only) ────────────────────────────────────
 
     const isSuperAdmin = user.superadmin === true || user.userId === 'ashokh';

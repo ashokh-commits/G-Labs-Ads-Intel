@@ -3505,33 +3505,28 @@ async function autoSaveSnapshot(accountId, ads) {
   } catch(e) { console.warn('[Snapshot] Auto-save failed:', e.message); }
 }
 
-// Auto-save today's ad-level data to ad_snapshots table
-async function autoSaveAdSnapshot(accountId, ads) {
+// Auto-save yesterday's ad-level data to ad_snapshots table.
+// Uses /api/meta-backfill with since=yDay&until=yDay so each stored row
+// represents a single day's TRUE data (not cumulative MTD).
+async function autoSaveAdSnapshot(accountId) {
   if (currentUser?.role !== 'admin') return;
-  const acc = ACCOUNTS.find(a => a.id === accountId);
-  const today = new Date().toISOString().split('T')[0];
-  const rows = ads.map(ad => ({
-    account_id:    accountId,
-    ad_id:         ad.id,
-    ad_name:       ad.name || '',
-    campaign_name: ad.camp || '',
-    date:          today,
-    spend:         rmN(ad.spend).toFixed(2),
-    impressions:   intN(ad.impr),
-    reach:         intN(ad.reach),
-    clicks:        intN(ad.clicks),
-    ctr:           rmN(ad.ctr).toFixed(4),
-    cpm:           rmN(ad.cpm).toFixed(2),
-    cpc:           rmN(ad.cpc).toFixed(2),
-    frequency:     rmN(ad.freq).toFixed(2),
-    results:       intN(ad.results),
-    conversations: intN(ad.convs),
-    cpl:           rmN(ad.cpr).toFixed(2),
-  }));
-  if (!rows.length) return;
+  const acc     = ACCOUNTS.find(a => a.id === accountId);
+  const yStr    = yDay();
+  // Avoid re-saving if we already saved yesterday's data in this browser session
+  const dedupeKey = `g6_adsave_${accountId}_${yStr}`;
+  if (sessionStorage.getItem(dedupeKey)) return;
   try {
-    await sbFetch('save_ad_snapshots', {}, { rows });
-    console.log('[AdSnapshot] Saved', rows.length, 'ad rows for', acc?.name, today);
+    const res = await authedFetch('/api/meta-backfill', {
+      method: 'POST',
+      body:   JSON.stringify({ accountId, since: yStr, until: yStr }),
+    });
+    const data = await res.json();
+    if (res.ok && data.saved >= 0) {
+      sessionStorage.setItem(dedupeKey, '1');
+      console.log(`[AdSnapshot] Yesterday (${yStr}) saved: ${data.saved} rows for`, acc?.name);
+    } else {
+      console.warn('[AdSnapshot] Backfill returned error:', data.error);
+    }
   } catch(e) { console.warn('[AdSnapshot] Failed:', e.message); }
 }
 
@@ -4193,9 +4188,14 @@ function renderHistDailyView() {
           </button>`).join('')}
         </div>
         <div id="bfStatus" style="font-size:12px;color:var(--text3);margin-top:8px"></div>
-        <button onclick="runBackfillAll(window._bfMonths)" style="margin-top:10px;padding:7px 14px;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:11px;display:flex;align-items:center;gap:5px">
-          <i class="ti ti-player-play"></i> Backfill all months
-        </button>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button onclick="runBackfillAll(window._bfMonths)" style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:11px;display:flex;align-items:center;gap:5px">
+            <i class="ti ti-player-play"></i> Backfill all months
+          </button>
+          <button onclick="clearAndRebackfill()" style="padding:7px 14px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;color:var(--red);cursor:pointer;font-family:inherit;font-size:11px;display:flex;align-items:center;gap:5px" title="Deletes all existing ad_snapshots for this account and re-pulls fresh daily data">
+            <i class="ti ti-trash"></i> Clear dirty data + re-backfill 2026
+          </button>
+        </div>
       </div>
     </div>
 
@@ -4616,6 +4616,31 @@ async function runBackfillAll(months) {
   if (status) status.textContent += ' — All done!';
 }
 
+// Clear existing ad_snapshots (dirty MTD data) then re-backfill all months with accurate daily data
+async function clearAndRebackfill() {
+  if (!confirm(`⚠️ This will DELETE all existing ad history for this account and re-download fresh daily data from Meta.\n\nAccount: ${ACCOUNTS.find(a=>a.id===activeId)?.name}\n\nContinue?`)) return;
+  const status = document.getElementById('bfStatus');
+  if (status) status.textContent = '🗑️ Clearing existing data…';
+
+  // Reset all month buttons to unbackfilled state
+  document.querySelectorAll('[id^="bf-"]').forEach(btn => {
+    btn.classList.remove('done','loading');
+    btn.disabled = false;
+    const key  = btn.id.replace('bf-','');
+    const icon = document.getElementById(`bf-icon-${key}`);
+    if (icon) icon.textContent = '📥';
+  });
+
+  try {
+    await sbFetch('clear_ad_snapshots', {}, { account_id: activeId });
+    if (status) status.textContent = '✅ Cleared. Starting full backfill…';
+    await new Promise(r => setTimeout(r, 800));
+    await runBackfillAll(window._bfMonths || []);
+  } catch(e) {
+    if (status) status.textContent = `❌ ${e.message}`;
+  }
+}
+
 
 // ── COPY SUMMARY (Overview tab "📋 Copy Summary" button) ──────────────────
 async function copySummary() {
@@ -4637,16 +4662,24 @@ async function copySummary() {
   const avgCtr       = totalImpr > 0 ? (totalClicks / totalImpr * 100) : 0;
   const cpl          = leads > 0 ? (totalSpend / leads) : 0;
 
-  // Yesterday from ad_snapshots (true daily data from backfill — NOT meta_snapshots which is cumulative MTD)
+  // Yesterday — call Meta API directly for since=yDay&until=yDay (single-day live data).
+  // Do NOT use ad_snapshots (may have stale MTD data) or meta_snapshots (cumulative).
   let ySpend = 0, yLeads = 0, yImpr = 0, yClicks = 0, yHasData = false;
   try {
     const yStr  = yDay();
-    const yRows = await sbFetch('get_ad_summary', { account_id: activeId, from: yStr, to: yStr });
-    if (Array.isArray(yRows) && yRows.length > 0) {
-      ySpend  = yRows.reduce((s,a) => s + (a.spend||0), 0);
-      yLeads  = yRows.reduce((s,a) => s + Math.max(a.results||0, a.conversations||0), 0);
-      yImpr   = yRows.reduce((s,a) => s + (a.impressions||0), 0);
-      yClicks = yRows.reduce((s,a) => s + (a.clicks||0), 0);
+    const yRes  = await authedFetch('/api/meta-proxy', {
+      method: 'POST',
+      body:   JSON.stringify({ accountId: activeId, since: yStr, until: yStr }),
+    });
+    if (yRes.ok) {
+      const yJson = await yRes.json();
+      (yJson.data || []).forEach(ad => {
+        const ins  = ad.insights?.data?.[0] || {};
+        ySpend  += parseFloat(ins.spend || 0);
+        yImpr   += parseInt(ins.impressions || 0);
+        yClicks += parseInt(ins.link_clicks || 0);
+        yLeads  += parseInt(ins.conversations || 0) || parseInt(ins.results || 0);
+      });
       yHasData = ySpend > 0 || yLeads > 0;
     }
   } catch(e) { console.warn('[copySummary] Yesterday fetch:', e.message); }
