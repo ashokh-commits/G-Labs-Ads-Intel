@@ -939,30 +939,44 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <script>
 // ── ACCOUNTS ──────────────────────────────────────────────────────────────
+// platform: 'meta' (default) | 'tiktok' | 'google'
+// For TikTok use the advertiser_id; for Google use the 10-digit customer ID (no dashes).
 const ACCOUNTS=[
   // I-Sihat Dental Care
-  {id:'854069203683598', name:'I-Sihat Dental Care 2',  group:'isihat'},
-  {id:'185825224320502', name:'I-Sihat Dental Care',    group:'isihat'},
+  {id:'854069203683598', name:'I-Sihat Dental Care 2',  group:'isihat', platform:'meta'},
+  {id:'185825224320502', name:'I-Sihat Dental Care',    group:'isihat', platform:'meta'},
   // Dental clients
-  {id:'523654495274543', name:'Ang Dental',             group:'dental'},
-  {id:'429121129294808', name:'Toothland Dental',       group:'dental'},
-  {id:'548718067784065', name:'Putih Dental',           group:'dental'},
-  {id:'5841452755981834',name:'Smile Borneo',           group:'smile'},
+  {id:'523654495274543', name:'Ang Dental',             group:'dental', platform:'meta'},
+  {id:'429121129294808', name:'Toothland Dental',       group:'dental', platform:'meta'},
+  {id:'548718067784065', name:'Putih Dental',           group:'dental', platform:'meta'},
+  {id:'5841452755981834',name:'Smile Borneo',           group:'smile',  platform:'meta'},
   // Other clients
-  {id:'1027194858744741',name:'Purple Antz',            group:'other'},
-  {id:'509470387773096', name:'SVASIKA',                group:'other'},
+  {id:'1027194858744741',name:'Purple Antz',            group:'other',  platform:'meta'},
+  {id:'509470387773096', name:'SVASIKA',                group:'other',  platform:'meta'},
   // Dr Glow
-  {id:'4486576511589217',name:'Dr. Glow Medispa',       group:'other'},
-  {id:'2236534650109223',name:'DML x Dr Glow',          group:'other'},
+  {id:'4486576511589217',name:'Dr. Glow Medispa',       group:'other',  platform:'meta'},
+  {id:'2236534650109223',name:'DML x Dr Glow',          group:'other',  platform:'meta'},
   // Anytime Fitness
-  {id:'835864508826292', name:'AF SG Mas Plaza',        group:'fitness'},
-  {id:'1199916453380050',name:'Anytime Fitness Anggun', group:'fitness'},
+  {id:'835864508826292', name:'AF SG Mas Plaza',        group:'fitness',platform:'meta'},
+  {id:'1199916453380050',name:'Anytime Fitness Anggun', group:'fitness',platform:'meta'},
   // T-Low Dental
-  {id:'296798740118523', name:'T-Low Dental',           group:'dental'},
+  {id:'296798740118523', name:'T-Low Dental',           group:'dental', platform:'meta'},
   // Klinik
-  {id:'3638836659528611',name:'Klinik Pancasila',       group:'clinic'},
-  {id:'1698587930478234',name:'Klinik Sentosa',         group:'clinic'},
+  {id:'3638836659528611',name:'Klinik Pancasila',       group:'clinic', platform:'meta'},
+  {id:'1698587930478234',name:'Klinik Sentosa',         group:'clinic', platform:'meta'},
+  // ── TikTok / Google accounts — add here once API credentials are configured ──
+  // {id:'TIKTOK_ADVERTISER_ID', name:'Client TikTok', group:'other', platform:'tiktok'},
+  // {id:'1234567890',           name:'Client Google', group:'other', platform:'google'},
 ];
+
+// Map platform → API proxy endpoint
+const PLATFORM_PROXY = { meta:'/api/meta-proxy', tiktok:'/api/tiktok-proxy', google:'/api/google-proxy' };
+const PLATFORM_BADGE = {
+  meta:   { label:'Meta',   color:'#4f9cf9', bg:'rgba(79,156,249,.15)' },
+  tiktok: { label:'TikTok', color:'#ff0050', bg:'rgba(255,0,80,.15)' },
+  google: { label:'Google', color:'#fbbc05', bg:'rgba(251,188,5,.15)' },
+};
+const platformOf = id => ACCOUNTS.find(a=>a.id===id)?.platform || 'meta';
 
 let activeId=null, cache={}, curFilter='all', curTab='overview';
 let spendChart=null;
@@ -987,11 +1001,18 @@ function buildSidebar(){
   const isAdmin  = allowed.includes('*');
   const visible  = isAdmin ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id));
 
-  const html = visible.map(a => `
+  const html = visible.map(a => {
+    const pf = PLATFORM_BADGE[a.platform || 'meta'];
+    const badge = (a.platform && a.platform !== 'meta')
+      ? `<span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:4px;background:${pf.bg};color:${pf.color};flex-shrink:0">${pf.label}</span>`
+      : '';
+    return `
     <div class="acc-item" id="ai-${a.id}" onclick="selectAccount('${a.id}')">
       <div class="acc-dot"></div>
       <div class="acc-name">${a.name}</div>
-    </div>`).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
+      ${badge}
+    </div>`;
+  }).join('') || '<div style="padding:10px 16px;font-size:11px;color:var(--text3)">No accounts assigned</div>';
 
   document.getElementById('accountList').innerHTML = html;
 
@@ -1064,7 +1085,8 @@ async function loadAccount(id){
   document.getElementById('navTabs').style.display='none';
   showLoading();
   try{
-    const res=await authedFetch('/api/meta-proxy',{method:'POST',body:JSON.stringify({accountId:id,since,until})});
+    const proxyUrl=PLATFORM_PROXY[platformOf(id)]||'/api/meta-proxy';
+    const res=await authedFetch(proxyUrl,{method:'POST',body:JSON.stringify({accountId:id,since,until})});
     const json=await res.json();
     if(json.error)throw new Error(json.error.message||json.error);
     const ads=(json.data||[]).map(ad=>({
@@ -3510,6 +3532,8 @@ async function autoSaveSnapshot(accountId, ads) {
 // represents a single day's TRUE data (not cumulative MTD).
 async function autoSaveAdSnapshot(accountId) {
   if (currentUser?.role !== 'admin') return;
+  // Backfill endpoint is Meta-only for now; skip TikTok/Google daily-snapshot save
+  if (platformOf(accountId) !== 'meta') return;
   const acc     = ACCOUNTS.find(a => a.id === accountId);
   const yStr    = yDay();
   // Avoid re-saving if we already saved yesterday's data in this browser session
@@ -4667,7 +4691,7 @@ async function copySummary() {
   let ySpend = 0, yLeads = 0, yImpr = 0, yClicks = 0, yHasData = false;
   try {
     const yStr  = yDay();
-    const yRes  = await authedFetch('/api/meta-proxy', {
+    const yRes  = await authedFetch(PLATFORM_PROXY[platformOf(activeId)]||'/api/meta-proxy', {
       method: 'POST',
       body:   JSON.stringify({ accountId: activeId, since: yStr, until: yStr }),
     });
@@ -4702,7 +4726,7 @@ async function copySummary() {
     `✅ Active Ads: ${active}`,
     ``,
     `*📅 Yesterday (${ydLbl}):*`,
-    `💰 Spend: ${yHasData&&ySpend>0?rm2(ySpend):'— (run backfill to enable)'}`,
+    `💰 Spend: ${yHasData&&ySpend>0?rm2(ySpend):'—'}`,
     `📞 Leads: ${yHasData&&yLeads>0?yLeads:'—'}`,
     ...(yHasData&&yImpr>0?[`📊 CTR: ${yClicks>0&&yImpr>0?(yClicks/yImpr*100).toFixed(2)+'%':'—'}`]:[]),
     ``,
