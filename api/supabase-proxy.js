@@ -439,6 +439,63 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, deleted: true });
     }
 
+    // ── TASK MANAGER RESET (superadmin only) ─────────────────────────────────
+
+    if (action === 'reset_tasks') {
+      if (user.superadmin !== true && user.userId !== 'ashokh') return res.status(403).json({ error: 'Superadmin only' });
+      // Body: { assignments: { "Toothland Dental": "anisa", "Ang Dental": "diva", ... } }
+      const assignments = body.assignments || {};
+      const now = new Date().toISOString();
+
+      // 1) Wipe everything (order matters for FK references)
+      const wipeFilter = '?id=not.is.null';
+      await sb('DELETE', 'task_points',      null, wipeFilter).catch(()=>{});
+      await sb('DELETE', 'task_completions', null, wipeFilter).catch(()=>{});
+      await sb('DELETE', 'task_comments',    null, wipeFilter).catch(()=>{});
+      await sb('DELETE', 'task_attachments', null, wipeFilter).catch(()=>{});
+      await sb('DELETE', 'tasks',            null, wipeFilter);
+
+      // 2) Reset all points to 100
+      for (const a of ['ashokh','diva','anisa']) {
+        await sb('POST', 'assignee_points', { assignee: a, total_points: 100, updated_at: now }, '?on_conflict=assignee').catch(()=>{});
+      }
+
+      // 3) Seed 5 daily ops tasks per assigned client
+      const TYPES = [
+        { t: 'Ads Report',                        cat: 'report',  pri: 'high'   },
+        { t: 'Answer Client Queries',             cat: 'general', pri: 'urgent' },
+        { t: 'Check Scheduled Content Posting',   cat: 'content', pri: 'high'   },
+        { t: 'Follow Up Content in Design Status',cat: 'design',  pri: 'medium' },
+        { t: 'Ads Monitoring',                    cat: 'ads',     pri: 'high'   },
+      ];
+      const rows = [];
+      for (const [client, assignee] of Object.entries(assignments)) {
+        if (!assignee || assignee === 'skip') continue;
+        for (const ty of TYPES) {
+          rows.push({
+            title:       `${ty.t} — ${client}`,
+            description: `Client: ${client}`,
+            assignee,
+            priority:    ty.pri,
+            category:    ty.cat,
+            frequency:   'daily',
+            status:      'pending',
+            created_by:  user.userId,
+            created_at:  now,
+            updated_at:  now,
+          });
+        }
+      }
+      if (rows.length) {
+        // Insert in chunks of 100
+        for (let i = 0; i < rows.length; i += 100) {
+          await sb('POST', 'tasks', rows.slice(i, i + 100), '');
+        }
+      }
+      console.log(`[reset_tasks] Wiped all tasks, seeded ${rows.length} daily tasks`);
+      return res.status(200).json({ ok: true, created: rows.length });
+    }
+
     // ── USER MANAGEMENT (superadmin only) ────────────────────────────────────
 
     const isSuperAdmin = user.superadmin === true || user.userId === 'ashokh';

@@ -4770,8 +4770,95 @@ async function showSettings() {
       </div>
       <div id="addUserFormArea"></div>
       <div id="userList"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
+
+      <!-- ── TASK MANAGER RESET ── -->
+      <div style="margin-top:32px;margin-bottom:16px">
+        <div class="section-title">Task Manager Reset</div>
+        <div class="section-sub">Wipe all tasks and seed a fresh set of 5 daily ops tasks per client, assigned to your team</div>
+      </div>
+      <div id="taskResetArea"></div>
     </div>`;
   loadUsers();
+  renderTaskResetPanel();
+}
+
+// ── TASK MANAGER RESET PANEL ──────────────────────────────────────────────
+function renderTaskResetPanel() {
+  const el = document.getElementById('taskResetArea');
+  if (!el) return;
+
+  // Unique client list from ACCOUNTS (each account = a client)
+  const clients = ACCOUNTS.map(a => a.name);
+
+  el.innerHTML = `
+    <div class="s-card">
+      <div class="s-card-title"><i class="ti ti-refresh" style="color:var(--red)"></i> Reset &amp; Seed Daily Tasks</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:14px">
+        This <strong style="color:var(--red)">deletes every task, completion, comment and points log</strong>, resets all scores to 100,
+        then creates 5 daily tasks per client (Ads Report · Answer Client Queries · Check Scheduled Content Posting · Follow Up Content in Design · Ads Monitoring).
+        Assign each client below, or set to <em>Skip</em> to leave it out.
+      </div>
+
+      <!-- Bulk assign helpers -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+        <span style="font-size:11px;color:var(--text3)">Quick assign all:</span>
+        <button onclick="bulkAssignClients('diva')"  style="padding:5px 12px;border-radius:6px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.35);color:#a78bfa;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">All → Diva</button>
+        <button onclick="bulkAssignClients('anisa')" style="padding:5px 12px;border-radius:6px;background:rgba(5,150,105,.12);border:1px solid rgba(5,150,105,.35);color:#34d399;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">All → Anisa</button>
+        <button onclick="bulkAssignClients('skip')"  style="padding:5px 12px;border-radius:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-family:inherit;font-size:11px">Clear all</button>
+      </div>
+
+      <!-- Per-client assignment grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:18px">
+        ${clients.map(c => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+            <span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c}">${c}</span>
+            <select class="tr-assign" data-client="${c}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;color:var(--text);font-family:inherit;font-size:11px;outline:none;cursor:pointer;flex-shrink:0">
+              <option value="anisa">Anisa</option>
+              <option value="diva">Diva</option>
+              <option value="skip">Skip</option>
+            </select>
+          </div>`).join('')}
+      </div>
+
+      <div id="taskResetStatus" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
+      <button onclick="runTaskReset()" id="taskResetBtn"
+        style="padding:10px 22px;border-radius:8px;background:var(--red);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+        <i class="ti ti-trash"></i> Wipe All &amp; Seed Daily Tasks
+      </button>
+    </div>`;
+}
+
+function bulkAssignClients(value) {
+  document.querySelectorAll('.tr-assign').forEach(s => { s.value = value; });
+}
+
+async function runTaskReset() {
+  const selects = [...document.querySelectorAll('.tr-assign')];
+  const assignments = {};
+  let activeCount = 0;
+  selects.forEach(s => {
+    const v = s.value;
+    assignments[s.dataset.client] = v;
+    if (v !== 'skip') activeCount++;
+  });
+
+  if (!confirm(`⚠️ This will PERMANENTLY DELETE all current tasks, completions, comments and points logs, then create ${activeCount * 5} fresh daily tasks across ${activeCount} clients.\n\nThis cannot be undone. Continue?`)) return;
+
+  const btn    = document.getElementById('taskResetBtn');
+  const status = document.getElementById('taskResetStatus');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Resetting…'; }
+  if (status) status.textContent = 'Wiping tasks and seeding fresh daily set…';
+
+  try {
+    const res = await sbFetch('reset_tasks', {}, { assignments });
+    if (status) { status.textContent = `✅ Done — wiped everything and created ${res.created} daily tasks.`; status.style.color = 'var(--green)'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Reset Complete'; }
+    // Refresh task badge
+    loadTasks?.().catch(()=>{});
+  } catch(e) {
+    if (status) { status.textContent = `❌ ${e.message}`; status.style.color = 'var(--red)'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-trash"></i> Wipe All & Seed Daily Tasks'; }
+  }
 }
 
 async function loadUsers() {
