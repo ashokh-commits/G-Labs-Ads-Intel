@@ -2974,12 +2974,24 @@ function renderKanbanFiltered(filtered) {
         <span class="kanban-col-title" style="color:${s.color}">${s.label}</span>
         <span class="kanban-col-count" style="background:${s.bg};color:${s.color}">${byStatus[s.key].length}</span>
       </div>
-      ${byStatus[s.key].map(t => `
+      ${byStatus[s.key].map(t => {
+        const today2=new Date();today2.setHours(0,0,0,0);
+        const dd=t.due_date?new Date(t.due_date):null;
+        const isOverdue=dd&&dd<today2;
+        const isDueSoon=dd&&!isOverdue&&(dd-today2)<86400000;
+        const dueColor=isOverdue?'var(--red)':isDueSoon?'var(--amber)':'var(--text3)';
+        const dueText=t.due_date?(isOverdue?`🚩 Due ${t.due_date}`:isDueSoon?`⚡ Due today`:`📅 ${t.due_date}${t.due_time?' '+t.due_time:''}`):'';
+        const createdText=t.created_at?`📝 Created ${new Date(t.created_at).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}` :'';
+        return `
       <div class="kanban-card" draggable="true" id="kcard-${t.id}"
         ondragstart="onKanbanDragStart(event,'${t.id}')"
         ondragend="this.classList.remove('dragging')">
-        <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:6px;line-height:1.4">${t.title}</div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">${t.description||''}</div>
+        <div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;line-height:1.4">${t.title}</div>
+        ${t.description&&t.description!=='undefined'?`<div style="font-size:10px;color:var(--text3);margin-bottom:5px">${t.description}</div>`:''}
+        <div style="display:flex;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+          ${createdText?`<span style="font-size:10px;color:var(--text3)">${createdText}</span>`:''}
+          ${dueText?`<span style="font-size:10px;color:${dueColor};font-weight:500">${dueText}</span>`:''}
+        </div>
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
           <span class="task-tag tag-${t.category||'general'}">${t.category||'general'}</span>
           <span class="task-tag pri-${t.priority||'medium'}">${t.priority||'medium'}</span>
@@ -2992,8 +3004,7 @@ function renderKanbanFiltered(filtered) {
             <button onclick="editTask('${t.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:12px;padding:2px">✏️</button>
           </div>
         </div>
-        ${t.due_date?`<div style="font-size:10px;color:var(--amber);margin-top:5px">📅 ${t.due_date}${t.due_time?' '+t.due_time:''}</div>`:''}
-      </div>`).join('')}
+      </div>`;}).join('')}
     </div>`).join('');
 
   document.getElementById('taskList').innerHTML = `<div class="kanban-wrap">${colsHtml}</div>`;
