@@ -999,7 +999,9 @@ const intN=v=>parseInt(v)||0;
 function buildSidebar(){
   const allowed  = currentUser?.accounts || ['*'];
   const isAdmin  = allowed.includes('*');
-  const visible  = isAdmin ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id));
+  const hidden   = JSON.parse(localStorage.getItem('g6_hidden_accounts')||'[]');
+  const visible  = (isAdmin ? ACCOUNTS : ACCOUNTS.filter(a => allowed.includes(a.id)))
+                   .filter(a => !hidden.includes(a.id));
 
   const html = visible.map(a => {
     const pf = PLATFORM_BADGE[a.platform || 'meta'];
@@ -4758,6 +4760,8 @@ async function copySummary() {
 }
 
 // ── SETTINGS — User Access Management (superadmin only) ───────────────────
+let _settingsTab = 'users';
+
 async function showSettings() {
   if (!currentUser?.superadmin) {
     document.getElementById('content').innerHTML = `<div class="state-wrap"><div class="state-icon">🔒</div><div class="state-title">Superadmin only</div></div>`;
@@ -4772,28 +4776,320 @@ async function showSettings() {
   document.getElementById('headerMeta').style.display = 'none';
 
   document.getElementById('content').innerHTML = `
-    <div class="tab-section active" style="padding:20px 24px 60px">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
-        <div>
-          <div class="section-title">User Access Management</div>
-          <div class="section-sub">Create, edit, and control user access to ad accounts and features</div>
+    <div style="padding:20px 24px 60px">
+      <!-- Tab nav -->
+      <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content">
+        ${[['users','👤 Users'],['tasks','✅ Tasks'],['accounts','📊 Accounts']].map(([k,l])=>`
+          <button id="stab-${k}" onclick="switchSettingsTab('${k}')"
+            style="padding:7px 18px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:all .15s;
+            background:${_settingsTab===k?'var(--blue)':'transparent'};color:${_settingsTab===k?'#fff':'var(--text3)'}">${l}</button>`).join('')}
+      </div>
+      <!-- Tab bodies -->
+      <div id="stab-body-users"  style="display:${_settingsTab==='users'?'block':'none'}">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+          <div><div class="section-title">User Access Management</div><div class="section-sub">Create, edit, and control user access to ad accounts</div></div>
+          <button onclick="openAddUserForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-user-plus"></i> Add User</button>
         </div>
-        <button onclick="openAddUserForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
-          <i class="ti ti-user-plus"></i> Add User
-        </button>
+        <div id="addUserFormArea"></div>
+        <div id="userList"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
       </div>
-      <div id="addUserFormArea"></div>
-      <div id="userList"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
-
-      <!-- ── TASK MANAGER RESET ── -->
-      <div style="margin-top:32px;margin-bottom:16px">
-        <div class="section-title">Task Manager Reset</div>
-        <div class="section-sub">Wipe all tasks and seed a fresh set of 5 daily ops tasks per client, assigned to your team</div>
+      <div id="stab-body-tasks"    style="display:${_settingsTab==='tasks'?'block':'none'}">
+        <div id="taskMgmtArea"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
       </div>
-      <div id="taskResetArea"></div>
+      <div id="stab-body-accounts" style="display:${_settingsTab==='accounts'?'block':'none'}">
+        <div id="accountMgmtArea"></div>
+      </div>
     </div>`;
-  loadUsers();
-  renderTaskResetPanel();
+
+  if (_settingsTab === 'users')    { loadUsers(); }
+  if (_settingsTab === 'tasks')    { renderTaskMgmtTab(); }
+  if (_settingsTab === 'accounts') { renderAccountMgmtTab(); }
+}
+
+async function switchSettingsTab(tab) {
+  _settingsTab = tab;
+  ['users','tasks','accounts'].forEach(k => {
+    const btn  = document.getElementById(`stab-${k}`);
+    const body = document.getElementById(`stab-body-${k}`);
+    if (btn)  { btn.style.background = k===tab?'var(--blue)':'transparent'; btn.style.color = k===tab?'#fff':'var(--text3)'; }
+    if (body) body.style.display = k===tab?'block':'none';
+  });
+  if (tab === 'users')    { loadUsers(); }
+  if (tab === 'tasks')    { renderTaskMgmtTab(); }
+  if (tab === 'accounts') { renderAccountMgmtTab(); }
+}
+
+// ── TASK MANAGEMENT TAB ───────────────────────────────────────────────────
+async function renderTaskMgmtTab() {
+  const el = document.getElementById('taskMgmtArea');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+
+  let tasks = [];
+  try { tasks = await sbFetch('get_all_tasks', {}); } catch(e) {}
+  tasks = Array.isArray(tasks) ? tasks : [];
+
+  // Summary counts
+  const byFreq  = {};
+  const byAsgn  = {};
+  tasks.forEach(t => {
+    byFreq[t.frequency||'once'] = (byFreq[t.frequency||'once']||0)+1;
+    byAsgn[t.assignee||'—']    = (byAsgn[t.assignee||'—']||0)+1;
+  });
+
+  el.innerHTML = `
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">
+      <div class="s-card" style="padding:14px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--blue)">${tasks.length}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Total tasks</div>
+      </div>
+      ${Object.entries(byFreq).map(([f,n])=>`
+      <div class="s-card" style="padding:14px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--amber)">${n}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${f}</div>
+      </div>`).join('')}
+      ${Object.entries(byAsgn).map(([a,n])=>`
+      <div class="s-card" style="padding:14px 16px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--green)">${n}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${a}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Actions row -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      <button onclick="renderTaskResetInline()" style="padding:9px 16px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--red);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-refresh"></i> Reset &amp; Reseed All Tasks</button>
+      <button onclick="triggerDailyCron()" style="padding:9px 16px;border-radius:8px;background:rgba(79,156,249,.12);border:1px solid rgba(79,156,249,.3);color:var(--blue);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-clock-play"></i> Run Daily Cron Now</button>
+      <button onclick="renderTaskMgmtTab()" style="padding:9px 16px;border-radius:8px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px;display:flex;align-items:center;gap:6px"><i class="ti ti-refresh"></i> Refresh</button>
+    </div>
+    <div id="taskResetInlineArea"></div>
+
+    <!-- Bulk reassign -->
+    <div class="s-card" style="margin-bottom:16px">
+      <div class="s-card-title"><i class="ti ti-users"></i> Bulk Reassign by Client</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Change who is assigned to all tasks for a specific client</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Client</label>
+          <select id="bulk_client" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:12px;outline:none;min-width:200px">
+            ${[...new Set(tasks.map(t=>t.description?.replace('Client: ','')).filter(Boolean))].sort().map(c=>`<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Reassign to</label>
+          <select id="bulk_assignee" style="background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:12px;outline:none">
+            <option value="diva">Diva</option><option value="anisa">Anisa</option><option value="ashokh">Ashokh</option>
+          </select>
+        </div>
+        <button onclick="doBulkReassign()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600">Reassign</button>
+        <span id="bulk_status" style="font-size:12px;color:var(--green)"></span>
+      </div>
+    </div>
+
+    <!-- Task table -->
+    <div class="s-card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div class="s-card-title" style="margin:0">All Tasks (${tasks.length})</div>
+        <input id="taskMgmtSearch" oninput="filterTaskMgmtTable()" placeholder="Search tasks…" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;color:var(--text);font-family:inherit;font-size:12px;outline:none;width:200px">
+      </div>
+      <div style="overflow-x:auto;max-height:500px;overflow-y:auto">
+        <table class="ad-table" id="taskMgmtTable" style="width:100%">
+          <thead><tr>
+            <th style="padding:10px 18px;position:sticky;top:0;background:var(--bg3)">Title</th>
+            <th style="position:sticky;top:0;background:var(--bg3)">Assignee</th>
+            <th style="position:sticky;top:0;background:var(--bg3)">Category</th>
+            <th style="position:sticky;top:0;background:var(--bg3)">Priority</th>
+            <th style="position:sticky;top:0;background:var(--bg3)">Freq</th>
+            <th style="position:sticky;top:0;background:var(--bg3)">Status</th>
+            <th style="position:sticky;top:0;background:var(--bg3)">Due</th>
+            <th style="text-align:right;padding-right:18px;position:sticky;top:0;background:var(--bg3)">Actions</th>
+          </tr></thead>
+          <tbody id="taskMgmtTbody">
+            ${tasks.map(t => renderTaskMgmtRow(t)).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  window._taskMgmtTasks = tasks;
+}
+
+function renderTaskMgmtRow(t) {
+  const statusColor = { pending:'var(--text3)', in_progress:'var(--blue)', done:'var(--green)', backlog:'var(--red)' };
+  return `<tr id="tmrow-${t.id}">
+    <td style="padding:9px 18px;max-width:280px">
+      <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${t.title}">${t.title}</div>
+      <div style="font-size:10px;color:var(--text3)">${t.description||''}</div>
+    </td>
+    <td><span style="font-size:11px;font-weight:600;color:var(--text2)">${t.assignee||'—'}</span></td>
+    <td><span class="task-tag tag-${t.category||'general'}">${t.category||'general'}</span></td>
+    <td><span class="task-tag pri-${t.priority||'medium'}">${t.priority||'medium'}</span></td>
+    <td><span class="freq-badge freq-${t.frequency||'once'}">${t.frequency||'once'}</span></td>
+    <td><span style="font-size:11px;font-weight:600;color:${statusColor[t.status||'pending']}">${t.status||'pending'}</span></td>
+    <td style="font-size:11px;color:var(--text3)">${t.due_date||'—'}</td>
+    <td style="text-align:right;padding-right:14px">
+      <div style="display:flex;gap:4px;justify-content:flex-end">
+        <button onclick="editTask('${t.id}')" style="padding:4px 10px;border-radius:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:11px">✏️ Edit</button>
+        <button onclick="deleteTaskFromMgmt('${t.id}')" style="padding:4px 10px;border-radius:6px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:var(--red);cursor:pointer;font-family:inherit;font-size:11px">🗑</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+function filterTaskMgmtTable() {
+  const q = (document.getElementById('taskMgmtSearch')?.value||'').toLowerCase();
+  const tasks = window._taskMgmtTasks||[];
+  const filtered = q ? tasks.filter(t=>(t.title||'').toLowerCase().includes(q)||(t.assignee||'').toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q)) : tasks;
+  const tbody = document.getElementById('taskMgmtTbody');
+  if (tbody) tbody.innerHTML = filtered.map(t=>renderTaskMgmtRow(t)).join('');
+}
+
+async function deleteTaskFromMgmt(id) {
+  if (!confirm('Delete this task?')) return;
+  try {
+    await sbFetch('delete_task', {}, { id });
+    window._taskMgmtTasks = (window._taskMgmtTasks||[]).filter(t=>t.id!==id);
+    const row = document.getElementById(`tmrow-${id}`);
+    if (row) row.remove();
+  } catch(e) { alert('Failed: '+e.message); }
+}
+
+async function doBulkReassign() {
+  const client   = document.getElementById('bulk_client')?.value;
+  const assignee = document.getElementById('bulk_assignee')?.value;
+  const status   = document.getElementById('bulk_status');
+  if (!client || !assignee) return;
+  const tasks = (window._taskMgmtTasks||[]).filter(t=>(t.description||'').includes(`Client: ${client}`));
+  if (!tasks.length) { if(status) status.textContent='No tasks found for that client.'; return; }
+  if (!confirm(`Reassign ${tasks.length} tasks for "${client}" to ${assignee}?`)) return;
+  if (status) status.textContent = 'Reassigning…';
+  let done = 0;
+  for (const t of tasks) {
+    try { await sbFetch('update_task', {}, { id:t.id, assignee }); done++; } catch(e){}
+  }
+  if (status) { status.textContent = `✅ ${done}/${tasks.length} tasks reassigned to ${assignee}`; }
+  setTimeout(() => renderTaskMgmtTab(), 1500);
+}
+
+async function triggerDailyCron() {
+  const btn = event?.target;
+  if (btn) { btn.disabled=true; btn.textContent='Running…'; }
+  try {
+    const secret = prompt('Enter CRON_SECRET (leave blank if not set):') || '';
+    const url = `/api/daily-tasks${secret?'?key='+encodeURIComponent(secret):''}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    alert(`✅ Done!\n• ${data.backlogs} tasks moved to backlog\n• ${data.created} new tasks created for ${data.today}`);
+    renderTaskMgmtTab();
+  } catch(e) {
+    alert('❌ Failed: '+e.message);
+    if (btn) { btn.disabled=false; btn.textContent='Run Daily Cron Now'; }
+  }
+}
+
+function renderTaskResetInline() {
+  const el = document.getElementById('taskResetInlineArea');
+  if (!el) return;
+  const clients = ACCOUNTS.map(a => a.name);
+  el.innerHTML = `
+    <div class="s-card" style="margin-bottom:16px;border-color:rgba(239,68,68,.3)">
+      <div class="s-card-title"><i class="ti ti-trash" style="color:var(--red)"></i> Reset &amp; Seed Daily Tasks</div>
+      <div style="font-size:12px;color:var(--text3);line-height:1.7;margin-bottom:14px">
+        <strong style="color:var(--red)">Deletes every task, completion, comment and points log</strong>, resets scores to 100,
+        then creates 5 fresh daily tasks per client.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+        <span style="font-size:11px;color:var(--text3)">Quick assign:</span>
+        <button onclick="bulkAssignClients('diva')"  style="padding:4px 12px;border-radius:6px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.35);color:#a78bfa;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">All → Diva</button>
+        <button onclick="bulkAssignClients('anisa')" style="padding:4px 12px;border-radius:6px;background:rgba(5,150,105,.12);border:1px solid rgba(5,150,105,.35);color:#34d399;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600">All → Anisa</button>
+        <button onclick="bulkAssignClients('skip')"  style="padding:4px 12px;border-radius:6px;background:var(--bg4);border:1px solid var(--border2);color:var(--text3);cursor:pointer;font-family:inherit;font-size:11px">Clear all</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-bottom:16px">
+        ${clients.map(c=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+            <span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${c}">${c}</span>
+            <select class="tr-assign" data-client="${c}" style="background:var(--bg2);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;color:var(--text);font-family:inherit;font-size:11px;outline:none;cursor:pointer;flex-shrink:0">
+              <option value="anisa">Anisa</option><option value="diva">Diva</option><option value="skip">Skip</option>
+            </select>
+          </div>`).join('')}
+      </div>
+      <div id="taskResetStatus" style="font-size:12px;color:var(--text3);margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="runTaskReset()" id="taskResetBtn" style="padding:9px 18px;border-radius:8px;background:var(--red);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-trash"></i> Wipe All &amp; Seed</button>
+        <button onclick="document.getElementById('taskResetInlineArea').innerHTML=''" style="padding:9px 14px;border-radius:8px;background:var(--bg4);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-family:inherit;font-size:12px">Cancel</button>
+      </div>
+    </div>`;
+}
+
+// ── ACCOUNT MANAGEMENT TAB ───────────────────────────────────────────────
+function renderAccountMgmtTab() {
+  const el = document.getElementById('accountMgmtArea');
+  if (!el) return;
+  const hidden = JSON.parse(localStorage.getItem('g6_hidden_accounts')||'[]');
+
+  const groups = {};
+  ACCOUNTS.forEach(a => {
+    const g = a.group || 'other';
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(a);
+  });
+
+  const groupLabels = { isihat:'I-Sihat', dental:'Dental', smile:'Smile Borneo', fitness:'Anytime Fitness', clinic:'Klinik', other:'Other' };
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+      <div>
+        <div class="section-title">Account Visibility</div>
+        <div class="section-sub">Show or hide accounts in the sidebar. Hidden accounts are excluded from the performance list.</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="setAllAccountsVisibility(true)"  style="padding:7px 14px;border-radius:8px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600">Show All</button>
+        <button onclick="setAllAccountsVisibility(false)" style="padding:7px 14px;border-radius:8px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--red);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600">Hide All</button>
+      </div>
+    </div>
+    ${Object.entries(groups).map(([group, accs]) => `
+    <div class="s-card" style="margin-bottom:14px">
+      <div class="s-card-title"><i class="ti ti-folder"></i> ${groupLabels[group]||group} <span style="font-size:11px;font-weight:400;color:var(--text3)">(${accs.length} accounts)</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">
+        ${accs.map(a => {
+          const isHidden = hidden.includes(a.id);
+          return `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg4);border:1px solid ${isHidden?'rgba(239,68,68,.25)':'var(--border)'};border-radius:8px;padding:10px 14px;opacity:${isHidden?'.6':'1'}">
+            <div style="min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</div>
+              <div style="font-size:10px;color:var(--text3)">${a.id} · ${a.platform||'meta'}</div>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0">
+              <span style="font-size:11px;color:${isHidden?'var(--red)':'var(--green)'};font-weight:600">${isHidden?'Hidden':'Visible'}</span>
+              <div onclick="toggleAccountVisibility('${a.id}')" style="width:36px;height:20px;border-radius:10px;background:${isHidden?'var(--bg3)':'var(--green)'};position:relative;cursor:pointer;transition:background .2s;border:1px solid ${isHidden?'var(--border2)':'rgba(34,197,94,.5)'}">
+                <div style="width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:${isHidden?'2px':'18px'};transition:left .2s"></div>
+              </div>
+            </label>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('')}`;
+}
+
+function toggleAccountVisibility(id) {
+  const hidden = JSON.parse(localStorage.getItem('g6_hidden_accounts')||'[]');
+  const idx = hidden.indexOf(id);
+  if (idx > -1) hidden.splice(idx, 1);
+  else hidden.push(id);
+  localStorage.setItem('g6_hidden_accounts', JSON.stringify(hidden));
+  buildSidebar();
+  renderAccountMgmtTab();
+}
+
+function setAllAccountsVisibility(visible) {
+  if (visible) {
+    localStorage.removeItem('g6_hidden_accounts');
+  } else {
+    localStorage.setItem('g6_hidden_accounts', JSON.stringify(ACCOUNTS.map(a=>a.id)));
+  }
+  buildSidebar();
+  renderAccountMgmtTab();
 }
 
 // ── TASK MANAGER RESET PANEL ──────────────────────────────────────────────
