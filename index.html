@@ -2961,6 +2961,7 @@ function renderKanbanFiltered(filtered) {
     { key:'pending',     label:'To Do',       color:'var(--text3)', bg:'var(--bg4)' },
     { key:'in_progress', label:'In Progress',  color:'var(--blue)',  bg:'rgba(237,122,79,.1)' },
     { key:'done',        label:'Done',         color:'var(--green)', bg:'rgba(34,197,94,.1)' },
+    { key:'backlog',     label:'Backlog',       color:'var(--red)',   bg:'rgba(239,68,68,.1)' },
   ];
   const byStatus = {};
   statuses.forEach(s => byStatus[s.key] = filtered.filter(t => (t.status||'pending') === s.key));

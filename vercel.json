@@ -10,6 +10,10 @@
   ],
   "crons": [
     {
+      "path": "/api/daily-tasks",
+      "schedule": "0 16 * * *"
+    },
+    {
       "path": "/api/alert-scheduler",
       "schedule": "0 1 * * *"
     },
