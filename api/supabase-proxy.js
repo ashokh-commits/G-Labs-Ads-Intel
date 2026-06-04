@@ -313,6 +313,7 @@ module.exports = async (req, res) => {
       if (!byAssignee || typeof byAssignee !== 'object') return res.status(400).json({ error: 'byAssignee required' });
       const today = new Date().toISOString().split('T')[0];
 
+      const debugResults = {};
       for (const [assignee, data] of Object.entries(byAssignee)) {
         // Log each individual task miss
         for (const t of (data.tasks || [])) {
@@ -327,14 +328,26 @@ module.exports = async (req, res) => {
         }
         // GET current → PATCH new total
         const cur    = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
-        const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
-        const newPts = Math.max(0, curPts + (data.pts || 0));
-        await sb('PATCH', 'assignee_points',
-          { total_points: newPts, updated_at: new Date().toISOString() },
-          `?assignee=eq.${assignee}`
-        );
+        const rows   = Array.isArray(cur.data) ? cur.data : [];
+        const curPts = rows[0] ? rows[0].total_points : null;
+        const newPts = Math.max(0, (curPts ?? 100) + (data.pts || 0));
+        let patchResult;
+        if (curPts === null) {
+          // No row exists — insert instead of PATCH
+          patchResult = await sb('POST', 'assignee_points',
+            { assignee, total_points: newPts, updated_at: new Date().toISOString() },
+            '?on_conflict=assignee'
+          );
+        } else {
+          patchResult = await sb('PATCH', 'assignee_points',
+            { total_points: newPts, updated_at: new Date().toISOString() },
+            `?assignee=eq.${assignee}`
+          );
+        }
+        debugResults[assignee] = { rows: rows.length, curPts, newPts, patchStatus: patchResult.status };
+        console.log(`[batch_deduct] ${assignee}: rows=${rows.length} curPts=${curPts} newPts=${newPts} patchStatus=${patchResult.status}`);
       }
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, debug: debugResults });
     }
 
     // ── AD SNAPSHOTS ───────────────────────────────────────────────────────
