@@ -264,11 +264,13 @@ module.exports = async (req, res) => {
 
       // Update total
       const cur = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
-      const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
-      await sb('PATCH', 'assignee_points', {
-        total_points: Math.max(0, curPts + pts),
-        updated_at:   new Date().toISOString(),
-      }, `?assignee=eq.${assignee}`);
+      const hasRow = Array.isArray(cur.data) && cur.data[0];
+      const curPts = hasRow ? cur.data[0].total_points : 100;
+      if (hasRow) {
+        await sb('PATCH', 'assignee_points', { total_points: Math.max(0, curPts + pts), updated_at: new Date().toISOString() }, `?assignee=eq.${assignee}`);
+      } else {
+        await sb('POST', 'assignee_points', { assignee, total_points: Math.max(0, curPts + pts), updated_at: new Date().toISOString() }, '');
+      }
 
       return res.status(200).json({ ok: true, points: pts });
     }
@@ -287,11 +289,13 @@ module.exports = async (req, res) => {
       }, '');
 
       const cur = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
-      const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
-      await sb('PATCH', 'assignee_points', {
-        total_points: curPts + pts,
-        updated_at:   new Date().toISOString(),
-      }, `?assignee=eq.${assignee}`);
+      const hasRow = Array.isArray(cur.data) && cur.data[0];
+      const curPts = hasRow ? cur.data[0].total_points : 100;
+      if (hasRow) {
+        await sb('PATCH', 'assignee_points', { total_points: curPts + pts, updated_at: new Date().toISOString() }, `?assignee=eq.${assignee}`);
+      } else {
+        await sb('POST', 'assignee_points', { assignee, total_points: curPts + pts, updated_at: new Date().toISOString() }, '');
+      }
 
       return res.status(200).json({ ok: true, points: pts });
     }
@@ -300,7 +304,12 @@ module.exports = async (req, res) => {
       // Admin only — reset all points to 100
       if (user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
       for (const a of ['ashokh','diva','anisa']) {
-        await sb('PATCH', 'assignee_points', { total_points: 100, updated_at: new Date().toISOString() }, `?assignee=eq.${a}`);
+        const cur = await sb('GET', 'assignee_points', null, `?assignee=eq.${a}`);
+        if (Array.isArray(cur.data) && cur.data[0]) {
+          await sb('PATCH', 'assignee_points', { total_points: 100, updated_at: new Date().toISOString() }, `?assignee=eq.${a}`);
+        } else {
+          await sb('POST', 'assignee_points', { assignee: a, total_points: 100, updated_at: new Date().toISOString() }, '');
+        }
       }
       return res.status(200).json({ ok: true });
     }
@@ -333,10 +342,10 @@ module.exports = async (req, res) => {
         const newPts = Math.max(0, (curPts ?? 100) + (data.pts || 0));
         let patchResult;
         if (curPts === null) {
-          // No row exists — insert instead of PATCH
+          // No row exists — plain INSERT
           patchResult = await sb('POST', 'assignee_points',
             { assignee, total_points: newPts, updated_at: new Date().toISOString() },
-            '?on_conflict=assignee'
+            ''
           );
         } else {
           patchResult = await sb('PATCH', 'assignee_points',
