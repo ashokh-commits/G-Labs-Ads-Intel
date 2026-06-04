@@ -325,13 +325,13 @@ module.exports = async (req, res) => {
             date:      today,
           }, '');
         }
-        // GET current → UPSERT new total (handles missing row + avoids race condition)
+        // GET current → PATCH new total
         const cur    = await sb('GET', 'assignee_points', null, `?assignee=eq.${assignee}`);
         const curPts = Array.isArray(cur.data) && cur.data[0] ? cur.data[0].total_points : 100;
         const newPts = Math.max(0, curPts + (data.pts || 0));
-        await sb('POST', 'assignee_points',
-          { assignee, total_points: newPts, updated_at: new Date().toISOString() },
-          '?on_conflict=assignee'
+        await sb('PATCH', 'assignee_points',
+          { total_points: newPts, updated_at: new Date().toISOString() },
+          `?assignee=eq.${assignee}`
         );
       }
       return res.status(200).json({ ok: true });
