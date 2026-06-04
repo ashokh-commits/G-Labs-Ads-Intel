@@ -40,10 +40,11 @@ const ACCOUNTS = [
   { id: '509470387773096',  name: 'SVASIKA' },
 ];
 
-// ── Date helpers (Malaysia time) ───────────────────────────────────────────
-function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function monthStart(){const d=new Date();return fmtDate(new Date(d.getFullYear(),d.getMonth(),1));}
-function yesterday(){const d=new Date();d.setDate(d.getDate()-1);return fmtDate(d);}
+// ── Date helpers (Malaysia time UTC+8) ────────────────────────────────────
+function nowMYT(){return new Date(Date.now()+8*60*60*1000);}
+function fmtDate(d){return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
+function monthStart(){const d=nowMYT();return fmtDate(new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)));}
+function yesterday(){const d=nowMYT();d.setUTCDate(d.getUTCDate()-1);return fmtDate(d);}
 function rm(v){const n=parseFloat(v)||0;return 'RM '+n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function todayLabel(){return new Date().toLocaleDateString('en-MY',{timeZone:'Asia/Kuala_Lumpur',weekday:'long',day:'numeric',month:'long',year:'numeric'});}
 function ydLabel(){const d=new Date();d.setDate(d.getDate()-1);return d.toLocaleDateString('en-MY',{timeZone:'Asia/Kuala_Lumpur',weekday:'long',day:'numeric',month:'long'});}

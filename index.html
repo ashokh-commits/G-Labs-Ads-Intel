@@ -3083,6 +3083,7 @@ function renderTaskCard(t) {
         <span class="task-tag ${priCls}">${t.priority||'medium'}</span>
         <span class="freq-badge ${freqCls}">${t.frequency||'once'}</span>
         ${t.assignee && t.assignee !== 'all' ? `<span class="task-assignee"><i class="ti ti-user" style="font-size:10px"></i>${t.assignee}</span>` : '<span class="task-assignee">all team</span>'}
+        ${t.frequency === 'daily' && t.created_at ? `<span style="font-size:9px;color:var(--text3)">📅 ${new Date(t.created_at).toLocaleDateString('en-MY',{day:'numeric',month:'short',year:'numeric'})}</span>` : ''}
       </div>
     </div>
     <div style="display:flex;gap:4px;flex-shrink:0;flex-direction:column;align-items:flex-end">
@@ -3800,18 +3801,17 @@ async function renderTaskDashboard() {
 
         ${missedDailyList.length > 0 ? `
         <div style="margin-top:${pastDueList.length>0?'12px':'0'};margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em">⚠️ Daily missed yesterday — ${missedDailyList.length}</div>
+          <div style="font-size:10px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em">📋 Backlog — ${missedDailyList.length} missed daily</div>
           ${!alreadyDeducted ? `<button id="deductBtn" onclick="processOverdueDeductions()" style="padding:4px 12px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);border-radius:6px;color:var(--red);cursor:pointer;font-family:inherit;font-size:10px;font-weight:600">Deduct −${missedDailyList.length*3} pts</button>` : '<span style="font-size:10px;color:var(--green)">✓ Deducted</span>'}
         </div>
-        ${missedDailyList.slice(0,8).map(t=>`
+        ${missedDailyList.map(t=>`
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
           <div style="width:3px;height:26px;background:rgba(239,68,68,.5);border-radius:2px;flex-shrink:0"></div>
           <div style="flex:1;min-width:0">
             <div style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
-            <div style="font-size:10px;color:var(--text3)">${t.assignee} · <span class="freq-badge freq-daily">daily</span></div>
+            <div style="font-size:10px;color:var(--text3)">${t.assignee} · missed yesterday · <span class="freq-badge freq-daily">daily</span></div>
           </div>
         </div>`).join('')}
-        ${missedDailyList.length > 8 ? `<div style="font-size:10px;color:var(--text3);padding:6px 0 2px">+${missedDailyList.length-8} more missed daily tasks</div>` : ''}
         ` : ''}
       </div>
     </div>
@@ -4054,7 +4054,10 @@ async function processOverdueDeductions() {
   }
 
   try {
-    await sbFetch('batch_deduct_points', {}, { byAssignee });
+    console.log('[Deduct] sending', JSON.stringify(byAssignee));
+    const result = await sbFetch('batch_deduct_points', {}, { byAssignee });
+    console.log('[Deduct] response', JSON.stringify(result));
+    if (result?.error) throw new Error(result.error);
     localStorage.setItem(todayKey, '1');
     const totalDeducted = Object.values(byAssignee).reduce((s,v) => s + Math.abs(v.pts), 0);
     if (btn) { btn.textContent = `✅ −${totalDeducted} pts applied`; btn.style.color = 'var(--green)'; }
