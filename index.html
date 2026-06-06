@@ -886,113 +886,145 @@ code,kbd,.mono,.kpi-value,.tdash-kpi-val,.gauge-num,.sales-kpi-value { font-fami
 <body>
 
 
-<!-- LOGIN PAGE — full inline styles, no CSS classes needed -->
-<div id="loginPage" style="position:fixed;inset:0;z-index:2000;background:#0a1614;display:flex;align-items:stretch;width:100vw;height:100vh;overflow:hidden">
+<!-- LOGIN PAGE -->
+<div id="loginPage" style="position:fixed;inset:0;z-index:2000;background:#060A0A;display:flex;align-items:stretch;width:100vw;height:100vh;overflow:hidden;font-family:'Host Grotesk',sans-serif">
 
-  <!-- LEFT PANEL -->
-  <div style="flex:1;min-width:0;background:linear-gradient(145deg,#0e2422 0%,#0c1d1c 55%,#0a1614 100%);padding:48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
-    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(237,122,79,.10) 0%,transparent 70%);pointer-events:none"></div>
+  <!-- LEFT PANEL — desktop only -->
+  <div style="flex:1;min-width:0;background:linear-gradient(145deg,#0B1111 0%,#060A0A 60%,#060A0A 100%);padding:52px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
+    <!-- Ambient teal aura -->
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 60%,rgba(20,184,166,.12) 0%,transparent 65%);pointer-events:none"></div>
+    <div style="position:absolute;top:-80px;right:-80px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(20,184,166,.06) 0%,transparent 70%);pointer-events:none"></div>
+
     <!-- Logo -->
     <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1">
-      <img src="assets/g6-logo.png" alt="G6 Labs" style="height:56px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
+      <img src="assets/g6-logo.svg" alt="G6 Labs" style="height:52px;width:auto;display:block;flex-shrink:0">
       <div>
-        <div style="font-size:11px;color:#5d7079;letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px">Ads Intelligence</div>
-        <div style="font-size:13px;color:#8da0a6">G6 Labs Asia</div>
+        <div style="font-size:11px;color:#6F7C7B;letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px">Ads Intelligence</div>
+        <div style="font-size:13px;color:#A4B0AF;font-weight:500">G6 Labs Asia</div>
       </div>
     </div>
-    <!-- Body -->
+
+    <!-- Hero copy -->
     <div style="position:relative;z-index:1">
-      <div style="font-family:'Playfair Display',serif;font-size:38px;color:#eef2f3;line-height:1.25;margin-bottom:16px">Your ads,<br>under control.</div>
-      <div style="font-size:14px;color:#8da0a6;line-height:1.8;max-width:320px;margin-bottom:32px">Live Meta Ads performance dashboard — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Live Meta Ads data across all accounts</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Lead intelligence from Lark Bitable</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Automated email alerts when issues detected</div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#8da0a6"><div style="width:6px;height:6px;border-radius:50%;background:#ed7a4f;flex-shrink:0"></div>Health scoring, CPL tracking, handler leaderboard</div>
+      <div style="font-size:13px;font-weight:600;color:#14B8A6;letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px">Control Room</div>
+      <div style="font-family:'Host Grotesk',sans-serif;font-size:44px;font-weight:700;color:#EEF4F3;line-height:1.15;letter-spacing:-.03em;margin-bottom:20px">Your ads,<br><span style="font-family:'Instrument Serif',serif;font-style:italic;color:#2DD4BF">under control.</span></div>
+      <div style="font-size:14px;color:#6F7C7B;line-height:1.85;max-width:340px;margin-bottom:40px">Live Meta Ads performance — CPL, CTR, health scores, lead tracking and automated alerts. All in one place.</div>
+
+      <!-- Feature list -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        ${[
+          ['Live Meta Ads data across all accounts','#14B8A6'],
+          ['Lead intelligence from Lark Bitable','#34D399'],
+          ['Automated alerts when issues detected','#FBBF24'],
+          ['CPL tracking, health scoring, leaderboard','#60A5FA'],
+        ].map(([t,c])=>`
+        <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:#A4B0AF">
+          <div style="width:5px;height:5px;border-radius:50%;background:${c};flex-shrink:0;box-shadow:0 0 6px ${c}66"></div>${t}
+        </div>`).join('')}
       </div>
     </div>
-    <div style="font-size:11px;color:#39555c;position:relative;z-index:1">© 2026 G6 Labs Asia Sdn Bhd · Trisquare</div>
+
+    <div style="font-size:11px;color:#2B3A3A;position:relative;z-index:1">© 2026 G6 Labs Asia · Trisquare</div>
   </div>
 
-  <!-- RIGHT PANEL — form -->
-  <div style="width:460px;flex-shrink:0;background:#0e1d1f;border-left:1px solid #1d3338;display:flex;align-items:center;justify-content:center;padding:40px 36px;overflow-y:auto">
-    <div style="width:100%;max-width:360px">
+  <!-- RIGHT PANEL — login form -->
+  <div style="width:440px;flex-shrink:0;background:#0B1111;border-left:1px solid #1E2A2A;display:flex;align-items:center;justify-content:center;padding:44px 40px;overflow-y:auto">
+    <div style="width:100%;max-width:340px">
 
-      <!-- Card logo -->
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:36px">
-        <img src="assets/g6-logo.png" alt="G6 Labs" style="height:48px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
+      <!-- Form logo (mobile shows this) -->
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:40px">
+        <img src="assets/g6-logo.svg" alt="G6 Labs" style="height:44px;width:auto;display:block;flex-shrink:0">
         <div>
-          <div style="font-size:11px;color:#5d7079;letter-spacing:.1em;text-transform:uppercase">Ads Intelligence</div>
-          <div style="font-size:12px;color:#8da0a6;margin-top:1px">G6 Labs Asia</div>
+          <div style="font-size:10px;color:#4B5756;letter-spacing:.1em;text-transform:uppercase">Ads Intelligence</div>
+          <div style="font-size:12px;color:#6F7C7B;margin-top:2px;font-weight:500">G6 Labs Asia</div>
         </div>
       </div>
 
-      <div style="font-family:'Playfair Display',serif;font-size:26px;color:#eef2f3;margin-bottom:6px">Welcome back</div>
-      <div style="font-size:13px;color:#8da0a6;margin-bottom:28px;line-height:1.6">Sign in to access the dashboard and live ads data.</div>
+      <div style="font-size:24px;font-weight:700;color:#EEF4F3;margin-bottom:6px;letter-spacing:-.02em">Welcome back</div>
+      <div style="font-size:13px;color:#6F7C7B;margin-bottom:32px;line-height:1.65">Sign in to access the live ads dashboard.</div>
 
-      <!-- Error box -->
-      <div id="loginErr" style="display:none;background:rgba(240,82,82,.08);border:1px solid rgba(240,82,82,.2);border-radius:8px;padding:10px 14px;font-size:13px;color:#fca5a5;margin-bottom:16px;line-height:1.5"></div>
+      <!-- Error -->
+      <div id="loginErr" style="display:none;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:9px;padding:11px 14px;font-size:13px;color:#fca5a5;margin-bottom:16px;line-height:1.5"></div>
 
       <!-- Username -->
-      <div style="margin-bottom:18px">
-        <label for="loginUser" style="display:block;font-size:12px;font-weight:500;color:#8da0a6;margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase">Username</label>
+      <div style="margin-bottom:16px">
+        <label for="loginUser" style="display:block;font-size:11px;font-weight:600;color:#4B5756;margin-bottom:7px;letter-spacing:.07em;text-transform:uppercase">Username</label>
         <input id="loginUser" type="text" placeholder="e.g. ashokh" autocomplete="username"
           onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"
-          style="width:100%;background:#0d1c1e;border:1px solid #1d3338;border-radius:8px;padding:13px 15px;color:#eef2f3;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box"
-          onfocus="this.style.borderColor='#ed7a4f'" onblur="this.style.borderColor='#1d3338'">
+          style="width:100%;background:#101819;border:1px solid #1E2A2A;border-radius:9px;padding:13px 15px;color:#EEF4F3;font-family:'Host Grotesk',sans-serif;font-size:14px;outline:none;box-sizing:border-box;transition:border-color 150ms,box-shadow 150ms"
+          onfocus="this.style.borderColor='#14B8A6';this.style.boxShadow='0 0 0 3px rgba(20,184,166,.12)'"
+          onblur="this.style.borderColor='#1E2A2A';this.style.boxShadow='none'">
       </div>
 
       <!-- Password -->
-      <div style="margin-bottom:6px">
-        <label for="loginPass" style="display:block;font-size:12px;font-weight:500;color:#8da0a6;margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase">Password</label>
+      <div style="margin-bottom:8px">
+        <label for="loginPass" style="display:block;font-size:11px;font-weight:600;color:#4B5756;margin-bottom:7px;letter-spacing:.07em;text-transform:uppercase">Password</label>
         <div style="position:relative">
           <input id="loginPass" type="password" placeholder="••••••••••" autocomplete="current-password"
             onkeydown="if(event.key==='Enter')doLogin()"
-            style="width:100%;background:#0d1c1e;border:1px solid #1d3338;border-radius:8px;padding:13px 44px 13px 15px;color:#eef2f3;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box"
-            onfocus="this.style.borderColor='#ed7a4f'" onblur="this.style.borderColor='#1d3338'">
+            style="width:100%;background:#101819;border:1px solid #1E2A2A;border-radius:9px;padding:13px 44px 13px 15px;color:#EEF4F3;font-family:'Host Grotesk',sans-serif;font-size:14px;outline:none;box-sizing:border-box;transition:border-color 150ms,box-shadow 150ms"
+            onfocus="this.style.borderColor='#14B8A6';this.style.boxShadow='0 0 0 3px rgba(20,184,166,.12)'"
+            onblur="this.style.borderColor='#1E2A2A';this.style.boxShadow='none'">
           <button type="button" onclick="togglePw()" aria-label="Show/hide password"
-            style="position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#5d7079;font-size:17px;padding:0;line-height:1">
+            style="position:absolute;right:13px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#4B5756;font-size:17px;padding:0;line-height:1;transition:color 150ms"
+            onmouseover="this.style.color='#A4B0AF'" onmouseout="this.style.color='#4B5756'">
             <i class="ti ti-eye" id="pwEyeIcon"></i>
           </button>
         </div>
       </div>
 
       <!-- Attempts warning -->
-      <div id="loginWarn" style="font-size:12px;color:#f59e0b;min-height:20px;margin-bottom:12px;text-align:center"></div>
+      <div id="loginWarn" style="font-size:12px;color:#FBBF24;min-height:20px;margin-bottom:14px;text-align:center"></div>
 
       <!-- Sign in button -->
       <button id="loginBtn" onclick="doLogin()"
-        style="width:100%;padding:14px;border-radius:8px;background:linear-gradient(135deg,#c45a32,#ed7a4f);color:#fff;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.02em;box-shadow:0 4px 16px rgba(237,122,79,.25)"
-        onmouseover="this.style.opacity='.87'" onmouseout="this.style.opacity='1'">
+        style="width:100%;padding:14px;border-radius:9px;background:linear-gradient(135deg,#0D9488,#14B8A6,#2DD4BF);color:#fff;border:none;cursor:pointer;font-family:'Host Grotesk',sans-serif;font-size:14px;font-weight:600;letter-spacing:-.01em;box-shadow:0 4px 20px rgba(20,184,166,.3);transition:opacity 150ms,box-shadow 150ms"
+        onmouseover="this.style.opacity='.9';this.style.boxShadow='0 6px 28px rgba(20,184,166,.4)'"
+        onmouseout="this.style.opacity='1';this.style.boxShadow='0 4px 20px rgba(20,184,166,.3)'">
         Sign in →
       </button>
 
       <!-- Quick select -->
-      <div style="margin-top:26px;padding-top:22px;border-top:1px solid #1d3338">
-        <div style="font-size:11px;font-weight:500;color:#5d7079;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px">Quick select</div>
-        <div style="display:flex;gap:10px">
+      <div style="margin-top:28px;padding-top:24px;border-top:1px solid #1E2A2A">
+        <div style="font-size:10px;font-weight:600;color:#4B5756;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px">Quick select</div>
+        <div style="display:flex;gap:8px">
           <button onclick="quickSelect('ashokh')"
-            style="flex:1;padding:10px 12px;border-radius:8px;background:#0d1c1e;border:1px solid #1d3338;color:#8da0a6;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
-            onmouseover="this.style.borderColor='#ed7a4f';this.style.color='#ed7a4f'" onmouseout="this.style.borderColor='#1d3338';this.style.color='#8da0a6'">
-            ashokh<br><span style="font-size:10px;color:#5d7079;text-transform:uppercase;letter-spacing:.04em">Admin</span>
+            style="flex:1;padding:10px 8px;border-radius:9px;background:#101819;border:1px solid #1E2A2A;color:#6F7C7B;cursor:pointer;font-family:'Host Grotesk',sans-serif;font-size:12px;font-weight:500;text-align:center;transition:all 150ms"
+            onmouseover="this.style.borderColor='#14B8A6';this.style.color='#14B8A6';this.style.background='rgba(20,184,166,.06)'"
+            onmouseout="this.style.borderColor='#1E2A2A';this.style.color='#6F7C7B';this.style.background='#101819'">
+            ashokh<br><span style="font-size:9px;color:#4B5756;text-transform:uppercase;letter-spacing:.05em">Admin</span>
           </button>
           <button onclick="quickSelect('diva')"
-            style="flex:1;padding:10px 12px;border-radius:8px;background:#0d1c1e;border:1px solid #1d3338;color:#8da0a6;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
-            onmouseover="this.style.borderColor='#ed7a4f';this.style.color='#ed7a4f'" onmouseout="this.style.borderColor='#1d3338';this.style.color='#8da0a6'">
-            diva<br><span style="font-size:10px;color:#5d7079;text-transform:uppercase;letter-spacing:.04em">Team</span>
+            style="flex:1;padding:10px 8px;border-radius:9px;background:#101819;border:1px solid #1E2A2A;color:#6F7C7B;cursor:pointer;font-family:'Host Grotesk',sans-serif;font-size:12px;font-weight:500;text-align:center;transition:all 150ms"
+            onmouseover="this.style.borderColor='#14B8A6';this.style.color='#14B8A6';this.style.background='rgba(20,184,166,.06)'"
+            onmouseout="this.style.borderColor='#1E2A2A';this.style.color='#6F7C7B';this.style.background='#101819'">
+            diva<br><span style="font-size:9px;color:#4B5756;text-transform:uppercase;letter-spacing:.05em">Team</span>
           </button>
           <button onclick="quickSelect('anisa')"
-            style="flex:1;padding:10px 12px;border-radius:8px;background:#0d1c1e;border:1px solid #1d3338;color:#8da0a6;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;text-align:center"
-            onmouseover="this.style.borderColor='#ed7a4f';this.style.color='#ed7a4f'" onmouseout="this.style.borderColor='#1d3338';this.style.color='#8da0a6'">
-            anisa<br><span style="font-size:10px;color:#5d7079;text-transform:uppercase;letter-spacing:.04em">Team</span>
+            style="flex:1;padding:10px 8px;border-radius:9px;background:#101819;border:1px solid #1E2A2A;color:#6F7C7B;cursor:pointer;font-family:'Host Grotesk',sans-serif;font-size:12px;font-weight:500;text-align:center;transition:all 150ms"
+            onmouseover="this.style.borderColor='#14B8A6';this.style.color='#14B8A6';this.style.background='rgba(20,184,166,.06)'"
+            onmouseout="this.style.borderColor='#1E2A2A';this.style.color='#6F7C7B';this.style.background='#101819'">
+            anisa<br><span style="font-size:9px;color:#4B5756;text-transform:uppercase;letter-spacing:.05em">Team</span>
           </button>
         </div>
       </div>
 
-      <div style="margin-top:22px;font-size:12px;color:#39555c;text-align:center;line-height:1.6">🔒 Secured · Sessions expire after 4 hours</div>
+      <div style="margin-top:24px;font-size:11px;color:#2B3A3A;text-align:center;line-height:1.6;display:flex;align-items:center;justify-content:center;gap:6px">
+        <span style="width:5px;height:5px;border-radius:50%;background:#1E2A2A;display:inline-block"></span>
+        Secured · Sessions expire after 4 hours
+      </div>
     </div>
   </div>
 </div>
+
+<style>
+/* Login mobile — hide left panel, full-width form */
+@media (max-width: 768px) {
+  #loginPage { flex-direction: column; }
+  #loginPage > div:first-child { display: none !important; }
+  #loginPage > div:last-child { width: 100% !important; border-left: none !important; border-top: 1px solid #1E2A2A; padding: 40px 24px !important; padding-top: calc(40px + env(safe-area-inset-top)) !important; }
+}
+</style>
 
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
@@ -1002,7 +1034,7 @@ code,kbd,.mono,.kpi-value,.tdash-kpi-val,.gauge-num,.sales-kpi-value { font-fami
   <!-- SIDEBAR -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-head">
-      <img src="assets/g6-logo.png" alt="G6 Labs" class="brand-logo-img" style="height:44px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
+      <img src="assets/g6-logo.svg" alt="G6 Labs" class="brand-logo-img" style="height:44px;width:auto;display:block;flex-shrink:0;filter:brightness(1.15)">
       <div>
         <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase">Ads Intelligence</div>
         <div style="font-size:11px;color:var(--text2);margin-top:1px">G6 Labs Asia</div>
