@@ -3035,6 +3035,7 @@ async function showTasks() {
             <button class="view-btn ${taskView==='dashboard'?'active':''}" onclick="switchView('dashboard',this)"><i class="ti ti-layout-dashboard"></i> Dashboard</button>
             <button class="view-btn ${taskView==='list'?'active':''}" onclick="switchView('list',this)"><i class="ti ti-list"></i> List</button>
             <button class="view-btn ${taskView==='kanban'?'active':''}" onclick="switchView('kanban',this)"><i class="ti ti-layout-kanban"></i> Kanban</button>
+            <button class="view-btn ${taskView==='whatsapp'?'active':''}" onclick="switchView('whatsapp',this)" style="color:${taskView==='whatsapp'?'var(--blue)':'var(--text2)'}"><i class="ti ti-brand-whatsapp"></i> WhatsApp</button>
           </div>
           <button onclick="openTaskForm()" style="padding:9px 18px;border-radius:8px;background:var(--blue);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
             <i class="ti ti-plus"></i> Add Task
@@ -3043,7 +3044,7 @@ async function showTasks() {
       </div>
 
       <!-- FILTER + SORT BAR -->
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:${taskView==='whatsapp'?'none':'flex'};flex-wrap:wrap;gap:10px;align-items:center">
         <!-- Search -->
         <div style="position:relative;flex:1;min-width:160px">
           <i class="ti ti-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px"></i>
@@ -3129,7 +3130,8 @@ async function showTasks() {
         <button class="task-tab" onclick="switchTaskTab('overdue',this)" id="overdueTabBtn" style="color:var(--red)">🚩 Overdue</button>
       </div>` : ''}
 
-      <div id="taskList"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+      <div id="taskList" style="display:${taskView==='whatsapp'?'none':'block'}"><div style="text-align:center;padding:40px"><div class="spinner"></div></div></div>
+      <div id="waTabContent" style="display:${taskView==='whatsapp'?'block':'none'}"></div>
     </div>`;
 
   await loadTasks();
@@ -3318,8 +3320,318 @@ async function loadTasks() {
 function renderTasks() {
   if (taskView === 'kanban')    { renderKanban(); return; }
   if (taskView === 'dashboard') { renderTaskDashboard(); return; }
+  if (taskView === 'whatsapp')  { renderWATab(); return; }
   applyTaskFilters();
 }
+
+// ─── WHATSAPP AUTO-TASK TAB ──────────────────────────────────────────────────
+
+let waGroups = [], waLogs = [], waTab = 'groups';
+
+async function renderWATab() {
+  const el = document.getElementById('waTabContent');
+  if (!el) return;
+
+  el.innerHTML = `<div style="text-align:center;padding:40px"><div class="spinner"></div></div>`;
+
+  const [groupsRes, logsRes] = await Promise.all([
+    sbFetch('get_wa_groups', {}),
+    sbFetch('get_wa_task_log', { limit: 50 }),
+  ]).catch(() => [[], []]);
+
+  waGroups = Array.isArray(groupsRes) ? groupsRes : [];
+  waLogs   = Array.isArray(logsRes)   ? logsRes   : [];
+
+  const deployedUrl = window.location.origin;
+  const webhookUrl  = `${deployedUrl}/api/webhook/whatsapp`;
+
+  const isSA = currentUser?.superadmin;
+
+  const taskCount  = waLogs.filter(l => l.is_task).length;
+  const totalCount = waLogs.length;
+  const activeGroups = waGroups.filter(g => g.enabled).length;
+
+  el.innerHTML = `
+  <div style="display:flex;flex-direction:column;gap:16px">
+
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Active Groups</div>
+        <div style="font-size:24px;font-weight:700;color:var(--teal)">${activeGroups}</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Messages Scanned</div>
+        <div style="font-size:24px;font-weight:700;color:var(--text)">${totalCount}</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Tasks Auto-Created</div>
+        <div style="font-size:24px;font-weight:700;color:var(--green)">${taskCount}</div>
+      </div>
+    </div>
+
+    <!-- Webhook URL card -->
+    <div style="background:rgba(0,188,212,.07);border:1px solid rgba(0,188,212,.25);border-radius:10px;padding:14px 16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:4px"><i class="ti ti-webhook"></i> Evolution Webhook URL</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--text2);word-break:break-all">${webhookUrl}</div>
+        </div>
+        <button onclick="navigator.clipboard.writeText('${webhookUrl}').then(()=>{this.textContent='✓ Copied';setTimeout(()=>this.textContent='Copy',1500)})"
+          style="padding:7px 14px;border-radius:7px;background:rgba(0,188,212,.15);border:1px solid rgba(0,188,212,.3);color:var(--teal);cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap">
+          Copy
+        </button>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3)">Configure this URL in Evolution API → Webhooks → Messages Events → <strong>messages.upsert</strong></div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:6px;border-bottom:1px solid var(--border);padding-bottom:0">
+      <button onclick="waTab='groups';renderWATab()" style="padding:8px 16px;border:none;border-bottom:2px solid ${waTab==='groups'?'var(--teal)':'transparent'};background:none;color:${waTab==='groups'?'var(--teal)':'var(--text2)'};cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .2s">
+        <i class="ti ti-users-group"></i> Group Mappings (${waGroups.length})
+      </button>
+      <button onclick="waTab='log';renderWATab()" style="padding:8px 16px;border:none;border-bottom:2px solid ${waTab==='log'?'var(--teal)':'transparent'};background:none;color:${waTab==='log'?'var(--teal)':'var(--text2)'};cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .2s">
+        <i class="ti ti-history"></i> Message Log (${waLogs.length})
+      </button>
+      ${isSA ? `<button onclick="waTab='setup';renderWATab()" style="padding:8px 16px;border:none;border-bottom:2px solid ${waTab==='setup'?'var(--teal)':'transparent'};background:none;color:${waTab==='setup'?'var(--teal)':'var(--text2)'};cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .2s">
+        <i class="ti ti-settings"></i> Setup
+      </button>` : ''}
+    </div>
+
+    <!-- Tab content -->
+    <div id="waTabInner">
+      ${waTab === 'groups' ? renderWAGroupsTab(isSA) : ''}
+      ${waTab === 'log'    ? renderWALogTab() : ''}
+      ${waTab === 'setup'  ? renderWASetupTab(webhookUrl) : ''}
+    </div>
+  </div>`;
+}
+
+function renderWAGroupsTab(isSA) {
+  return `
+  <div style="display:flex;flex-direction:column;gap:12px">
+    ${isSA ? `
+    <!-- Add Group Form -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px"><i class="ti ti-plus"></i> Add Group Mapping</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;flex-wrap:wrap" class="wa-form-grid">
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">WhatsApp Group JID</div>
+          <input id="waJidInput" placeholder="120363XXXXXX@g.us or 601XXXXXXX@s.whatsapp.net"
+            style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;color:var(--text);font-family:'Geist Mono',monospace;font-size:11px;outline:none;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Client Name</div>
+          <input id="waClientInput" placeholder="e.g. I-Sihat Dental Care"
+            style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;box-sizing:border-box"
+            onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Assign Tasks To</div>
+          <select id="waAssigneeInput" style="width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none;cursor:pointer">
+            <option value="ashokh">Ashokh</option>
+            <option value="diva">Diva</option>
+            <option value="anisa">Anisa</option>
+          </select>
+        </div>
+      </div>
+      <button onclick="addWAGroup()"
+        style="margin-top:12px;padding:9px 20px;border-radius:8px;background:var(--teal);border:none;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">
+        <i class="ti ti-plus"></i> Add Mapping
+      </button>
+    </div>` : ''}
+
+    <!-- Group List -->
+    ${waGroups.length === 0 ? `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:40px;text-align:center">
+      <div style="font-size:32px;margin-bottom:10px">📱</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">No groups mapped yet</div>
+      <div style="font-size:12px;color:var(--text3)">Add a WhatsApp group JID above to start auto-detecting tasks from client messages.</div>
+    </div>` : waGroups.map(g => `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+        <div style="width:36px;height:36px;border-radius:50%;background:${g.enabled?'rgba(0,188,212,.15)':'var(--bg4)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="ti ti-brand-whatsapp" style="color:${g.enabled?'var(--teal)':'var(--text3)'}"></i>
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">${g.client_name}</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.jid}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">→ Assigned to <strong>${g.assignee}</strong></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;background:${g.enabled?'rgba(34,197,94,.12)':'rgba(100,116,139,.12)'};color:${g.enabled?'var(--green)':'var(--text3)'}">
+          ${g.enabled ? 'Active' : 'Paused'}
+        </span>
+        ${isSA ? `
+        <button onclick="toggleWAGroup('${g.id}', ${!g.enabled})"
+          style="padding:6px 12px;border-radius:7px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);cursor:pointer;font-size:11px;font-weight:600">
+          ${g.enabled ? 'Pause' : 'Enable'}
+        </button>
+        <button onclick="deleteWAGroup('${g.id}','${g.client_name}')"
+          style="padding:6px 10px;border-radius:7px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:var(--red);cursor:pointer;font-size:11px">
+          <i class="ti ti-trash"></i>
+        </button>` : ''}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderWALogTab() {
+  const statusEmoji = { task_created:'✅', not_task:'💬', unmapped:'❓', analyzed:'🔍' };
+  const priorityCol = { urgent:'var(--red)', high:'var(--orange,#f97316)', medium:'var(--yellow,#eab308)', low:'var(--green)' };
+
+  if (waLogs.length === 0) return `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:40px;text-align:center">
+      <div style="font-size:32px;margin-bottom:10px">📭</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text2);margin-bottom:6px">No messages logged yet</div>
+      <div style="font-size:12px;color:var(--text3)">Once the webhook is configured, all incoming WhatsApp messages will appear here.</div>
+    </div>`;
+
+  return `
+  <div style="display:flex;flex-direction:column;gap:8px">
+    ${waLogs.map(l => `
+    <div style="background:var(--bg3);border:1px solid ${l.is_task?'rgba(34,197,94,.25)':'var(--border)'};border-radius:10px;padding:12px 14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="font-size:13px">${statusEmoji[l.status]||'💬'}</span>
+            <span style="font-size:12px;font-weight:600;color:${l.is_task?'var(--green)':'var(--text2)'}">${l.is_task ? (l.task_title || 'Task created') : 'Not a task'}</span>
+            ${l.confidence ? `<span style="font-size:10px;background:var(--bg4);border:1px solid var(--border2);border-radius:4px;padding:2px 6px;color:var(--text3)">${Math.round(l.confidence*100)}% confidence</span>` : ''}
+            ${l.client_name ? `<span style="font-size:10px;background:rgba(0,188,212,.1);border:1px solid rgba(0,188,212,.2);border-radius:4px;padding:2px 6px;color:var(--teal)">${l.client_name}</span>` : ''}
+          </div>
+          <div style="font-size:12px;color:var(--text2);background:var(--bg2);border-radius:6px;padding:8px 10px;margin-bottom:6px;border-left:3px solid var(--border2);font-style:italic">
+            "${l.message?.slice(0,200)}"
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:10px;color:var(--text3)"><i class="ti ti-user"></i> ${l.sender||'Unknown'}</span>
+            <span style="font-size:10px;color:var(--text3)"><i class="ti ti-clock"></i> ${new Date(l.created_at).toLocaleString('en-MY',{timeZone:'Asia/Kuala_Lumpur',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+            ${l.reason ? `<span style="font-size:10px;color:var(--text3)"><i class="ti ti-info-circle"></i> ${l.reason}</span>` : ''}
+          </div>
+        </div>
+        ${l.task_id ? `<a href="javascript:void(0)" onclick="taskSearch='${l.task_title?.slice(0,20)||''}';switchView('list',null)"
+          style="padding:5px 10px;border-radius:6px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--green);font-size:11px;font-weight:600;white-space:nowrap;text-decoration:none">
+          View Task
+        </a>` : ''}
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function renderWASetupTab(webhookUrl) {
+  return `
+  <div style="display:flex;flex-direction:column;gap:14px">
+
+    <!-- Step 1: Supabase Tables -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">① Create Supabase Tables</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Run this SQL in your Supabase SQL Editor (Database → SQL Editor → New query):</div>
+      <pre style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:14px;font-family:'Geist Mono',monospace;font-size:11px;color:var(--text2);overflow-x:auto;white-space:pre-wrap">-- WhatsApp Group Mappings
+CREATE TABLE IF NOT EXISTS whatsapp_groups (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  jid         TEXT NOT NULL UNIQUE,
+  client_name TEXT NOT NULL,
+  assignee    TEXT NOT NULL,
+  enabled     BOOLEAN DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- Message & Task Log
+CREATE TABLE IF NOT EXISTS whatsapp_task_log (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  jid         TEXT,
+  sender      TEXT,
+  client_name TEXT,
+  message     TEXT,
+  is_task     BOOLEAN DEFAULT false,
+  task_title  TEXT,
+  task_id     UUID REFERENCES tasks(id) ON DELETE SET NULL,
+  confidence  FLOAT,
+  reason      TEXT,
+  status      TEXT DEFAULT 'analyzed',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);</pre>
+      <button onclick="navigator.clipboard.writeText(document.querySelector('pre').textContent).then(()=>{this.textContent='✓ Copied SQL';setTimeout(()=>this.textContent='Copy SQL',1500)})"
+        style="margin-top:8px;padding:7px 14px;border-radius:7px;background:rgba(0,188,212,.1);border:1px solid rgba(0,188,212,.25);color:var(--teal);cursor:pointer;font-size:12px;font-weight:600">
+        Copy SQL
+      </button>
+    </div>
+
+    <!-- Step 2: Env Vars -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">② Add Environment Variables in Vercel</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${[
+          ['ANTHROPIC_API_KEY','Your Claude API key from console.anthropic.com','Required for AI task detection'],
+          ['WEBHOOK_SECRET','Any random secret string','Optional: Evolution will send this in x-webhook-secret header'],
+          ['EVOLUTION_API_URL','https://your-evolution-server.com','Already set if daily summary is working'],
+          ['EVOLUTION_API_KEY','Your Evolution API key','Already set if daily summary is working'],
+          ['EVOLUTION_INSTANCE','Your instance name','Already set if daily summary is working'],
+        ].map(([k,v,hint]) => `
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <code style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--teal)">${k}</code>
+            <span style="font-size:10px;color:var(--text3)">${hint}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">${v}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Step 3: Configure Evolution -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">③ Configure Evolution API Webhook</div>
+      <ol style="font-size:12px;color:var(--text2);line-height:1.8;padding-left:18px;margin:0">
+        <li>Open Evolution API Manager → your instance → <strong>Webhooks</strong></li>
+        <li>Set URL to: <code style="font-family:'Geist Mono',monospace;font-size:11px;color:var(--teal)">${webhookUrl}</code></li>
+        <li>Enable event: <strong>messages.upsert</strong></li>
+        <li>If you set WEBHOOK_SECRET, add header: <code style="font-family:'Geist Mono',monospace;font-size:11px">x-webhook-secret: YOUR_SECRET</code></li>
+        <li>Save and test with a WhatsApp message</li>
+      </ol>
+    </div>
+
+    <!-- Step 4: Get Group JIDs -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">④ Find Your Group JIDs</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Send any message in the client's WhatsApp group. The JID will appear in the <strong>Message Log</strong> tab as an "unmapped" entry. Copy it from there and add it above.</div>
+      <div style="background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.25);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text2)">
+        💡 <strong>Group JID format:</strong> <code style="font-family:'Geist Mono',monospace">120363XXXXXXXXX@g.us</code><br>
+        <strong>Individual JID format:</strong> <code style="font-family:'Geist Mono',monospace">60123456789@s.whatsapp.net</code>
+      </div>
+    </div>
+
+  </div>`;
+}
+
+async function addWAGroup() {
+  const jid      = document.getElementById('waJidInput')?.value?.trim();
+  const client   = document.getElementById('waClientInput')?.value?.trim();
+  const assignee = document.getElementById('waAssigneeInput')?.value;
+  if (!jid || !client) return alert('Please fill in the JID and Client Name.');
+  try {
+    await sbFetch('save_wa_group', { jid, client_name: client, assignee });
+    renderWATab();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function toggleWAGroup(id, enabled) {
+  try {
+    await sbFetch('toggle_wa_group', { id, enabled });
+    renderWATab();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function deleteWAGroup(id, name) {
+  if (!confirm(`Remove mapping for "${name}"?`)) return;
+  try {
+    await sbFetch('delete_wa_group', { id });
+    renderWATab();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ─── END WHATSAPP TAB ────────────────────────────────────────────────────────
 
 function renderKanban() {
   applyTaskFilters();

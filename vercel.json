@@ -6,7 +6,8 @@
     }
   },
   "rewrites": [
-    { "source": "/api/auth/verify", "destination": "/api/auth" }
+    { "source": "/api/auth/verify", "destination": "/api/auth" },
+    { "source": "/api/webhook/whatsapp", "destination": "/api/whatsapp-webhook" }
   ],
   "crons": [
     {

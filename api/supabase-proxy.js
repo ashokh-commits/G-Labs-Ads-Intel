@@ -573,6 +573,56 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: r.ok });
     }
 
+    // ── WHATSAPP GROUPS ───────────────────────────────────────────────────────
+    if (action === 'get_wa_groups') {
+      const r = await sb('GET', 'whatsapp_groups', null, '?order=created_at.desc');
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'save_wa_group') {
+      if (!user.superadmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { id, jid, client_name, assignee, enabled } = body;
+      if (!jid || !client_name || !assignee) return res.status(400).json({ error: 'jid, client_name, assignee required' });
+      const now = new Date().toISOString();
+      if (id) {
+        const r = await sb('PATCH', 'whatsapp_groups', { jid, client_name, assignee, enabled: enabled !== false, updated_at: now }, `?id=eq.${id}`);
+        return res.status(200).json({ ok: r.ok });
+      } else {
+        const r = await sb('POST', 'whatsapp_groups', [{ jid, client_name, assignee, enabled: true, created_at: now, updated_at: now }], '');
+        return res.status(200).json({ ok: r.ok, data: r.data });
+      }
+    }
+
+    if (action === 'delete_wa_group') {
+      if (!user.superadmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { id } = body;
+      if (!id) return res.status(400).json({ error: 'id required' });
+      await sb('DELETE', 'whatsapp_groups', null, `?id=eq.${id}`);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'toggle_wa_group') {
+      if (!user.superadmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { id, enabled } = body;
+      if (!id) return res.status(400).json({ error: 'id required' });
+      const r = await sb('PATCH', 'whatsapp_groups', { enabled: !!enabled, updated_at: new Date().toISOString() }, `?id=eq.${id}`);
+      return res.status(200).json({ ok: r.ok });
+    }
+
+    if (action === 'get_wa_task_log') {
+      const limit = parseInt(req.query?.limit || '50');
+      const r = await sb('GET', 'whatsapp_task_log', null, `?order=created_at.desc&limit=${limit}`);
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'dismiss_wa_log') {
+      if (!user.superadmin) return res.status(403).json({ error: 'Superadmin only' });
+      const { id } = body;
+      if (!id) return res.status(400).json({ error: 'id required' });
+      await sb('DELETE', 'whatsapp_task_log', null, `?id=eq.${id}`);
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(404).json({ error: `Unknown action: ${action}` });
 
   } catch(e) {
