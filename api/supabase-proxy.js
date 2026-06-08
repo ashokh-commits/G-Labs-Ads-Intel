@@ -1,5 +1,5 @@
 const crypto       = require('crypto');
-const sendTaskNotif = require('./task-notify');
+const sendTaskNotif = require('../lib/task-notify');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
