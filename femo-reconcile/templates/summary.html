@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Reconciliation summary</h1>
+<p class="muted">Figures for handing to your tax agent (Form B preparation). All amounts in {{ cfg.CURRENCY }}.</p>
+
+<div class="cards">
+  <div class="stat"><span class="stat-num">{{ s.total_invoiced|money }}</span><span class="stat-lbl">Total invoiced (sales)</span></div>
+  <div class="stat"><span class="stat-num">{{ s.total_deposits|money }}</span><span class="stat-lbl">Total bank deposits</span></div>
+  <div class="stat"><span class="stat-num">{{ s.total_outgoings|money }}</span><span class="stat-lbl">Total outgoings</span></div>
+</div>
+
+<h2>Income</h2>
+<table class="grid small">
+  <tr><td>Unpaid / unmatched invoices</td><td>{{ s.unpaid_count }}</td><td>{{ s.unpaid_total|money }}</td></tr>
+  <tr><td>Deposits with no invoice</td><td>{{ s.uninvoiced_count }}</td><td>{{ s.uninvoiced_total|money }}</td></tr>
+</table>
+
+<h2>Expenses</h2>
+<table class="grid small">
+  <tr><td>Outgoing transactions</td><td>{{ s.debit_count }}</td><td>{{ s.total_outgoings|money }}</td></tr>
+  <tr><td>Documented (voucher created)</td><td>{{ s.documented_count }}</td><td>{{ s.documented_total|money }}</td></tr>
+  <tr class="status-low"><td>Still undocumented</td><td>{{ s.debit_count - s.documented_count }}</td><td>{{ s.undocumented_total|money }}</td></tr>
+</table>
+
+<p class="muted small">Reminder: payment vouchers are internal records. Original supplier invoices are still required to substantiate deductions under the Income Tax Act 1967.</p>
+{% endblock %}

@@ -1,0 +1,260 @@
+Invoice Date,Invoice ID,Invoice Number,Issued Date,Invoice Status,Customer ID,Customer Name,Company ID,Is Inclusive Tax,Due Date,PurchaseOrder,Currency Code,Exchange Rate,Discount Type,Is Discount Before Tax,Template Name,Entity Discount Percent,SubTotal,Total,TotalRetentionAmountFCY,TotalRetentionAmountBCY,Balance,Adjustment,Adjustment Description,Expected Payment Date,Last Payment Date,Payment Terms,Payment Terms Label,Early Payment Discount Percentage,Early Payment Discount Amount,Early Payment Discount Due Days,Notes,Terms & Conditions,Entity Discount Amount,Shipping Charge,Shipping Charge Tax ID,Shipping Charge Tax Amount,Shipping Charge Tax Name,Shipping Charge Tax %,Shipping Charge Tax Type,Item Name,Item Desc,Quantity,Discount,Discount Amount,Item Total,Usage unit,Item Price,Product ID,Brand,Sales Order Number,Expense Reference ID,Recurrence Name,PayPal,Authorize.Net,Google Checkout,Payflow Pro,Stripe,Paytm,2Checkout,Braintree,Forte,WorldPay,Payments Pro,Square,WePay,Razorpay,ICICI EazyPay,GoCardless,Partial Payments,Billing Attention,Billing Address,Billing Street2,Billing City,Billing State,Billing Country,Billing Code,Billing Phone,Billing Fax,Shipping Attention,Shipping Address,Shipping Street2,Shipping City,Shipping State,Shipping Country,Shipping Code,Shipping Fax,Shipping Phone Number,Project ID,Project Name,Round Off,Sales person,Subject,Primary Contact EmailID,Primary Contact Mobile,Primary Contact Phone,Estimate Number,Custom Charges,Shipping Bill#,Shipping Bill Date,Shipping Bill Total,PortCode,Account,Account Code,Tax ID,Item Tax,Item Tax %,Item Tax Amount,Item Tax Type,Kit Combo Item Name
+2025-04-01,6133655000000105001,FEMO-INV-250007,,Draft,6133655000000091221,Toothland Dental Clinic,,false,2025-04-21,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3000.00,0.00,0.00,3000.00,0.00,Adjustment,,,20,Net 20,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"Monthly content generation (12 content)
+Content Graphic Design
+Content Copywriting
+Content Post Scheduling
+Campaign Strategy Planning
+Campaign Execution
+Monthly Performance Report & Analytics
+Paid ads setup & ads strategy",1.00,0.00,0.000,3000.00,,3000.00,6133655000000091237,,,,Toothland Dental DM Reatiner,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Dr. Sarsilan,"NO.24, JALAN RAYA TAMAN KULAI BESAR,","81000 Kulai,
+Johor",Kulai,Johor,Malaysia,81000,'+60 18-402 5711,,,,,,,,,,,,,0.00,,,,'+60 18-402 5711,,,,,,,,Sales,,,,,,,
+2025-04-28,6133655000000108001,FEMO-INV-250008,,Draft,6133655000000095027,KLINIK PERGIGIAN PUTIH,,false,2025-05-13,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3000.00,0.00,0.00,3000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"Monthly content generation (12 content)
+Content Graphic Design
+Content Copywriting
+Content Post Scheduling
+Campaign Strategy Planning
+Campaign Execution
+Monthly Performance Report & Analytics
+Paid ads setup & ads strategy",1.00,0.00,0.000,3000.00,,3000.00,6133655000000091237,,,,KLINIK PERGIGIAN PUTIH,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,DR HARKRISHPAAL,"36, JALAN SETIA PERDANA BB",U13/BB SETIA ALAM,Setia Alam,Selangor,Malaysia,40170,'+60 14-338 8980,,,,,,,,,,,,,0.00,,,,,'+60 14-338 8980,,,,,,,Sales,,,,,,,
+2025-05-01,6133655000000109001,FEMO-INV-250009,,Draft,6133655000000091221,Toothland Dental Clinic,,false,2025-05-21,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3000.00,0.00,0.00,3000.00,0.00,Adjustment,,,20,Net 20,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"Monthly content generation (12 content)
+Content Graphic Design
+Content Copywriting
+Content Post Scheduling
+Campaign Strategy Planning
+Campaign Execution
+Monthly Performance Report & Analytics
+Paid ads setup & ads strategy",1.00,0.00,0.000,3000.00,,3000.00,6133655000000091237,,,,Toothland Dental DM Reatiner,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Dr. Sarsilan,"NO.24, JALAN RAYA TAMAN KULAI BESAR,","81000 Kulai,
+Johor",Kulai,Johor,Malaysia,81000,'+60 18-402 5711,,,,,,,,,,,,,0.00,,,,'+60 18-402 5711,,,,,,,,Sales,,,,,,,
+2025-05-28,6133655000000111001,FEMO-INV-250010,,Draft,6133655000000095027,KLINIK PERGIGIAN PUTIH,,false,2025-06-12,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3000.00,0.00,0.00,3000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"Monthly content generation (12 content)
+Content Graphic Design
+Content Copywriting
+Content Post Scheduling
+Campaign Strategy Planning
+Campaign Execution
+Monthly Performance Report & Analytics
+Paid ads setup & ads strategy",1.00,0.00,0.000,3000.00,,3000.00,6133655000000091237,,,,KLINIK PERGIGIAN PUTIH,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,DR HARKRISHPAAL,"36, JALAN SETIA PERDANA BB",U13/BB SETIA ALAM,Setia Alam,Selangor,Malaysia,40170,'+60 14-338 8980,,,,,,,,,,,,,0.00,,,,,'+60 14-338 8980,,,,,,,Sales,,,,,,,
+2025-06-01,6133655000000112001,FEMO-INV-250011,,Draft,6133655000000091221,Toothland Dental Clinic,,false,2025-06-21,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3000.00,0.00,0.00,3000.00,0.00,Adjustment,,,20,Net 20,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"Monthly content generation (12 content)
+Content Graphic Design
+Content Copywriting
+Content Post Scheduling
+Campaign Strategy Planning
+Campaign Execution
+Monthly Performance Report & Analytics
+Paid ads setup & ads strategy",1.00,0.00,0.000,3000.00,,3000.00,6133655000000091237,,,,Toothland Dental DM Reatiner,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Dr. Sarsilan,"NO.24, JALAN RAYA TAMAN KULAI BESAR,","81000 Kulai,
+Johor",Kulai,Johor,Malaysia,81000,'+60 18-402 5711,,,,,,,,,,,,,0.00,,,,'+60 18-402 5711,,,,,,,,Sales,,,,,,,
+2025-06-16,6133655000000113025,FEMO-INV-250012,,Draft,6133655000000113003,Aroma Ultrawash Laundry,,false,2025-07-01,,MYR,1.00,item_level,true,Standard Template,0.00,4000.00,4000.00,0.00,0.00,4000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"February
+
+Performance Marketing
+- Google & Facebook Ads
+- 4 x Creative Visuals
+- Content Strategy & Publishing",1.00,0.00,0.00,1000.00,,1000.00,6133655000000091237,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-16,6133655000000113025,FEMO-INV-250012,,Draft,6133655000000113003,Aroma Ultrawash Laundry,,false,2025-07-01,,MYR,1.00,item_level,true,Standard Template,0.00,4000.00,4000.00,0.00,0.00,4000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"March
+
+Performance Marketing
+- Google & Facebook Ads
+- 4 x Creative Visuals
+- Content Strategy & Publishing",1.00,0.00,0.00,1000.00,,1000.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-16,6133655000000113025,FEMO-INV-250012,,Draft,6133655000000113003,Aroma Ultrawash Laundry,,false,2025-07-01,,MYR,1.00,item_level,true,Standard Template,0.00,4000.00,4000.00,0.00,0.00,4000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"April
+
+Performance Marketing
+- Google & Facebook Ads
+- 4 x Creative Visuals
+- Content Strategy & Publishing",1.00,0.00,0.00,1000.00,,1000.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-16,6133655000000113025,FEMO-INV-250012,,Draft,6133655000000113003,Aroma Ultrawash Laundry,,false,2025-07-01,,MYR,1.00,item_level,true,Standard Template,0.00,4000.00,4000.00,0.00,0.00,4000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"May
+
+Performance Marketing
+- Google & Facebook Ads
+- 4 x Creative Visuals
+- Content Strategy & Publishing",1.00,0.00,0.00,1000.00,,1000.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-16,6133655000000113103,FEMO-INV-250014,,Draft,6133655000000113003,Aroma Ultrawash Laundry,,false,2025-07-01,,MYR,1.00,item_level,true,Standard Template,0.00,1514.50,1635.66,0.00,0.00,1635.66,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"Ad Budget (Feb 2025 & May 2025)
+- Google & FB Ads Budget
+Feb : RM542.26
+Mar : RM241.20
+Apr : RM351.37
+May : RM379.67
+",1.00,0.00,0.00,1514.50,,1514.50,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B",,Subang Jaya,Selangor,Malaysia,47650,,,Aroma Ultrawash Laundry,"No. 10
+Jalan Putra Mahkota 7/5B","Putra Height
+Subang Jaya
+47650
+Selangor",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,6133655000000113077,Tax,8.00,121.16,ItemAmount,
+2025-06-17,6133655000000115026,FEMO-INV-250015,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-06-20,,MYR,1.00,item_level,true,Standard Template,0.00,2500.00,1250.00,0.00,0.00,1250.00,-1250.00,Deposit 50%,,,3,Custom,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.
+*50% deposit required before shoot
+*50% payment required after shoot",,0.0,0.00,,,,,,On-Location Photoshoot,"'- 4 hour session
+- Selected edited photos will be delivered via Google Drive within 3–5 working days after selection. (OL60)",1.00,0.00,0.00,2500.00,,2500.00,6133655000000115017,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000116001,FEMO-INV-250016,,Draft,6133655000000095027,KLINIK PERGIGIAN PUTIH,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3000.00,0.00,0.00,3000.00,0.00,Adjustment,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Digital Marketing,"Monthly content generation (12 content)
+Content Graphic Design
+Content Copywriting
+Content Post Scheduling
+Campaign Strategy Planning
+Campaign Execution
+Monthly Performance Report & Analytics
+Paid ads setup & ads strategy",1.00,0.00,0.000,3000.00,,3000.00,6133655000000091237,,,,KLINIK PERGIGIAN PUTIH,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,DR HARKRISHPAAL,"36, JALAN SETIA PERDANA BB",U13/BB SETIA ALAM,Setia Alam,Selangor,Malaysia,40170,'+60 14-338 8980,,,,,,,,,,,,,0.00,,,,,'+60 14-338 8980,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000117001,FEMO-INV-250017,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,6933.00,6933.00,0.00,0.00,6933.00,0.00,Deposit 50%,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"Social Media Posters - Static Design
+- Father's Day Special
+- Skyhigh 14 June 2025
+- Muzza's Velvettones 26 June 2025
+- Jakeman & Skeletor 26 June 2025
+- VDJ Rain 28 June 2025
+- Skyhigh 29 June 2025",6.00,0.00,0.00,480.00,,80.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000117001,FEMO-INV-250017,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,6933.00,6933.00,0.00,0.00,6933.00,0.00,Deposit 50%,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"Animated Videos - Social Media 
+- Opening Teaser - 24 May 2025
+- Teaser - 30 May 2025
+- Photo Slideshow - 10 June 2025
+- SkyHigh Recap - 18 June 2025
+- Grand Launch Video - 22 June 2025
+- Launch Higlight Video (FOC - 30 June 2025)",5.00,0.00,0.00,900.00,,180.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000117001,FEMO-INV-250017,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,6933.00,6933.00,0.00,0.00,6933.00,0.00,Deposit 50%,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"Print Materials Design
+- Bunting 2 Design
+- Triangle Flyer 3 Pages
+- A5 Flyer 2 Pages (General & Whiskey Promo)
+- Food Menu 8 Pages
+- Beverage Menu 6 Pages
+- Tower Sticker Design (FOC)",21.00,0.00,0.00,1680.00,,80.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000117001,FEMO-INV-250017,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,6933.00,6933.00,0.00,0.00,6933.00,0.00,Deposit 50%,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"Printing Costs - Global Repro Sdn Bhd
+- Bunting x 2
+- A5 Flyer x 500
+- Food Menu x 10
+- Drinks Menu x 10
+- Triangle Set - 50 Sets
+- Tower Sticker - 20 
+- Whiskey Promo A5 - 5pcs
+- A0 Board - 2",1.00,0.00,0.00,1373.00,,1373.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000117001,FEMO-INV-250017,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,6933.00,6933.00,0.00,0.00,6933.00,0.00,Deposit 50%,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,"Food Photography
+- Total 4 Hours Shoot
+- Unlimited Menu Shots",1.00,0.00,0.00,2000.00,,2000.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-28,6133655000000117001,FEMO-INV-250017,,Draft,6133655000000115001,The Voice Skypark OneCity,,false,2025-07-13,,MYR,1.00,item_level,true,Standard Template,0.00,6933.00,6933.00,0.00,0.00,6933.00,0.00,Deposit 50%,,,15,Net 15,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,,Launch KOL Invitation,1.00,0.00,0.00,500.00,,500.00,,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,Mr. Magen,"RF05, Roof Top, Sky Park,","Jalan USJ 25/1A, One City",Subang Jaya,Selangor,Malaysia,47650,,,,,0.00,,,,,,,,,,,,Sales,,,,,,,
+2025-06-30,6133655000000118019,FEMO-INV-250018,,Draft,6133655000000091221,Toothland Dental Clinic,,false,2025-07-10,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3240.00,0.00,0.00,3240.00,0.00,Deposit 50%,,,10,Custom,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Content Generation,"Social Media Marketing
+
+12 x Monthly Contents Design & Copywriting Festive
+Posts are FOC
+Post Publishing
+Storyboard & Brand Direction Collaboration Management
+Performance Marketing
+Ad Campaign Strategy (Meta/TikTok/Google) Ads Setup &
+Monitoring
+Campaign Visual Strategy
+Ads Visuals
+Monthly Performance Reports",1.00,0.00,0.00,1000.00,,1000.00,6133655000000118001,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Dr. Sarsilan,"NO.24, JALAN RAYA TAMAN KULAI BESAR,","81000 Kulai,
+Johor",Kulai,Johor,Malaysia,81000,'+60 18-402 5711,,,,,,,,,,,,,0.00,,,,'+60 18-402 5711,,,,,,,,Sales,,6133655000000113077,Tax,8.00,80.00,ItemAmount,
+2025-06-30,6133655000000118019,FEMO-INV-250018,,Draft,6133655000000091221,Toothland Dental Clinic,,false,2025-07-10,,MYR,1.00,item_level,true,Standard Template,0.00,3000.00,3240.00,0.00,0.00,3240.00,0.00,Deposit 50%,,,10,Custom,0.00,0.00,,"Notes
+Cheque/Internet Banking made payable to: FEMO MALAYSIA
+Bank Name: HONG LEONG
+Account No: 39500285955
+*All payments are in RINGGIT MALAYSIA only.
+*Services provided are non-refundable.",,0.0,0.00,,,,,,Brand Performance Marketing,"Performance Marketing
+Ad Campaign Strategy (Meta/TikTok/Google)
+Ads Setup & Monitoring
+Campaign Visual Strategy
+Ads Visuals
+Monthly Performance Reports
+
+Branches:
+Toothland Dental Kulai
+Toothland Dental Setapak
+Ang Dental Johor Bahru
+Ang Dental Penang",1.00,0.00,0.00,2000.00,,2000.00,6133655000000118010,,,,,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,Dr. Sarsilan,"NO.24, JALAN RAYA TAMAN KULAI BESAR,","81000 Kulai,
+Johor",Kulai,Johor,Malaysia,81000,'+60 18-402 5711,,,,,,,,,,,,,0.00,,,,'+60 18-402 5711,,,,,,,,Sales,,6133655000000113077,Tax,8.00,160.00,ItemAmount,

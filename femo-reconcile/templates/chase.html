@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Chase list — payments still needing a real supplier invoice</h1>
+<p class="muted">Hand this to your accountant / use it to request the original invoices from vendors.</p>
+
+{% if pending %}
+<table class="grid">
+  <thead><tr><th>Date</th><th>Payee</th><th>Purpose</th><th>Category</th><th>Amount</th></tr></thead>
+  <tbody>
+    {% for v in pending %}
+    <tr>
+      <td>{{ v.txn_date }}</td>
+      <td>{{ v.payee or '—' }}</td>
+      <td>{{ v.purpose or v.txn_desc }}</td>
+      <td>{{ v.category or '—' }}</td>
+      <td>{{ v.txn_amount|money }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><th colspan="4">Total outstanding documentation</th>
+        <th>{{ (pending|sum(attribute='txn_amount'))|money }}</th></tr>
+  </tfoot>
+</table>
+{% else %}
+<p class="empty">Nothing pending. Generate vouchers on the Expenses tab and tick "need real invoice" to populate this list.</p>
+{% endif %}
+{% endblock %}

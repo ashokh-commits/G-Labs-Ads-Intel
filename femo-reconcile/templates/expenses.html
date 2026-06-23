@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Expense documentation</h1>
+<div class="notice">
+  For outgoing payments with no supplier invoice, tag the payee &amp; purpose, then generate an
+  <strong>internal payment voucher</strong>. This is a FEMO self-generated bookkeeping record —
+  <strong>not</strong> a supplier tax invoice. Keep chasing the real invoice where you can.
+</div>
+
+<p><a href="{{ url_for('export_zip') }}" class="btn">Download all vouchers (ZIP)</a></p>
+
+{% if debits %}
+<table class="grid">
+  <thead>
+    <tr><th>Date</th><th>Bank description</th><th>Amount</th>
+        <th>Paid to (payee)</th><th>Purpose</th><th>Category</th>
+        <th>Need real<br>invoice?</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for d in debits %}
+    <tr class="expense-row" data-txn="{{ d.id }}">
+      <td>{{ d.date }}</td>
+      <td class="desc">{{ d.description }}</td>
+      <td>{{ d.amount|money }}</td>
+      <td><input type="text" class="f-payee" value="{{ d.payee or '' }}" placeholder="e.g. Global Repro Sdn Bhd"></td>
+      <td><input type="text" class="f-purpose" value="{{ d.purpose or '' }}" placeholder="e.g. Printing"></td>
+      <td>
+        <select class="f-category">
+          <option value="">—</option>
+          {% for c in cfg.EXPENSE_CATEGORIES %}
+          <option value="{{ c }}" {{ 'selected' if d.category == c }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" class="f-needs" {{ 'checked' if d.needs_invoice or d.voucher_id is none }}>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-primary gen-voucher">Generate</button>
+        <span class="vlink">
+          {% if d.output_path %}
+          <a href="{{ url_for('download_voucher', voucher_id=d.voucher_id) }}">PDF</a>
+          {% endif %}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No outgoing (debit) transactions loaded. Upload a bank statement first.</p>
+{% endif %}
+{% endblock %}

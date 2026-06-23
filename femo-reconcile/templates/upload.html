@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Upload statements &amp; invoices</h1>
+<p class="muted">Everything runs locally on your machine. Nothing is uploaded to the internet.</p>
+
+<form method="post" enctype="multipart/form-data" class="card">
+  <div class="field">
+    <label>Sales invoices — Zoho Books CSV export</label>
+    <input type="file" name="invoices_csv" accept=".csv">
+    <small>One file. Multi-row invoices are grouped automatically by invoice number.</small>
+  </div>
+
+  <div class="field">
+    <label>Bank statements — {{ cfg.COMPANY_BANK }} PDF (account {{ cfg.COMPANY_ACCOUNT_NO }})</label>
+    <input type="file" name="bank_pdfs" accept=".pdf" multiple>
+    <small>You can select multiple monthly statement PDFs at once.</small>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Process &amp; reconcile</button>
+</form>
+{% endblock %}
