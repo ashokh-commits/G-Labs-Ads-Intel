@@ -138,7 +138,7 @@ module.exports = async (req, res) => {
   }
   if (!META_TOKEN) return res.status(500).json({ error: 'META_ACCESS_TOKEN not configured' });
 
-  const mtdSince = monthStart(), mtdUntil = yesterday();
+  const mtdSince = monthStart(); let mtdUntil = yesterday(); if (mtdUntil < mtdSince) mtdUntil = mtdSince; // 1st of month: yesterday is prev month → clamp (FB #100)
   const yStr     = yesterday();
 
   // Compute MTD spend total across all accounts for the header

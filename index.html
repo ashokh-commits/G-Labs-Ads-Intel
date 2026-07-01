@@ -1323,7 +1323,7 @@ function selectAccount(id){
   const el=document.getElementById('ai-'+id);if(el)el.classList.add('active');
   const acc=ACCOUNTS.find(a=>a.id===id);
   document.getElementById('headerAccount').textContent=acc.name;
-  document.getElementById('datePill').textContent=mLabel()+' · '+mStart()+' → '+yDay();
+  {const _s=mStart();let _u=yDay();if(_u<_s)_u=_s;document.getElementById('datePill').textContent=mLabel()+' · '+_s+' → '+_u;}
   if(cache[id]){renderAll(cache[id]);}else{loadAccount(id);}
 }
 function refreshCurrent(){if(activeId){delete cache[activeId];loadAccount(activeId);}}
@@ -1331,7 +1331,7 @@ function refreshCurrent(){if(activeId){delete cache[activeId];loadAccount(active
 // ── FETCH ─────────────────────────────────────────────────────────────────
 async function loadAccount(id){
   if(!id)return;
-  const since=mStart(),until=yDay();
+  const since=mStart();let until=yDay();if(until<since)until=since; // on 1st of month, yesterday is prev month → clamp so since<=until (FB #100)
   document.getElementById('liveDot').className='live-dot';
   document.getElementById('liveLabel').textContent='Loading';
   document.getElementById('refreshBtn').disabled=true;

@@ -67,7 +67,7 @@ async function sendEmail(subject, html) {
 }
 
 module.exports = async (req, res) => {
-  const since=getMonthStart(),until=getYesterday();
+  const since=getMonthStart();let until=getYesterday();if(until<since)until=since; // 1st of month: yesterday is prev month → clamp (FB #100)
   console.log(`[Alert] Checking ${ACCOUNTS.length} accounts — ${since} to ${until}`);
   const allIssues={};let totalCritical=0,totalWarnings=0;
   for(const acc of ACCOUNTS){
