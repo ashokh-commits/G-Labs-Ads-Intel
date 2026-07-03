@@ -1,5 +1,6 @@
 const crypto       = require('crypto');
 const sendTaskNotif = require('../lib/task-notify');
+const runMatcher     = require('../lib/recon-matcher');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
@@ -621,6 +622,204 @@ module.exports = async (req, res) => {
       if (!id) return res.status(400).json({ error: 'id required' });
       await sb('DELETE', 'whatsapp_task_log', null, `?id=eq.${id}`);
       return res.status(200).json({ ok: true });
+    }
+
+    // ── AD SPEND RECONCILIATION ──────────────────────────────────────────────
+
+    if (action === 'recon_import_invoices') {
+      const { label, source_filename, rows, warnings } = body;
+      if (!label || !Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'label and rows required' });
+      const batchR = await sb('POST', 'recon_batches', {
+        batch_type: 'meta_csv', label, source_filename: source_filename || '',
+        row_count: rows.length, warnings: warnings || [], uploaded_by: user.userId,
+      }, '');
+      const batch = Array.isArray(batchR.data) ? batchR.data[0] : null;
+      if (!batch) return res.status(500).json({ error: 'Failed to create batch' });
+
+      const CHUNK = 200;
+      let imported = 0;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK).map(r => ({
+          batch_id: batch.id, label,
+          invoice_date: r.invoice_date, amount: r.amount, currency: r.currency || 'USD',
+          transaction_id: r.transaction_id || null, description: r.description || '',
+          raw_row: r.raw_row || null,
+        }));
+        const r2 = await sb('POST', 'recon_invoices', chunk, '');
+        if (r2.ok) imported += chunk.length;
+        else console.error('[recon_import_invoices] chunk error:', JSON.stringify(r2.data).slice(0, 200));
+      }
+      return res.status(200).json({ ok: true, batch_id: batch.id, imported });
+    }
+
+    if (action === 'recon_import_card_txns') {
+      const { label, source_filename, rows, warnings } = body;
+      if (!label || !Array.isArray(rows) || !rows.length) return res.status(400).json({ error: 'label and rows required' });
+      const batchR = await sb('POST', 'recon_batches', {
+        batch_type: 'card_pdf', label, source_filename: source_filename || '',
+        row_count: rows.length, warnings: warnings || [], uploaded_by: user.userId,
+      }, '');
+      const batch = Array.isArray(batchR.data) ? batchR.data[0] : null;
+      if (!batch) return res.status(500).json({ error: 'Failed to create batch' });
+
+      const CHUNK = 200;
+      let imported = 0;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK).map(r => ({
+          batch_id: batch.id, label,
+          txn_date: r.txn_date, amount: r.amount, currency: r.currency || 'MYR',
+          description: r.description || '', raw_line: r.raw_line || '',
+          confidence: r.confidence || 'high',
+        }));
+        const r2 = await sb('POST', 'recon_card_transactions', chunk, '');
+        if (r2.ok) imported += chunk.length;
+        else console.error('[recon_import_card_txns] chunk error:', JSON.stringify(r2.data).slice(0, 200));
+      }
+      return res.status(200).json({ ok: true, batch_id: batch.id, imported });
+    }
+
+    if (action === 'recon_get_batches') {
+      const batchType = req.query?.batch_type || '';
+      let q = '?order=created_at.desc';
+      if (batchType) q += `&batch_type=eq.${batchType}`;
+      const r = await sb('GET', 'recon_batches', null, q);
+      return res.status(200).json(Array.isArray(r.data) ? r.data : []);
+    }
+
+    if (action === 'recon_delete_batch') {
+      const { batch_id } = body;
+      if (!batch_id) return res.status(400).json({ error: 'batch_id required' });
+      await sb('DELETE', 'recon_batches', null, `?id=eq.${batch_id}`);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'recon_run_matcher') {
+      const windowDays = parseInt(body.date_window_days) || undefined;
+      const [invR, txnR] = await Promise.all([
+        sb('GET', 'recon_invoices', null, '?match_status=in.(unmatched,suggested)&order=invoice_date.asc'),
+        sb('GET', 'recon_card_transactions', null, '?match_status=in.(unmatched,suggested)&order=txn_date.asc'),
+      ]);
+      const invoices = Array.isArray(invR.data) ? invR.data : [];
+      const cardTxns = Array.isArray(txnR.data) ? txnR.data : [];
+
+      const results = runMatcher(invoices, cardTxns, windowDays ? { dateWindowDays: windowDays } : {});
+      const matchedInvIds = new Set(results.map(m => m.invoice_id));
+      const matchedTxnIds = new Set(results.map(m => m.card_txn_id));
+
+      for (const m of results) {
+        await sb('DELETE', 'recon_matches', null, `?invoice_id=eq.${m.invoice_id}`);
+        await sb('POST', 'recon_matches', {
+          invoice_id: m.invoice_id, card_txn_id: m.card_txn_id, score: m.score,
+          date_diff_days: m.date_diff_days, amount_diff_pct: m.amount_diff_pct,
+          status: 'suggested',
+        }, '');
+        await sb('PATCH', 'recon_invoices', { match_status: 'suggested' }, `?id=eq.${m.invoice_id}`);
+        await sb('PATCH', 'recon_card_transactions', { match_status: 'suggested' }, `?id=eq.${m.card_txn_id}`);
+      }
+      // Anything considered but not re-matched this run reverts to unmatched
+      // (e.g. its previous suggested partner got claimed by a better candidate).
+      for (const inv of invoices) {
+        if (!matchedInvIds.has(inv.id) && inv.match_status !== 'unmatched') {
+          await sb('DELETE', 'recon_matches', null, `?invoice_id=eq.${inv.id}`);
+          await sb('PATCH', 'recon_invoices', { match_status: 'unmatched' }, `?id=eq.${inv.id}`);
+        }
+      }
+      for (const txn of cardTxns) {
+        if (!matchedTxnIds.has(txn.id) && txn.match_status !== 'unmatched') {
+          await sb('PATCH', 'recon_card_transactions', { match_status: 'unmatched' }, `?id=eq.${txn.id}`);
+        }
+      }
+
+      return res.status(200).json({ ok: true, matched: results.length, invoices_considered: invoices.length, card_txns_considered: cardTxns.length });
+    }
+
+    if (action === 'recon_get_review_data') {
+      const [matchR, invR, txnR] = await Promise.all([
+        sb('GET', 'recon_matches', null, '?status=eq.suggested&order=score.desc'),
+        sb('GET', 'recon_invoices', null, '?order=invoice_date.desc'),
+        sb('GET', 'recon_card_transactions', null, '?order=txn_date.desc'),
+      ]);
+      const matches  = Array.isArray(matchR.data) ? matchR.data : [];
+      const invoices = Array.isArray(invR.data) ? invR.data : [];
+      const cardTxns = Array.isArray(txnR.data) ? txnR.data : [];
+
+      const invById = Object.fromEntries(invoices.map(i => [i.id, i]));
+      const txnById = Object.fromEntries(cardTxns.map(t => [t.id, t]));
+
+      const enrichedMatches = matches
+        .filter(m => invById[m.invoice_id] && txnById[m.card_txn_id])
+        .map(m => ({ ...m, invoice: invById[m.invoice_id], card_txn: txnById[m.card_txn_id] }));
+
+      const unmatchedInvoices = invoices.filter(i => i.match_status === 'unmatched');
+      const unmatchedCardTxns = cardTxns.filter(t => t.match_status === 'unmatched');
+
+      const summarize = (rows, dateField) => {
+        const byLabel = {};
+        rows.forEach(r => {
+          const k = r.label || '(unlabeled)';
+          if (!byLabel[k]) byLabel[k] = { label: k, total: 0, count: 0, confirmed: 0, suggested: 0, unmatched: 0 };
+          byLabel[k].total += parseFloat(r.amount || 0);
+          byLabel[k].count += 1;
+          byLabel[k][r.match_status] = (byLabel[k][r.match_status] || 0) + 1;
+        });
+        return Object.values(byLabel);
+      };
+
+      return res.status(200).json({
+        matches: enrichedMatches,
+        unmatched_invoices: unmatchedInvoices,
+        unmatched_card_txns: unmatchedCardTxns,
+        summary: {
+          by_ad_account: summarize(invoices),
+          by_card:       summarize(cardTxns),
+        },
+      });
+    }
+
+    if (action === 'recon_confirm_match') {
+      const { match_id } = body;
+      if (!match_id) return res.status(400).json({ error: 'match_id required' });
+      const mR = await sb('GET', 'recon_matches', null, `?id=eq.${match_id}`);
+      const match = Array.isArray(mR.data) ? mR.data[0] : null;
+      if (!match) return res.status(404).json({ error: 'Match not found' });
+      await sb('PATCH', 'recon_matches', { status: 'confirmed', matched_by: user.userId, updated_at: new Date().toISOString() }, `?id=eq.${match_id}`);
+      await sb('PATCH', 'recon_invoices', { match_status: 'confirmed' }, `?id=eq.${match.invoice_id}`);
+      await sb('PATCH', 'recon_card_transactions', { match_status: 'confirmed' }, `?id=eq.${match.card_txn_id}`);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'recon_reject_match') {
+      const { match_id } = body;
+      if (!match_id) return res.status(400).json({ error: 'match_id required' });
+      const mR = await sb('GET', 'recon_matches', null, `?id=eq.${match_id}`);
+      const match = Array.isArray(mR.data) ? mR.data[0] : null;
+      if (!match) return res.status(404).json({ error: 'Match not found' });
+      await sb('DELETE', 'recon_matches', null, `?id=eq.${match_id}`);
+      await sb('PATCH', 'recon_invoices', { match_status: 'unmatched' }, `?id=eq.${match.invoice_id}`);
+      await sb('PATCH', 'recon_card_transactions', { match_status: 'unmatched' }, `?id=eq.${match.card_txn_id}`);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'recon_manual_match') {
+      const { invoice_id, card_txn_id } = body;
+      if (!invoice_id || !card_txn_id) return res.status(400).json({ error: 'invoice_id and card_txn_id required' });
+      const [invR, txnR] = await Promise.all([
+        sb('GET', 'recon_invoices', null, `?id=eq.${invoice_id}`),
+        sb('GET', 'recon_card_transactions', null, `?id=eq.${card_txn_id}`),
+      ]);
+      const inv = Array.isArray(invR.data) ? invR.data[0] : null;
+      const txn = Array.isArray(txnR.data) ? txnR.data[0] : null;
+      if (!inv || !txn) return res.status(404).json({ error: 'Invoice or card transaction not found' });
+      const days = Math.round(Math.abs(new Date(inv.invoice_date) - new Date(txn.txn_date)) / 86400000);
+      const pct  = inv.amount ? Math.round(Math.abs(txn.amount - inv.amount) / inv.amount * 10000) / 100 : null;
+      await sb('DELETE', 'recon_matches', null, `?invoice_id=eq.${invoice_id}`);
+      const r = await sb('POST', 'recon_matches', {
+        invoice_id, card_txn_id, score: 1.0, date_diff_days: days, amount_diff_pct: pct,
+        status: 'confirmed', matched_by: user.userId,
+      }, '');
+      await sb('PATCH', 'recon_invoices', { match_status: 'confirmed' }, `?id=eq.${invoice_id}`);
+      await sb('PATCH', 'recon_card_transactions', { match_status: 'confirmed' }, `?id=eq.${card_txn_id}`);
+      return res.status(200).json({ ok: true, match: Array.isArray(r.data) ? r.data[0] : r.data });
     }
 
     return res.status(404).json({ error: `Unknown action: ${action}` });

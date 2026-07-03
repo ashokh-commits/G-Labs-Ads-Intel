@@ -13,6 +13,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -876,7 +878,7 @@ code,kbd,.mono,.kpi-value,.tdash-kpi-val,.gauge-num,.sales-kpi-value { font-fami
 }
 
 /* ── INLINE NAV BUTTON FONT FIX ── */
-#tasksNavBtn, #settingsNavBtn, #historyNavBtn {
+#tasksNavBtn, #settingsNavBtn, #historyNavBtn, #reconNavBtn {
   font-family: 'Host Grotesk', sans-serif !important;
 }
 
@@ -1057,6 +1059,12 @@ code,kbd,.mono,.kpi-value,.tdash-kpi-val,.gauge-num,.sales-kpi-value { font-fami
         <i class="ti ti-settings" style="font-size:16px;color:var(--text3)"></i>
         <span>Settings</span>
       </button>
+      <button onclick="showReconciliation()" id="reconNavBtn"
+        style="display:none;width:100%;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text2);transition:background .15s;text-align:left"
+        onmouseover="this.style.background='var(--bg3)'" onmouseout="if(!this.classList.contains('nav-active'))this.style.background='none'">
+        <i class="ti ti-receipt-2" style="font-size:16px;color:var(--text3)"></i>
+        <span>Ad Spend Reconciliation</span>
+      </button>
     </div>
 
     <div style="height:1px;background:var(--border);margin:10px 8px"></div>
@@ -1236,6 +1244,11 @@ function buildSidebar(){
   // Mobile nav Settings
   const mnavSettings = document.getElementById('mnav-settings');
   if (mnavSettings) mnavSettings.style.display = currentUser?.role === 'admin' ? 'flex' : 'none';
+  // Show Ad Spend Reconciliation nav button for admins
+  const reconBtn = document.getElementById('reconNavBtn');
+  if (reconBtn) reconBtn.style.display = currentUser?.role === 'admin' ? 'flex' : 'none';
+  const mnavRecon = document.getElementById('mnav-recon');
+  if (mnavRecon) mnavRecon.style.display = currentUser?.role === 'admin' ? 'flex' : 'none';
 
   // Restore perf section state
   const perfOpen = localStorage.getItem('g6_perf_open') !== '0';
@@ -1276,7 +1289,7 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 // ── MOBILE BOTTOM NAV ──────────────────────────────────────────────────────
 function mnavGo(tab) {
   // Update active state
-  ['perf','tasks','history','settings'].forEach(t => {
+  ['perf','tasks','history','settings','recon'].forEach(t => {
     const btn = document.getElementById('mnav-'+t);
     if (btn) btn.classList.toggle('active', t === tab);
   });
@@ -1286,6 +1299,7 @@ function mnavGo(tab) {
     document.getElementById('tasksNavBtn')?.classList.remove('nav-active');
     document.getElementById('settingsNavBtn')?.classList.remove('nav-active');
     document.getElementById('historyNavBtn')?.classList.remove('nav-active');
+    document.getElementById('reconNavBtn')?.classList.remove('nav-active');
     document.getElementById('navTabs').style.display = 'flex';
     document.getElementById('content').innerHTML = `<div class="state-wrap"><div class="state-icon">📊</div><div class="state-title">Select an account</div><div class="state-sub">Tap an account from the sidebar or select below</div></div>`;
     document.getElementById('headerAccount').textContent = 'Performance';
@@ -1299,12 +1313,14 @@ function mnavGo(tab) {
     showHistory?.();
   } else if (tab === 'settings') {
     showSettings();
+  } else if (tab === 'recon') {
+    showReconciliation();
   }
 }
 
 // Sync mobile nav active state when desktop nav is used
 function syncMobileNav(tab) {
-  ['perf','tasks','history','settings'].forEach(t => {
+  ['perf','tasks','history','settings','recon'].forEach(t => {
     const btn = document.getElementById('mnav-'+t);
     if (btn) btn.classList.toggle('active', t === tab);
   });
@@ -1317,6 +1333,7 @@ function selectAccount(id){
   // Reset nav buttons
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
   document.getElementById('historyNavBtn')?.classList.remove('nav-active');
+  document.getElementById('reconNavBtn')?.classList.remove('nav-active');
   document.getElementById('headerMeta').style.display = '';
   closeSidebar();
   document.querySelectorAll('.acc-item').forEach(e=>e.classList.remove('active'));
@@ -3011,6 +3028,7 @@ async function showTasks() {
   syncMobileNav('tasks');
   document.getElementById('tasksNavBtn').classList.add('nav-active');
   document.getElementById('historyNavBtn')?.classList.remove('nav-active');
+  document.getElementById('reconNavBtn')?.classList.remove('nav-active');
   document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Task Manager';
@@ -3997,6 +4015,7 @@ async function handleFileUpload(taskId, input) {
 async function showHistory() {
   document.getElementById('historyNavBtn')?.classList.add('nav-active');
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
+  document.getElementById('reconNavBtn')?.classList.remove('nav-active');
   document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Performance History';
@@ -5396,6 +5415,7 @@ async function showSettings() {
   document.getElementById('settingsNavBtn').classList.add('nav-active');
   document.getElementById('tasksNavBtn').classList.remove('nav-active');
   document.getElementById('historyNavBtn')?.classList.remove('nav-active');
+  document.getElementById('reconNavBtn')?.classList.remove('nav-active');
   document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
   document.getElementById('navTabs').style.display = 'none';
   document.getElementById('headerAccount').textContent = 'Settings';
@@ -5443,6 +5463,525 @@ async function switchSettingsTab(tab) {
   if (tab === 'users')    { loadUsers(); }
   if (tab === 'tasks')    { renderTaskMgmtTab(); }
   if (tab === 'accounts') { renderAccountMgmtTab(); }
+}
+
+// ── AD SPEND RECONCILIATION ──────────────────────────────────────────────
+let _reconTab = 'upload'; // 'upload' | 'review' | 'unmatched_inv' | 'unmatched_card' | 'summary'
+
+const RECON_TABS = [
+  ['upload',        '📤 Upload'],
+  ['review',        '🔍 Review Matches'],
+  ['unmatched_inv', '📄 Unmatched Invoices'],
+  ['unmatched_card','💳 Unmatched Charges'],
+  ['summary',       '📊 Summary'],
+];
+
+async function showReconciliation() {
+  syncMobileNav('recon');
+  if (currentUser?.role !== 'admin') {
+    document.getElementById('content').innerHTML = `<div class="state-wrap"><div class="state-icon">🔒</div><div class="state-title">Admin only</div></div>`;
+    return;
+  }
+  document.getElementById('reconNavBtn').classList.add('nav-active');
+  document.getElementById('tasksNavBtn').classList.remove('nav-active');
+  document.getElementById('settingsNavBtn')?.classList.remove('nav-active');
+  document.getElementById('historyNavBtn')?.classList.remove('nav-active');
+  document.querySelectorAll('.acc-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('navTabs').style.display = 'none';
+  document.getElementById('headerAccount').textContent = 'Ad Spend Reconciliation';
+  document.getElementById('headerMeta').style.display = 'none';
+
+  document.getElementById('content').innerHTML = `
+    <div style="padding:20px 24px 60px">
+      <div style="margin-bottom:16px">
+        <div class="section-title">Ad Spend Reconciliation</div>
+        <div class="section-sub">Match Meta ad invoices to credit card statement charges</div>
+      </div>
+      <!-- Tab nav -->
+      <div style="display:flex;gap:4px;margin-bottom:24px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content;flex-wrap:wrap">
+        ${RECON_TABS.map(([k,l])=>`
+          <button id="rtab-${k}" onclick="switchReconTab('${k}')"
+            style="padding:7px 18px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:all .15s;
+            background:${_reconTab===k?'var(--blue)':'transparent'};color:${_reconTab===k?'#fff':'var(--text3)'}">${l}</button>`).join('')}
+      </div>
+      <!-- Tab bodies -->
+      <div id="rtab-body-upload" style="display:${_reconTab==='upload'?'block':'none'}">
+        <div id="reconUploadArea"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
+      </div>
+      <div id="rtab-body-review" style="display:${_reconTab==='review'?'block':'none'}">
+        <div id="reconReviewArea"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
+      </div>
+      <div id="rtab-body-unmatched_inv" style="display:${_reconTab==='unmatched_inv'?'block':'none'}">
+        <div id="reconUnmatchedInvArea"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
+      </div>
+      <div id="rtab-body-unmatched_card" style="display:${_reconTab==='unmatched_card'?'block':'none'}">
+        <div id="reconUnmatchedCardArea"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
+      </div>
+      <div id="rtab-body-summary" style="display:${_reconTab==='summary'?'block':'none'}">
+        <div id="reconSummaryArea"><div style="text-align:center;padding:30px"><div class="spinner"></div></div></div>
+      </div>
+    </div>`;
+
+  renderReconTab(_reconTab);
+}
+
+function switchReconTab(tab) {
+  _reconTab = tab;
+  RECON_TABS.forEach(([k]) => {
+    const btn  = document.getElementById(`rtab-${k}`);
+    const body = document.getElementById(`rtab-body-${k}`);
+    if (btn)  { btn.style.background = k===tab?'var(--blue)':'transparent'; btn.style.color = k===tab?'#fff':'var(--text3)'; }
+    if (body) body.style.display = k===tab?'block':'none';
+  });
+  renderReconTab(tab);
+}
+
+function renderReconTab(tab) {
+  if (tab === 'upload')         renderReconUpload();
+  if (tab === 'review')         renderReconReview();
+  if (tab === 'unmatched_inv')  renderReconUnmatchedInvoices();
+  if (tab === 'unmatched_card') renderReconUnmatchedCharges();
+  if (tab === 'summary')        renderReconSummary();
+}
+
+// ── RECON: client-side date/amount helpers ────────────────────────────────
+// Malaysian bank statements are day-first (DD/MM/YYYY); Meta's CSV export is
+// more likely ISO. ISO is checked first so it's handled correctly regardless.
+function _reconParseDate(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+  const MONTHS = { jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12 };
+  m = s.match(/^(\d{1,2})[\/\-\s]([A-Za-z]{3,9})[\/\-\s](\d{2,4})/);
+  if (m) {
+    const mon = MONTHS[m[2].slice(0,3).toLowerCase()];
+    if (mon) {
+      let year = parseInt(m[3]);
+      if (year < 100) year += 2000;
+      return `${year}-${String(mon).padStart(2,'0')}-${String(parseInt(m[1])).padStart(2,'0')}`;
+    }
+  }
+
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (m) {
+    const d = parseInt(m[1]), mo = parseInt(m[2]);
+    let y = parseInt(m[3]);
+    if (y < 100) y += 2000;
+    if (d <= 31 && mo <= 12) return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  }
+
+  const dt = new Date(s);
+  if (!isNaN(dt)) {
+    // Use local date parts, not toISOString() (which converts to UTC and
+    // can shift the date by a day depending on timezone).
+    return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  }
+  return null;
+}
+
+function _reconParseAmount(value) {
+  if (value === null || value === undefined) return null;
+  const cleaned = String(value).replace(/[^0-9.\-]/g, '');
+  if (!cleaned) return null;
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : Math.round(n * 100) / 100;
+}
+
+// ── RECON: Meta Ads billing CSV parser ─────────────────────────────────────
+const RECON_DATE_ALIASES     = ['date','transaction date','invoice date','billing date'];
+const RECON_AMOUNT_ALIASES   = ['amount','amount spent','total','amount (usd)','billed amount','amount due'];
+const RECON_ID_ALIASES       = ['transaction id','invoice id','id','reference','reference number'];
+const RECON_DESC_ALIASES     = ['description','campaign name','notes','item'];
+const RECON_CURRENCY_ALIASES = ['currency','amount currency','currency code'];
+
+function _reconFindColumn(headers, aliases) {
+  const lower = headers.map(h => h.trim().toLowerCase());
+  for (const alias of aliases) {
+    const idx = lower.indexOf(alias);
+    if (idx !== -1) return headers[idx];
+  }
+  return null;
+}
+
+function parseMetaCsv(file) {
+  return new Promise((resolve) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const headers = results.meta.fields || [];
+        const dateCol     = _reconFindColumn(headers, RECON_DATE_ALIASES);
+        const amountCol   = _reconFindColumn(headers, RECON_AMOUNT_ALIASES);
+        const idCol       = _reconFindColumn(headers, RECON_ID_ALIASES);
+        const descCol     = _reconFindColumn(headers, RECON_DESC_ALIASES);
+        const currencyCol = _reconFindColumn(headers, RECON_CURRENCY_ALIASES);
+
+        const warnings = [];
+        if (!dateCol || !amountCol) {
+          warnings.push(`Could not find a ${!dateCol ? 'date' : 'amount'} column. Expected one of: ${(!dateCol?RECON_DATE_ALIASES:RECON_AMOUNT_ALIASES).join(', ')}. Found columns: ${headers.join(', ')}`);
+          return resolve({ rows: [], warnings });
+        }
+
+        const rows = [];
+        let skipped = 0;
+        for (const raw of results.data) {
+          const invoice_date = _reconParseDate(raw[dateCol]);
+          const amount = _reconParseAmount(raw[amountCol]);
+          if (!invoice_date || amount === null) { skipped++; continue; }
+          rows.push({
+            invoice_date, amount,
+            currency: currencyCol ? (raw[currencyCol] || 'USD').trim() : 'USD',
+            transaction_id: idCol ? ((raw[idCol] || '').trim() || null) : null,
+            description: descCol ? (raw[descCol] || '').trim() : '',
+            raw_row: raw,
+          });
+        }
+        if (skipped) warnings.push(`Skipped ${skipped} row(s) with an unparsable date or amount.`);
+        resolve({ rows, warnings });
+      },
+      error: () => resolve({ rows: [], warnings: ['Failed to parse CSV file.'] }),
+    });
+  });
+}
+
+// ── RECON: credit card statement PDF parser ────────────────────────────────
+// Generic line heuristic (no bank-specific column profiles in v1): a line
+// starting with a date, containing a Meta/Facebook keyword, ending with a
+// money token. Ported in spirit from femo-reconcile's bank_pdf.py fallback.
+const RECON_AD_KEYWORDS = ['META', 'FACEBOOK', 'FACEBK', 'FB.COM', 'FB ADS', 'FB*', 'INSTAGRAM'];
+const RECON_DATE_AT_START = /^\s*(\d{1,2}[\/\-\s][A-Za-z0-9]{2,9}[\/\-\s]\d{2,4})\b/;
+const RECON_MONEY = /[\d,]+\.\d{2}/g;
+
+async function parseCardPdf(file) {
+  const warnings = [];
+  const rows = [];
+  try {
+    if (!window.pdfjsLib) { warnings.push('PDF reader failed to load — check your connection and retry.'); return { rows, warnings }; }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+
+      // Reconstruct line-oriented text from positioned items (grouped by y).
+      const lineMap = new Map();
+      for (const item of content.items) {
+        const y = Math.round(item.transform[5]);
+        if (!lineMap.has(y)) lineMap.set(y, []);
+        lineMap.get(y).push(item);
+      }
+      const lines = [...lineMap.entries()]
+        .sort((a, b) => b[0] - a[0])
+        .map(([, items]) => items.sort((a, b) => a.transform[4] - b.transform[4]).map(i => i.str).join(' ').trim())
+        .filter(Boolean);
+
+      for (const line of lines) {
+        const dateMatch = line.match(RECON_DATE_AT_START);
+        if (!dateMatch) continue;
+        const isoDate = _reconParseDate(dateMatch[1]);
+        if (!isoDate) continue;
+
+        const upperLine = line.toUpperCase();
+        if (!RECON_AD_KEYWORDS.some(k => upperLine.includes(k))) continue;
+
+        const amounts = [...line.matchAll(RECON_MONEY)].map(m => _reconParseAmount(m[0])).filter(a => a !== null);
+        if (!amounts.length) continue;
+
+        const description = line.replace(RECON_DATE_AT_START, '').replace(RECON_MONEY, '').trim();
+        rows.push({
+          txn_date: isoDate,
+          amount: amounts[0],
+          currency: 'MYR',
+          description,
+          raw_line: line,
+          confidence: amounts.length > 1 ? 'low' : 'high',
+        });
+      }
+    }
+  } catch (e) {
+    warnings.push(`Could not read ${file.name}: ${e.message}`);
+  }
+  if (!rows.length && !warnings.length) {
+    warnings.push(`No Meta/Facebook-looking charges found in ${file.name}. This is a generic parser — please review the statement manually if that seems wrong.`);
+  }
+  return { rows, warnings };
+}
+
+// ── RECON: Upload sub-tab ───────────────────────────────────────────────────
+const _reconInputStyle = 'width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;color:var(--text);font-family:inherit;font-size:13px;outline:none;box-sizing:border-box';
+
+async function renderReconUpload() {
+  const el = document.getElementById('reconUploadArea');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-file-invoice"></i> Meta Ads Billing CSV</div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin:10px 0 5px">Ad account / client label *</label>
+        <input id="reconCsvLabel" placeholder="e.g. I-Sihat Dental Care" style="${_reconInputStyle}">
+        <label style="font-size:11px;color:var(--text3);display:block;margin:10px 0 5px">CSV file *</label>
+        <input id="reconCsvFile" type="file" accept=".csv" style="${_reconInputStyle}">
+        <div id="reconCsvStatus" style="font-size:12px;margin-top:10px"></div>
+        <button onclick="handleReconCsvImport()" style="margin-top:10px;padding:9px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Import Invoices</button>
+      </div>
+      <div class="s-card">
+        <div class="s-card-title"><i class="ti ti-credit-card"></i> Credit Card Statement PDF</div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin:10px 0 5px">Card label *</label>
+        <input id="reconPdfLabel" placeholder="e.g. Ashokh Maybank Visa" style="${_reconInputStyle}">
+        <label style="font-size:11px;color:var(--text3);display:block;margin:10px 0 5px">PDF file(s) *</label>
+        <input id="reconPdfFiles" type="file" accept=".pdf" multiple style="${_reconInputStyle}">
+        <div id="reconPdfStatus" style="font-size:12px;margin-top:10px"></div>
+        <button onclick="handleReconPdfImport()" style="margin-top:10px;padding:9px 18px;background:var(--blue);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Import Charges</button>
+      </div>
+    </div>
+    <div class="s-card" style="margin-bottom:20px">
+      <div class="s-card-title"><i class="ti ti-refresh"></i> Run Matcher</div>
+      <div style="font-size:12px;color:var(--text3);margin:8px 0 10px">Re-matches every unmatched or previously-suggested invoice and card charge by date proximity.</div>
+      <button onclick="runReconMatcher()" style="padding:9px 18px;background:var(--teal2);border:none;border-radius:8px;color:#fff;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600">Run Matcher</button>
+      <div id="reconMatcherStatus" style="font-size:12px;margin-top:10px"></div>
+    </div>
+    <div>
+      <div class="section-title" style="font-size:14px;margin-bottom:10px">Upload History</div>
+      <div id="reconBatchList"><div style="text-align:center;padding:20px"><div class="spinner"></div></div></div>
+    </div>`;
+  loadReconBatchHistory();
+}
+
+function _reconStatusHtml(warnings, extra) {
+  let html = '';
+  if (extra) html += `<div style="color:var(--teal)">${extra}</div>`;
+  warnings.forEach(w => { html += `<div style="color:var(--amber, #f59e0b);margin-top:4px">⚠ ${w}</div>`; });
+  return html;
+}
+
+async function handleReconCsvImport() {
+  const label   = document.getElementById('reconCsvLabel')?.value.trim();
+  const fileEl  = document.getElementById('reconCsvFile');
+  const statusEl = document.getElementById('reconCsvStatus');
+  const file = fileEl?.files?.[0];
+  if (!label || !file) { statusEl.innerHTML = '<div style="color:var(--red)">Label and file are required.</div>'; return; }
+
+  statusEl.innerHTML = '<div style="color:var(--text3)">Parsing...</div>';
+  const { rows, warnings } = await parseMetaCsv(file);
+  if (!rows.length) { statusEl.innerHTML = _reconStatusHtml(warnings, null) || '<div style="color:var(--red)">No usable rows found.</div>'; return; }
+
+  statusEl.innerHTML = '<div style="color:var(--text3)">Importing...</div>';
+  try {
+    const r = await sbFetch('recon_import_invoices', {}, { label, source_filename: file.name, rows, warnings });
+    statusEl.innerHTML = _reconStatusHtml(warnings, `Imported ${r.imported} invoice(s).`);
+    fileEl.value = '';
+    loadReconBatchHistory();
+  } catch (e) {
+    statusEl.innerHTML = `<div style="color:var(--red)">Import failed: ${e.message}</div>`;
+  }
+}
+
+async function handleReconPdfImport() {
+  const label    = document.getElementById('reconPdfLabel')?.value.trim();
+  const fileEl   = document.getElementById('reconPdfFiles');
+  const statusEl = document.getElementById('reconPdfStatus');
+  const files = [...(fileEl?.files || [])];
+  if (!label || !files.length) { statusEl.innerHTML = '<div style="color:var(--red)">Label and at least one PDF are required.</div>'; return; }
+
+  let totalImported = 0;
+  const allWarnings = [];
+  for (const file of files) {
+    statusEl.innerHTML = `<div style="color:var(--text3)">Parsing ${file.name}...</div>`;
+    const { rows, warnings } = await parseCardPdf(file);
+    allWarnings.push(...warnings.map(w => `${file.name}: ${w}`));
+    if (!rows.length) continue;
+    statusEl.innerHTML = `<div style="color:var(--text3)">Importing ${file.name}...</div>`;
+    try {
+      const r = await sbFetch('recon_import_card_txns', {}, { label, source_filename: file.name, rows, warnings });
+      totalImported += r.imported || 0;
+    } catch (e) {
+      allWarnings.push(`${file.name}: import failed — ${e.message}`);
+    }
+  }
+  statusEl.innerHTML = _reconStatusHtml(allWarnings, `Imported ${totalImported} charge(s) across ${files.length} file(s).`);
+  fileEl.value = '';
+  loadReconBatchHistory();
+}
+
+async function loadReconBatchHistory() {
+  const el = document.getElementById('reconBatchList');
+  if (!el) return;
+  let batches = [];
+  try { batches = await sbFetch('recon_get_batches', {}); } catch (e) {}
+  batches = Array.isArray(batches) ? batches : [];
+  if (!batches.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:10px 0">No uploads yet.</div>'; return; }
+
+  el.innerHTML = batches.map(b => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+      <div>
+        <span style="font-size:12px;font-weight:600;color:var(--text)">${b.batch_type === 'meta_csv' ? '📤 CSV' : '💳 PDF'} · ${b.label}</span>
+        <span style="font-size:11px;color:var(--text3);margin-left:8px">${b.source_filename || ''} · ${b.row_count} row(s) · ${new Date(b.created_at).toLocaleString('en-MY')}</span>
+        ${(b.warnings || []).length ? `<div style="font-size:11px;color:var(--amber, #f59e0b);margin-top:2px">⚠ ${b.warnings.length} warning(s)</div>` : ''}
+      </div>
+      <button onclick="deleteReconBatch('${b.id}')" style="padding:5px 10px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--red);cursor:pointer;font-family:inherit;font-size:11px">Delete</button>
+    </div>`).join('');
+}
+
+async function deleteReconBatch(batchId) {
+  if (!confirm('Delete this upload and all its parsed rows/matches?')) return;
+  try {
+    await sbFetch('recon_delete_batch', {}, { batch_id: batchId });
+    loadReconBatchHistory();
+  } catch (e) { alert('Delete failed: ' + e.message); }
+}
+
+async function runReconMatcher() {
+  const statusEl = document.getElementById('reconMatcherStatus');
+  statusEl.innerHTML = '<div style="color:var(--text3)">Matching...</div>';
+  try {
+    const r = await sbFetch('recon_run_matcher', {}, {});
+    statusEl.innerHTML = `<div style="color:var(--teal)">Matched ${r.matched} pair(s) from ${r.invoices_considered} invoice(s) and ${r.card_txns_considered} charge(s) considered.</div>`;
+  } catch (e) {
+    statusEl.innerHTML = `<div style="color:var(--red)">Matcher failed: ${e.message}</div>`;
+  }
+}
+
+// ── RECON: Review / Unmatched / Summary sub-tabs ────────────────────────────
+async function _reconLoadReviewData() {
+  try { return await sbFetch('recon_get_review_data', {}); }
+  catch (e) { return { matches: [], unmatched_invoices: [], unmatched_card_txns: [], summary: { by_ad_account: [], by_card: [] } }; }
+}
+
+async function renderReconReview() {
+  const el = document.getElementById('reconReviewArea');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  const data = await _reconLoadReviewData();
+  const matches = data.matches || [];
+  if (!matches.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:20px 0">No suggested matches. Run the matcher from the Upload tab after importing data.</div>'; return; }
+
+  el.innerHTML = matches.map(m => `
+    <div class="s-card" style="margin-bottom:10px">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:16px;align-items:center">
+        <div>
+          <div style="font-size:11px;color:var(--text3)">INVOICE · ${m.invoice.label}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${m.invoice.currency} ${Number(m.invoice.amount).toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text2)">${m.invoice.invoice_date} · ${m.invoice.description || ''}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text3)">CARD CHARGE · ${m.card_txn.label}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${m.card_txn.currency} ${Number(m.card_txn.amount).toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text2)">${m.card_txn.txn_date} · ${m.card_txn.description || ''}</div>
+          ${m.card_txn.confidence === 'low' ? '<span style="font-size:10px;color:var(--amber,#f59e0b)">⚠ low-confidence parse</span>' : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--text3)">score ${Number(m.score).toFixed(2)} · ${m.date_diff_days}d apart</div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button onclick="confirmReconMatch('${m.id}')" style="padding:6px 12px;background:var(--teal2);border:none;border-radius:6px;color:#fff;cursor:pointer;font-family:inherit;font-size:12px">Confirm</button>
+            <button onclick="rejectReconMatch('${m.id}')" style="padding:6px 12px;background:none;border:1px solid var(--border2);border-radius:6px;color:var(--red);cursor:pointer;font-family:inherit;font-size:12px">Reject</button>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function confirmReconMatch(matchId) {
+  try { await sbFetch('recon_confirm_match', {}, { match_id: matchId }); renderReconReview(); }
+  catch (e) { alert('Confirm failed: ' + e.message); }
+}
+async function rejectReconMatch(matchId) {
+  try { await sbFetch('recon_reject_match', {}, { match_id: matchId }); renderReconReview(); }
+  catch (e) { alert('Reject failed: ' + e.message); }
+}
+
+async function renderReconUnmatchedInvoices() {
+  const el = document.getElementById('reconUnmatchedInvArea');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  const data = await _reconLoadReviewData();
+  const invoices = data.unmatched_invoices || [];
+  const cardTxns = data.unmatched_card_txns || [];
+  if (!invoices.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:20px 0">No unmatched invoices. 🎉</div>'; return; }
+
+  const cardOptions = cardTxns.map(t => `<option value="${t.id}">${t.txn_date} · ${t.currency} ${Number(t.amount).toFixed(2)} · ${t.label}</option>`).join('');
+
+  el.innerHTML = invoices.map(i => `
+    <div class="s-card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--text3)">${i.label}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${i.currency} ${Number(i.amount).toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text2)">${i.invoice_date} · ${i.description || ''}${i.transaction_id ? ' · Ref: ' + i.transaction_id : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="rmatch-${i.id}" style="${_reconInputStyle};max-width:280px">
+            <option value="">Manually match to charge...</option>
+            ${cardOptions}
+          </select>
+          <button onclick="manualReconMatch('${i.id}')" style="padding:6px 12px;background:var(--blue);border:none;border-radius:6px;color:#fff;cursor:pointer;font-family:inherit;font-size:12px">Match</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function manualReconMatch(invoiceId) {
+  const sel = document.getElementById(`rmatch-${invoiceId}`);
+  const cardTxnId = sel?.value;
+  if (!cardTxnId) { alert('Select a card charge to match.'); return; }
+  try {
+    await sbFetch('recon_manual_match', {}, { invoice_id: invoiceId, card_txn_id: cardTxnId });
+    renderReconUnmatchedInvoices();
+  } catch (e) { alert('Match failed: ' + e.message); }
+}
+
+async function renderReconUnmatchedCharges() {
+  const el = document.getElementById('reconUnmatchedCardArea');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  const data = await _reconLoadReviewData();
+  const cardTxns = data.unmatched_card_txns || [];
+  if (!cardTxns.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:20px 0">No unmatched charges. 🎉</div>'; return; }
+
+  el.innerHTML = cardTxns.map(t => `
+    <div class="s-card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;color:var(--text3)">${t.label} ${t.confidence === 'low' ? '<span style="color:var(--amber,#f59e0b)">⚠ low-confidence parse</span>' : ''}</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${t.currency} ${Number(t.amount).toFixed(2)}</div>
+          <div style="font-size:12px;color:var(--text2)">${t.txn_date} · ${t.description || ''}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function renderReconSummary() {
+  const el = document.getElementById('reconSummaryArea');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:30px"><div class="spinner"></div></div>';
+  const data = await _reconLoadReviewData();
+  const s = data.summary || { by_ad_account: [], by_card: [] };
+
+  const statCard = (row) => `
+    <div class="s-card" style="padding:14px 16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${row.label}</div>
+      <div style="font-size:18px;font-weight:700;color:var(--blue);margin-top:4px">${row.total.toFixed(2)}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${row.count} row(s) · ${row.confirmed||0} confirmed · ${row.suggested||0} suggested · ${row.unmatched||0} unmatched</div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="margin-bottom:20px">
+      <div class="section-title" style="font-size:14px;margin-bottom:10px">By Ad Account (Meta invoices)</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+        ${s.by_ad_account.length ? s.by_ad_account.map(statCard).join('') : '<div style="font-size:12px;color:var(--text3)">No invoices imported yet.</div>'}
+      </div>
+    </div>
+    <div>
+      <div class="section-title" style="font-size:14px;margin-bottom:10px">By Card</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+        ${s.by_card.length ? s.by_card.map(statCard).join('') : '<div style="font-size:12px;color:var(--text3)">No card charges imported yet.</div>'}
+      </div>
+    </div>`;
 }
 
 // ── TASK MANAGEMENT TAB ───────────────────────────────────────────────────
@@ -6043,6 +6582,10 @@ selectAccount = function(id) {
   <button class="mnav-item" id="mnav-settings" onclick="mnavGo('settings')" aria-label="Settings" style="display:none">
     <i class="ti ti-settings mnav-icon"></i>
     <span>Settings</span>
+  </button>
+  <button class="mnav-item" id="mnav-recon" onclick="mnavGo('recon')" aria-label="Ad Spend Reconciliation" style="display:none">
+    <i class="ti ti-receipt-2 mnav-icon"></i>
+    <span>Recon</span>
   </button>
 </nav>
 
